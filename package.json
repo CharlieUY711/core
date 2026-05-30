@@ -1,14 +1,13 @@
 {
   "name": "core-monorepo",
   "private": true,
-  "packageManager": "pnpm@8",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "turbo run dev --parallel",
-    "build": "turbo run build"
+    "build": "turbo run build --filter=core-landing"
   },
   "devDependencies": {
     "turbo": "1.13.3"
