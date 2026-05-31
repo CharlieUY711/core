@@ -115,7 +115,7 @@ export function CoreGlobe({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef   = useRef<HTMLDivElement>(null);
   const rafRef    = useRef<number>(0);
-  const rotRef    = useRef({ x: 0.3, y: -1.05, vx: 0, vy: 0.0012 });
+  const rotRef    = useRef({ x: -0.5, y: 0.978, vx: 0, vy: 0.0012 });
   const dragRef   = useRef({ active: false, lastX: 0, lastY: 0 });
   const hoverRef  = useRef<Hub | null>(null);
   const layerRef  = useRef<LayerType>(alProp);
@@ -126,6 +126,17 @@ export function CoreGlobe({
   const routes = rProp  ?? DEFAULT_ROUTES;
 
   useEffect(() => { layerRef.current = alProp; }, [alProp]);
+
+  // Geolocation: center on user country on load
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      rotRef.current.y = -lng * Math.PI / 180;
+      rotRef.current.x = lat * Math.PI / 180 * 0.4;
+    });
+  }, []);
 
   const hubMap = useMemo(() => new Map(hubs.map(h => [h.id, h])), [hubs]);
 
