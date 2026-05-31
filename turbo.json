@@ -6,6 +6,7 @@
       ],
       "outputs": [
         ".next/**",
+        "apps/core-landing/.next/**",
         "dist/**"
       ]
     },
