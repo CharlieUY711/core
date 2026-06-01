@@ -1,7 +1,0 @@
-{
-  "framework": "nextjs",
-  "installCommand": "pnpm install --filter core-biblio...",
-  "buildCommand": "pnpm --filter core-biblio... build",
-  "outputDirectory": ".next",
-  "ignoreCommand": "echo 'ignore turbo'"
-}
