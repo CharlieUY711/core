@@ -1,17 +1,11 @@
 {
-  "tasks": {
+  "pipeline": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": [
-        ".next/**",
         "apps/core-landing/.next/**",
-        "dist/**"
+        "apps/core-biblio/.next/**"
       ]
-    },
-    "dev": {
-      "cache": false
     }
   }
 }
