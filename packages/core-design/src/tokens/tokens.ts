@@ -128,7 +128,7 @@ export const breakpoints = {
 } as const
 
 export const layout = {
-  maxWidth:     '1280px',  // max-w-7xl de la landing
+  maxWidth:  '1152px'  // max-w-6xl — ancho fijo ecosistema CORE',  // max-w-7xl de la landing
   sidebarWidth: '220px',
   navbarHeight: '56px',
   paddingX:     spacing[6],
@@ -154,3 +154,4 @@ export const tokens = {
 } as const
 
 export type Tokens = typeof tokens
+

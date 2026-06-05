@@ -60,7 +60,7 @@
   --shadow-focus: 0 0 0 3px rgba(29,158,117,.3);
 
   /* Layout */
-  --max-w:        1280px;
+  --max-w:        1152px;   /* max-w-6xl — ancho fijo de todas las apps */
   --navbar-h:     56px;
 }
 
@@ -128,3 +128,4 @@ input:-webkit-autofill:focus {
   background: var(--c-primary);
   border-radius: var(--r-pill);
 }
+

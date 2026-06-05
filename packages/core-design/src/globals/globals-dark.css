@@ -66,7 +66,7 @@
   --shadow-focus: 0 0 0 3px rgba(27,90,196,.4);
 
   /* Layout */
-  --max-w:        1280px;
+  --max-w:        1152px;   /* max-w-6xl — ancho fijo de todas las apps */
   --navbar-h:     56px;
 }
 
@@ -105,4 +105,5 @@ input:-webkit-autofill:focus {
 }
 
 @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
 
