@@ -28,12 +28,12 @@
 
   /* Fondos */
   --c-bg:             #0A1F3D;
-  --c-bg-card:        rgba(15,56,117,0.12);
-  --c-bg-card-hover:  rgba(27,90,196,0.22);
+  --c-bg-card:        #17A8E0;
+  --c-bg-card-hover:  #1A7FC1;
   --c-bg-surface:     #1e2d42;
 
   /* Bordes */
-  --c-border:         #1e3354;
+  --c-border:         #1A7FC1;
   --c-border-hover:   rgba(59,130,246,0.4);
 
   /* Texto */
@@ -105,3 +105,4 @@ input:-webkit-autofill:focus {
 }
 
 @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+

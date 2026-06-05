@@ -238,3 +238,4 @@ export type AestheticDark  = typeof aestheticDark
 export type AestheticLight = typeof aestheticLight
 export type ColorsCORE     = typeof colorsCORE
 export type ColorsSECOND   = typeof colorsSECOND
+
