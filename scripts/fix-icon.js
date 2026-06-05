@@ -1,0 +1,1 @@
+const fs = require('fs'); const file = 'C:\\CORE\\apps\\core-market\\src\\app\\public\\ProductCard.tsx'; let c = fs.readFileSync(file, 'utf8'); c = c.replace(/<svg viewBox="0 0 24 24" width="13" height="13"[^<]*<\/svg>/g, ''); fs.writeFileSync(file, c, 'utf8'); console.log('OK');
