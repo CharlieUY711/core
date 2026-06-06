@@ -7,11 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens": "./src/tokens/tokens.ts",
-    "./globals": "./src/globals/globals.css",
+    "./globals": "./src/globals/globals-dark.css",
     "./themes/*": "./src/themes/*.ts"
   },
-  "files": [
-    "src",
-    "public"
-  ]
+  "files": ["src", "public"]
 }

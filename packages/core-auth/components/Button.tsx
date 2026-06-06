@@ -19,11 +19,23 @@ export default function Button({
   const base =
     'w-full py-3 px-6 text-sm font-semibold tracking-widest uppercase transition-all duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
 
-  const variants = {
-    primary:
-      'bg-[#0D2B55] text-white hover:bg-[#1A4F9C] focus:ring-[#1A4F9C] focus:ring-offset-[#0B1E35]',
-    ghost:
-      'bg-transparent border border-[#4A6080] text-[#7A8FA6] hover:border-[#7A8FA6] hover:text-white focus:ring-[#4A6080] focus:ring-offset-[#0B1E35]',
+  const variants: Record<string, string> = {
+    primary: [
+      'text-white',
+      'bg-[var(--c-primary)]',
+      'hover:bg-[var(--c-primary-hover)]',
+      'focus:ring-[var(--c-primary)]',
+      'focus:ring-offset-[var(--c-bg)]',
+    ].join(' '),
+    ghost: [
+      'bg-transparent',
+      'border border-[var(--c-text-3)]',
+      'text-[var(--c-text-2)]',
+      'hover:border-[var(--c-text-2)]',
+      'hover:text-[var(--c-text)]',
+      'focus:ring-[var(--c-text-3)]',
+      'focus:ring-offset-[var(--c-bg)]',
+    ].join(' '),
   }
 
   return (
