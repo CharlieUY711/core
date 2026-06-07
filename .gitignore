@@ -5,3 +5,6 @@ dist
 .env.local
 pnpm-lock.yaml
 .vercel
+audit-export/
+temp/
+*.zip
