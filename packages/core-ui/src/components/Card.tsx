@@ -1,4 +1,4 @@
-import { tokens } from '@core/design';
+import { tokens } from '@charlieuy711/design';
 
 interface CardProps {
   children:  React.ReactNode;
@@ -27,3 +27,5 @@ export const Card: React.FC<CardProps> = ({
     {children}
   </div>
 );
+
+

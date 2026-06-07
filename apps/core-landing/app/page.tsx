@@ -368,7 +368,7 @@ function IntelligenceSection() {
 
 // ─── Social ───────────────────────────────────────────────────────────────────
 function SocialSection() {
-  const tags = ["Supply Chain","Logística Regional","B2B Marketplace","Zonas Francas","LATAM Expansion","CORE Intelligence","Trade Marketing","Cross-border","Cono Sur","Uruguay Hub","Distribución","Sourcing Global"];
+  const tags = ["Supply Chain","Logística Regional","B2B Marketplace","Zonas Francas","LATAM Expansion","CORE Intelligence","Trade Marketing","Cross-border","Cono Sur","Uruguay workspace","Distribución","Sourcing Global"];
   return (
     <section className="relative py-24 overflow-hidden">
       <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent mb-24" />
@@ -470,3 +470,4 @@ export default function CoreLandingPage() {
     </div>
   );
 }
+

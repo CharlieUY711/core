@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabaseClient'
+import { createClient } from '@core/auth/supabaseClient'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
@@ -125,3 +125,4 @@ if (authError) {
     </main>
   )
 }
+

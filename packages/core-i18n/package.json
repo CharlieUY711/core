@@ -1,9 +1,20 @@
 {
-  "name": "@core/i18n",
+  "name": "@charlieuy711/i18n",
   "version": "1.0.0",
-  "private": true,
-  "main": "./src/index.ts",
+  "private": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
-  }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": { "build": "tsc" },
+  "devDependencies": { "typescript": "^5", "@types/react": "^18" },
+  "peerDependencies": { "react": ">=18" },
+  "publishConfig": { "registry": "https://registry.npmjs.org" }
 }
+
+

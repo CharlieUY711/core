@@ -1,8 +1,8 @@
-// @core/auth — Supabase server client (Next.js App Router)
+// @charlieuy711/auth — Supabase server client (Next.js App Router)
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createServerSupabaseClient() {
+export async function createClient() {
   const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,3 +21,4 @@ export async function createServerSupabaseClient() {
     }
   )
 }
+

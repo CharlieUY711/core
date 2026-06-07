@@ -1,0 +1,49 @@
+model ConfigDomain {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  schema       Json
+  mergeStrategy String
+  configSets   ConfigSet[]
+}
+
+model ConfigScope {
+  id            String   @id @default(cuid())
+  scopeType     String
+  tenantId      String?
+  brandId       String?
+  environment   String?
+  parentScopeId String?
+  path          String   @unique
+  configSets    ConfigSet[]
+}
+
+model ConfigSet {
+  id              String   @id @default(cuid())
+  domainId        String
+  scopeId         String
+  activeVersionId String?
+  draftVersionId  String?
+  versions        ConfigVersion[]
+}
+
+model ConfigVersion {
+  id              String   @id @default(cuid())
+  configSetId     String
+  versionLabel    String
+  baseVersionId   String?
+  patch           Json
+  createdAt       DateTime @default(now())
+  createdByUserId String
+  observations    String?
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String
+  actorUserId String
+  timestamp   DateTime @default(now())
+  metadata    Json?
+}

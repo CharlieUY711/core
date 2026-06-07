@@ -1,0 +1,9 @@
+
+Name
+----
+core-auth
+core-design
+core-globe
+core-i18n
+core-ui
+

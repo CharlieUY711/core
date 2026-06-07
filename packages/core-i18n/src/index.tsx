@@ -1,21 +1,21 @@
 'use client'
 
 // ═══════════════════════════════════════════════════════════════
-// @core/i18n — Única fuente de verdad para textos del ecosistema
+// @charlieuy711/i18n — Única fuente de verdad para textos del ecosistema
 //
 // USO EN CUALQUIER APP:
 //
 //   // 1. Envolver la app con el provider (layout.tsx o App.tsx)
-//   import { I18nProvider } from '@core/i18n'
+//   import { I18nProvider } from '@charlieuy711/i18n'
 //   <I18nProvider><App /></I18nProvider>
 //
 //   // 2. Usar en cualquier componente
-//   import { useI18n } from '@core/i18n'
+//   import { useI18n } from '@charlieuy711/i18n'
 //   const { t, locale, setLocale } = useI18n()
 //   <p>{t('brand_tagline')}</p>
 //
 //   // 3. Sin contexto (server components, utilidades)
-//   import { translate } from '@core/i18n'
+//   import { translate } from '@charlieuy711/i18n'
 //   translate('es', 'brand_tagline')
 // ═══════════════════════════════════════════════════════════════
 
@@ -150,3 +150,5 @@ export function LanguageSwitcher({ variant = 'dark' }: LanguageSwitcherProps) {
     </div>
   )
 }
+
+

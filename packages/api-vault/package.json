@@ -1,0 +1,51 @@
+{
+  "name": "@charlieuy711/api-vault",
+  "version": "1.0.0",
+  "private": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./components": {
+      "import": "./dist/components/index.js",
+      "types": "./dist/components/index.d.ts"
+    },
+    "./services": {
+      "import": "./dist/services/index.js",
+      "types": "./dist/services/index.d.ts"
+    },
+    "./hooks": {
+      "import": "./dist/hooks/index.js",
+      "types": "./dist/hooks/index.d.ts"
+    },
+    "./migration": {
+      "import": "./supabase/migrations/20260607_api_vault.sql"
+    }
+  },
+  "files": [
+    "dist",
+    "supabase"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.107.0",
+    "@types/react": "^18.3.31",
+    "react": "^19.2.7",
+    "typescript": "^5",
+    "zustand": "^5.0.12"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": ">=2.0.0",
+    "react": ">=18.0.0",
+    "zustand": ">=4.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  }
+}

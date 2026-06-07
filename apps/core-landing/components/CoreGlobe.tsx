@@ -10,7 +10,7 @@ import type { GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type LayerType = "all" | "origins" | "cono" | "direct" | "expansion";
 
-export interface Hub {
+export interface workspace {
   id: string; name: string; role: string;
   lat: number; lng: number; r: number;
   color: string; layer: string; primary?: boolean;
@@ -23,17 +23,17 @@ export interface Route {
 }
 
 export interface CoreGlobeProps {
-  routes?: Route[]; hubs?: Hub[];
+  routes?: Route[]; hubs?: workspace[];
   highlightCountry?: string;
   activeLayer?: LayerType;
-  onHubClick?: (hub: Hub) => void;
+  onHubClick?: (workspace: workspace) => void;
   autoRotate?: boolean;
   className?: string;
 }
 
 // ─── Default data ─────────────────────────────────────────────────────────────
-export const DEFAULT_HUBS: Hub[] = [
-  { id:"uy", name:"Uruguay",          role:"Hub principal · CORE",  lat:-33,   lng:-56,   r:7, color:"#FFFFFF", layer:"cono",     primary:true },
+export const DEFAULT_HUBS: workspace[] = [
+  { id:"uy", name:"Uruguay",          role:"workspace principal · CORE",  lat:-33,   lng:-56,   r:7, color:"#FFFFFF", layer:"cono",     primary:true },
   { id:"ar", name:"Buenos Aires",     role:"Distribución Cono Sur", lat:-34.6, lng:-58.4, r:4, color:"#4A90E8", layer:"cono"      },
   { id:"br", name:"São Paulo",        role:"Distribución Cono Sur", lat:-23.5, lng:-46.6, r:4, color:"#4A90E8", layer:"cono"      },
   { id:"cl", name:"Santiago",         role:"Distribución Cono Sur", lat:-33.4, lng:-70.7, r:4, color:"#4A90E8", layer:"cono"      },
@@ -117,7 +117,7 @@ export function CoreGlobe({
   const rafRef    = useRef<number>(0);
   const rotRef    = useRef({ x: -0.5, y: 0.978, vx: 0, vy: 0.0012 });
   const dragRef   = useRef({ active: false, lastX: 0, lastY: 0 });
-  const hoverRef  = useRef<Hub | null>(null);
+  const hoverRef  = useRef<workspace | null>(null);
   const layerRef  = useRef<LayerType>(alProp);
   const offRef    = useRef<Map<string, number>>(new Map());
   const geoRef    = useRef<Array<Array<Array<[number, number]>>>>([]);
@@ -140,7 +140,7 @@ export function CoreGlobe({
 
   const hubMap = useMemo(() => new Map(hubs.map(h => [h.id, h])), [hubs]);
 
-  const [tooltip, setTooltip] = useState<{ hub: Hub; x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ workspace: workspace; x: number; y: number } | null>(null);
 
   // load world geo
   useEffect(() => {
@@ -284,47 +284,47 @@ export function CoreGlobe({
       });
     }
 
-    function drawHub(hub: Hub, t: number) {
+    function drawHub(workspace: workspace, t: number) {
       const { x: rX, y: rY } = rotRef.current;
-      const p = project(hub.lat, hub.lng, rX, rY, cx, cy, R);
+      const p = project(workspace.lat, workspace.lng, rX, rY, cx, cy, R);
       if (!p.vis) return;
-      const hovered     = hoverRef.current?.id === hub.id;
-      const highlighted = highlightCountry === hub.id;
-      const r = hub.r * (hovered || highlighted ? 1.4 : 1);
-      if (hub.primary || highlighted) {
+      const hovered     = hoverRef.current?.id === workspace.id;
+      const highlighted = highlightCountry === workspace.id;
+      const r = workspace.r * (hovered || highlighted ? 1.4 : 1);
+      if (workspace.primary || highlighted) {
         for (let i = 0; i < 3; i++) {
           const phase = (t * 0.8 + i * 0.33) % 1;
-          ctx.save(); ctx.strokeStyle = hub.color; ctx.lineWidth = 0.8;
+          ctx.save(); ctx.strokeStyle = workspace.color; ctx.lineWidth = 0.8;
           ctx.globalAlpha = (1 - phase) * 0.5;
           ctx.beginPath(); ctx.arc(p.sx, p.sy, (r+4)+phase*24, 0, Math.PI*2); ctx.stroke();
           ctx.restore();
         }
       }
       ctx.save();
-      ctx.shadowColor = hub.primary ? "rgba(255,255,255,0.6)" : hub.color;
+      ctx.shadowColor = workspace.primary ? "rgba(255,255,255,0.6)" : workspace.color;
       ctx.shadowBlur = hovered ? 20 : 10;
-      ctx.strokeStyle = hub.primary ? "rgba(255,255,255,0.4)" : hub.color;
+      ctx.strokeStyle = workspace.primary ? "rgba(255,255,255,0.4)" : workspace.color;
       ctx.lineWidth = 0.8; ctx.globalAlpha = 0.6;
       ctx.beginPath(); ctx.arc(p.sx, p.sy, r+3, 0, Math.PI*2); ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = hub.primary ? "#FFFFFF" : hub.color;
+      ctx.fillStyle = workspace.primary ? "#FFFFFF" : workspace.color;
       ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI*2); ctx.fill();
-      if (hub.primary) {
+      if (workspace.primary) {
         ctx.fillStyle = "rgba(255,255,255,0.25)";
         ctx.beginPath(); ctx.arc(p.sx, p.sy, r*0.45, 0, Math.PI*2); ctx.fill();
       }
       ctx.restore();
-      if (hub.primary || hovered || highlighted) {
+      if (workspace.primary || hovered || highlighted) {
         ctx.save();
-        ctx.font = `${hub.primary?400:300} ${hub.primary?11:10}px -apple-system,sans-serif`;
-        ctx.fillStyle = hub.primary ? "#FFFFFF" : hub.color;
+        ctx.font = `${workspace.primary?400:300} ${workspace.primary?11:10}px -apple-system,sans-serif`;
+        ctx.fillStyle = workspace.primary ? "#FFFFFF" : workspace.color;
         ctx.globalAlpha = 0.9; ctx.textAlign = "left";
-        ctx.fillText(hub.name, p.sx+r+6, p.sy+4);
-        if (hub.primary) {
+        ctx.fillText(workspace.name, p.sx+r+6, p.sy+4);
+        if (workspace.primary) {
           ctx.font = "400 9px -apple-system,sans-serif";
           ctx.fillStyle = "rgba(255,255,255,0.35)";
           ctx.letterSpacing = "0.08em";
-          ctx.fillText("HUB · CORE", p.sx+r+6, p.sy+16);
+          ctx.fillText("workspace · CORE", p.sx+r+6, p.sy+16);
         }
         ctx.restore();
       }
@@ -391,7 +391,7 @@ export function CoreGlobe({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getHubAt = useCallback((clientX: number, clientY: number): Hub | null => {
+  const getHubAt = useCallback((clientX: number, clientY: number): workspace | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
@@ -407,7 +407,7 @@ export function CoreGlobe({
   }, [hubs]);
 
   const onMouseDown  = useCallback((e: React.MouseEvent) => { dragRef.current = {active:true,lastX:e.clientX,lastY:e.clientY}; rotRef.current.vx=0; rotRef.current.vy=0; }, []);
-  const onMouseUp    = useCallback((e: React.MouseEvent) => { dragRef.current.active=false; const hub=getHubAt(e.clientX,e.clientY); if(hub&&onHubClick) onHubClick(hub); }, [getHubAt,onHubClick]);
+  const onMouseUp    = useCallback((e: React.MouseEvent) => { dragRef.current.active=false; const workspace=getHubAt(e.clientX,e.clientY); if(workspace&&onHubClick) onHubClick(workspace); }, [getHubAt,onHubClick]);
   const onMouseLeave = useCallback(() => { dragRef.current.active=false; hoverRef.current=null; setTooltip(null); }, []);
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
@@ -417,13 +417,13 @@ export function CoreGlobe({
       rotRef.current.y+=rotRef.current.vy; rotRef.current.x+=rotRef.current.vx;
       dragRef.current.lastX=e.clientX; dragRef.current.lastY=e.clientY;
     }
-    const hub = getHubAt(e.clientX,e.clientY);
-    hoverRef.current = hub;
-    if (hub) {
+    const workspace = getHubAt(e.clientX,e.clientY);
+    hoverRef.current = workspace;
+    if (workspace) {
       const rect = canvasRef.current!.getBoundingClientRect();
       const R=Math.min(rect.width,rect.height)*0.38;
-      const p=project(hub.lat,hub.lng,rotRef.current.x,rotRef.current.y,rect.width/2,rect.height/2,R);
-      setTooltip({hub,x:p.sx+hub.r+8,y:p.sy-14});
+      const p=project(workspace.lat,workspace.lng,rotRef.current.x,rotRef.current.y,rect.width/2,rect.height/2,R);
+      setTooltip({workspace,x:p.sx+workspace.r+8,y:p.sy-14});
     } else setTooltip(null);
   }, [getHubAt]);
 
@@ -440,8 +440,8 @@ export function CoreGlobe({
       {tooltip && (
         <div className="pointer-events-none absolute z-10 px-3 py-2 text-xs"
           style={{left:tooltip.x,top:tooltip.y,background:"rgba(10,10,10,0.95)",border:"0.5px solid rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",maxWidth:180}}>
-          <p className="mb-0.5 font-medium" style={{color:"#FFFFFF"}}>{tooltip.hub.name}</p>
-          <p style={{color:"rgba(255,255,255,0.4)"}}>{tooltip.hub.role}</p>
+          <p className="mb-0.5 font-medium" style={{color:"#FFFFFF"}}>{tooltip.workspace.name}</p>
+          <p style={{color:"rgba(255,255,255,0.4)"}}>{tooltip.workspace.role}</p>
         </div>
       )}
     </div>
@@ -467,3 +467,4 @@ export function CoreGlobeStatic({ className="" }: { className?: string }) {
 }
 
 export default CoreGlobe;
+

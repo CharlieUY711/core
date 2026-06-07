@@ -1,4 +1,4 @@
-import { tokens } from '@core/design';
+import { tokens } from '@charlieuy711/design';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?:  string;
@@ -42,3 +42,5 @@ export const Input: React.FC<InputProps> = ({ label, error, dark, style, ...prop
     )}
   </div>
 );
+
+

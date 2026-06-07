@@ -1,4 +1,4 @@
-// @core/auth — Middleware
+// @charlieuy711/auth — Middleware
 // Base: core-biblio/middleware.ts — probado en producción
 // Usa getSession() que es lo que funciona con Next 14 + @supabase/ssr
 import { createServerClient } from '@supabase/ssr'
@@ -69,3 +69,5 @@ export function createCoreMiddleware(options: CoreMiddlewareOptions = {}) {
 export const defaultMatcher = [
   '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
 ]
+
+

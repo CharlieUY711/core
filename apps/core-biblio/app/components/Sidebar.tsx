@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabaseClient'
+import { createClient } from '@core/auth/supabaseClient'
 
 const navItems = [
   {
@@ -112,3 +112,4 @@ export default function Sidebar() {
     </aside>
   )
 }
+

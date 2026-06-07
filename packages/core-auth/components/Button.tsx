@@ -1,4 +1,4 @@
-// @core/auth — Button component
+// @charlieuy711/auth — Button component
 // Base: core-biblio/components/ui/Button.tsx — probado en producción
 import { ButtonHTMLAttributes, ReactNode } from 'react'
 
@@ -56,3 +56,4 @@ export default function Button({
     </button>
   )
 }
+

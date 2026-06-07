@@ -1,4 +1,4 @@
-import { tokens } from '@core/design';
+import { tokens } from '@charlieuy711/design';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'secondhand';
 
@@ -32,3 +32,5 @@ export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default' }) =
     {children}
   </span>
 );
+
+

@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabaseClient'
+import { createClient } from '@core/auth/supabaseClient'
 
 const warnings = [
   {
@@ -99,3 +99,4 @@ async function handleAccept() {
     </main>
   )
 }
+

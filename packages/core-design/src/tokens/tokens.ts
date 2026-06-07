@@ -41,6 +41,29 @@ export const colors = {
   navy:        '#0A1F3D',
   navyDark:    '#0D2B55',
 
+  // ── Alias usados por @charlieuy711/ui ──
+  white:       '#ffffff',
+  red:         '#ef4444',
+  redLight:    'rgba(239,68,68,0.15)',
+  green:       '#4ade80',
+  greenLight:  'rgba(74,222,128,0.15)',
+  amber:       '#c9993a',
+  amberLight:  '#f5c870',
+  grayBorder:  '#CBD8E8',
+  sh: {
+    primary:      '#2f6f4f',
+    background:   '#f4f7f5',
+    primaryHover: '#245a3e',
+    dark:         '#1a4530',
+    pale:         'rgba(47,111,79,0.1)',
+    soft:         'rgba(47,111,79,0.2)',
+  },
+  // ── Alias faltantes ──
+  navyLight:   '#1e3a5f',
+  grayLight:   '#f1f5f9',
+  grayMid:     '#64748b',
+  goldDark:    '#a07828',
+
 } as const
 
 export const typography = {
@@ -128,7 +151,7 @@ export const breakpoints = {
 } as const
 
 export const layout = {
-  maxWidth:  '1152px'  // max-w-6xl — ancho fijo ecosistema CORE',  // max-w-7xl de la landing
+  maxWidth:  '1152px', // max-w-6xl — ancho fijo ecosistema CORE
   sidebarWidth: '220px',
   navbarHeight: '56px',
   paddingX:     spacing[6],
@@ -140,7 +163,7 @@ export const products = {
   market:       { name: 'MARKET',      initial: 'M', bg: '#1b5ac4', byline: 'by CORE' },
   biblio:       { name: 'BIBLIOTECA',  initial: 'B', bg: '#0A1F3D', byline: 'by CORE' },
   foundation:   { name: 'FOUNDATION',  initial: 'F', bg: '#0A1F3D', byline: 'by CORE' },
-  hub:          { name: 'HUB',         initial: 'H', bg: '#0A1F3D', byline: 'by CORE' },
+  workspace:          { name: 'workspace',         initial: 'H', bg: '#0A1F3D', byline: 'by CORE' },
   marketing:    { name: 'MARKETING',   initial: 'M', bg: '#1b5ac4', byline: 'by CORE' },
   logistics:    { name: 'LOGISTICS',   initial: 'L', bg: '#1b5ac4', byline: 'by CORE' },
   customs:      { name: 'CUSTOMS',     initial: 'C', bg: '#0A1F3D', byline: 'by CORE' },
@@ -148,10 +171,47 @@ export const products = {
   finance:      { name: 'FINANCE',     initial: 'F', bg: '#0A1F3D', byline: 'by CORE' },
 } as const
 
+export const components = {
+  button: {
+    height:        '40px',
+    heightSm:      '32px',
+    heightLg:      '48px',
+    minWidth:      '64px',
+    fontWeight:    typography.weight.semibold,
+    letterSpacing: typography.letterSpacing.wider,
+    radius:        radius.sm,
+    transition:    `all ${motion.duration.normal} ${motion.easing.default}`,
+  },
+  input: {
+    height:   '44px',
+    bg:       'rgba(15,56,117,0.20)',
+    fontSize: typography.size.md,
+    radius:   radius.sm,
+  },
+  card: {
+    bg:     colors.bgCard,
+    border: `1px solid ${colors.border}`,
+    radius: radius.lg,
+    shadow: shadows.card,
+  },
+  navbar: {
+    height:  '56px',
+    bg:      '#0A1F3D',
+    border:  '#1e3354',
+    zIndex:  100,
+  },
+} as const
 export const tokens = {
   colors, typography, spacing, radius,
   shadows, motion, breakpoints, layout, products,
+  components,
 } as const
 
 export type Tokens = typeof tokens
+
+
+
+
+
+
 

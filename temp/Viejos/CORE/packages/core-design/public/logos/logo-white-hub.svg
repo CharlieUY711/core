@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40">
+  <rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.12)"/>
+  <text x="20" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Geist', 'Segoe UI', sans-serif" font-size="22" font-weight="700" fill="white" text-anchor="middle" letter-spacing="-0.5">H</text>
+  <text x="54" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Geist', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF" letter-spacing="1.5">HUB</text>
+  <text x="54" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Geist', 'Segoe UI', sans-serif" font-size="9" font-weight="400" fill="rgba(255,255,255,0.45)" letter-spacing="0.5">by CORE</text>
+</svg>

@@ -1,4 +1,4 @@
-// @core/auth — Supabase types
+// @charlieuy711/auth — Supabase types
 export type Json =
   | string
   | number
@@ -15,3 +15,5 @@ export interface Database {
     Enums:     { [_ in never]: never }
   }
 }
+
+

@@ -1,5 +1,5 @@
 {
-  "name": "core-monorepo",
+  "name": "core-workspace",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -7,13 +7,10 @@
   ],
   "scripts": {
     "dev": "turbo run dev --parallel",
-    "build": "turbo run build --filter=core-landing"
+    "build": "turbo run build"
   },
-  "devDependencies": {
-    "turbo": "2.3.3"
-  },
+  "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20"
-  },
-  "packageManager": "pnpm@9.0.0"
+  }
 }

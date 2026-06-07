@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// @core/i18n — Español
+// @charlieuy711/i18n — Español
 // FUENTE ÚNICA DE VERDAD para todos los textos del ecosistema.
 // Agregar aquí cualquier texto nuevo. Nunca en las apps.
 // ═══════════════════════════════════════════════════════════════
@@ -97,7 +97,7 @@ export const es = {
   auth_show_password:       'Mostrar contraseña',
   auth_hide_password:       'Ocultar contraseña',
 
-  // ── Hub / Dashboard ───────────────────────────────────────
+  // ── workspace / Dashboard ───────────────────────────────────────
   hub_welcome:              'Bienvenido',
   hub_subtitle:             'Seleccioná el portal al que querés acceder.',
   hub_section_live:         'PORTALES ACTIVOS',
@@ -107,7 +107,7 @@ export const es = {
   hub_wip:                  'En desarrollo',
 
   // ── Portales del ecosistema ───────────────────────────────
-  portal_hub_name:          'CORE Hub',
+  portal_hub_name:          'CORE workspace',
   portal_hub_desc:          'Portal de acceso único al ecosistema interno.',
   portal_biblio_name:           'Biblioteca',
   portal_biblio_desc:       'Documentación oficial — Arquitectura, Estrategia, Prompts y Roadmap.',
@@ -260,7 +260,33 @@ export const es = {
   expansion_phase_planned:  'Planificado',
   expansion_phase_horizon:  'Horizonte',
 
+
+  // ── Workspace app: login / dashboard ──
+  login_title: 'Acceso Interno',
+  login_subtitle: 'Portal corporativo CORE — uso exclusivo del equipo.',
+  login_email: 'Correo electrónico',
+  login_password: 'Contraseña',
+  login_button: 'Ingresar',
+  login_loading: 'Verificando...',
+  login_error_invalid: 'Credenciales incorrectas. Verificá los datos.',
+  login_error_generic: 'Error al iniciar sesión. Intentá nuevamente.',
+  login_confidential: 'Confidencial — Uso interno',
+  dashboard_welcome: 'Bienvenido',
+  dashboard_subtitle: 'Seleccioná el portal al que querés acceder.',
+  dashboard_logout: 'Cerrar sesión',
+  dashboard_version: 'v1.0 — 2026',
+  dashboard_confidential: 'Confidencial — Uso interno',
+  dashboard_section_public: 'PORTALES ACTIVOS — PÚBLICOS',
+  dashboard_section_live: 'PORTALES ACTIVOS — ACCESO RESTRINGIDO',
+  dashboard_section_dev: 'EN DESARROLLO — ACCESO RESTRINGIDO',
+  dashboard_access: 'Acceder',
+  dashboard_soon: 'Próximamente',
+  dashboard_wip: 'En desarrollo',
+  portal_landing_name: 'CORE',
+  portal_landing_desc: 'Sitio institucional del ecosistema CORE — core.com.uy',
 } as const
 
 export type TranslationKeys = keyof typeof es
+
+
 

@@ -1,4 +1,4 @@
-import { tokens } from '@core/design';
+import { tokens } from '@charlieuy711/design';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'secondhand';
 type ButtonSize    = 'sm' | 'md' | 'lg';
@@ -73,3 +73,5 @@ export const Button: React.FC<ButtonProps> = ({
     {loading ? '...' : children}
   </button>
 );
+
+

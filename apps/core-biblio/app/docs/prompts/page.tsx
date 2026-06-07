@@ -96,3 +96,4 @@ export default function PromptsPage() {
     </div>
   )
 }
+
