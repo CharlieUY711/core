@@ -1,5 +1,4 @@
-// @charlieuy711/api-vault — hook
-// Recibe el cliente Supabase para funcionar en cualquier app del monorepo.
+// @charlieuy711/api-vault — hook (multi-tenant)
 
 import { create } from 'zustand'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -8,19 +7,33 @@ import {
   createVaultEntry,
   updateVaultEntry,
   deleteVaultEntry,
+  fetchMyTenants,
+  createTenant,
   isExpired,
   isExpiringSoon,
 } from '../services/apiVaultService'
 import type { ApiVaultEntry, ApiVaultInsert, ApiVaultUpdate } from '../services/apiVaultTypes'
+import type { Tenant } from '../services/apiVaultService'
 
 interface VaultState {
-  entries: ApiVaultEntry[]
-  loading: boolean
-  error: string | null
-  load:   (supabase: SupabaseClient) => Promise<void>
+  entries:       ApiVaultEntry[]
+  tenants:       Tenant[]
+  activeTenant:  Tenant | null
+  loading:       boolean
+  error:         string | null
+
+  // Acciones vault
+  load:   (supabase: SupabaseClient, options?: { tenantId?: string; appId?: string }) => Promise<void>
   add:    (supabase: SupabaseClient, entry: ApiVaultInsert) => Promise<boolean>
   edit:   (supabase: SupabaseClient, id: string, updates: ApiVaultUpdate) => Promise<boolean>
   remove: (supabase: SupabaseClient, id: string) => Promise<boolean>
+
+  // Acciones tenant
+  loadTenants:    (supabase: SupabaseClient) => Promise<void>
+  setTenant:      (tenant: Tenant | null) => void
+  addTenant:      (supabase: SupabaseClient, name: string, slug: string) => Promise<boolean>
+
+  // Selectores
   getByPlatform: (platform: string) => ApiVaultEntry[]
   getExpiring:   (days?: number) => ApiVaultEntry[]
   getExpired:    () => ApiVaultEntry[]
@@ -28,13 +41,15 @@ interface VaultState {
 }
 
 export const useApiVault = create<VaultState>((set, get) => ({
-  entries: [],
-  loading: false,
-  error:   null,
+  entries:      [],
+  tenants:      [],
+  activeTenant: null,
+  loading:      false,
+  error:        null,
 
-  load: async (supabase) => {
+  load: async (supabase, options) => {
     set({ loading: true, error: null })
-    const result = await fetchVaultEntries(supabase)
+    const result = await fetchVaultEntries(supabase, options)
     if (result.ok) set({ entries: result.data ?? [], loading: false })
     else           set({ error: result.error ?? 'Error al cargar', loading: false })
   },
@@ -61,6 +76,25 @@ export const useApiVault = create<VaultState>((set, get) => ({
     const result = await deleteVaultEntry(supabase, id)
     if (result.ok) {
       set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }))
+      return true
+    }
+    set({ error: result.error }); return false
+  },
+
+  loadTenants: async (supabase) => {
+    const result = await fetchMyTenants(supabase)
+    if (result.ok) {
+      const tenants = result.data ?? []
+      set({ tenants, activeTenant: tenants[0] ?? null })
+    }
+  },
+
+  setTenant: (tenant) => set({ activeTenant: tenant }),
+
+  addTenant: async (supabase, name, slug) => {
+    const result = await createTenant(supabase, name, slug)
+    if (result.ok && result.data) {
+      set((s) => ({ tenants: [...s.tenants, result.data!], activeTenant: result.data! }))
       return true
     }
     set({ error: result.error }); return false

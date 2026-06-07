@@ -1,4 +1,4 @@
-﻿// @charlieuy711/api-vault — componente principal
+// @charlieuy711/api-vault — componente principal
 // Acepta un cliente Supabase como prop para ser agnóstico al framework.
 
 import { useEffect, useState, useMemo } from 'react'
@@ -9,6 +9,8 @@ import {
   VAULT_TYPE_LABELS,
   VAULT_ENV_LABELS,
   VAULT_PLATFORMS,
+  VAULT_PLATFORM_DEFS,
+  VAULT_PLATFORM_CATEGORIES,
   PLATFORM_ICONS,
 } from '../services/apiVaultTypes'
 import { isExpired, isExpiringSoon } from '../services/apiVaultService'
@@ -16,8 +18,9 @@ import { isExpired, isExpiringSoon } from '../services/apiVaultService'
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface ApiVaultPageProps {
-  supabase: SupabaseClient
-  /** Clase CSS extra para el contenedor raíz */
+  supabase:   SupabaseClient
+  tenantId?:  string
+  appId?:     string
   className?: string
 }
 
@@ -45,7 +48,7 @@ const ENV_COLORS: Record<VaultEnv, string> = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function ApiVaultPage({ supabase, className = '' }: ApiVaultPageProps) {
+export function ApiVaultPage({ supabase, tenantId, appId, className = '' }: ApiVaultPageProps) {
   const { entries, loading, error, load, add, edit, remove, stats } = useApiVault()
 
   const [search, setSearch]       = useState('')
@@ -56,7 +59,7 @@ export function ApiVaultPage({ supabase, className = '' }: ApiVaultPageProps) {
   const [revealed, setRevealed]   = useState<Set<string>>(new Set())
   const [copied, setCopied]       = useState<string | null>(null)
 
-  useEffect(() => { load(supabase) }, [supabase])
+  useEffect(() => { load(supabase, { tenantId, appId }) }, [supabase, tenantId, appId])
 
   const platforms = useMemo(
     () => ['all', ...Array.from(new Set(entries.map((e) => e.platform)))],
@@ -275,7 +278,13 @@ function VaultForm({ initial, onClose, onSave }: VaultFormProps) {
               <label style={label}>Plataforma *</label>
               <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={input}>
                 <option value="">Seleccionar...</option>
-                {VAULT_PLATFORMS.map((p) => <option key={p}>{p}</option>)}
+                {VAULT_PLATFORM_CATEGORIES.map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {VAULT_PLATFORM_DEFS.filter(p => p.category === cat).map(p => (
+                      <option key={p.name} value={p.name}>{p.icon} {p.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div>
