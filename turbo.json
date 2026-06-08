@@ -1,7 +1,9 @@
 {
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": [
         "apps/core-landing/.next/**",
         "apps/core-market/dist/**"
@@ -12,7 +14,15 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     }
-  }
+  },
+  "globalEnv": [
+    "CORE_APP_ID",
+    "CORE_ACCESS_SECRET",
+    "NEXT_PUBLIC_CORE_APP_ID",
+    "NEXT_PUBLIC_WORKSPACE_URL"
+  ]
 }

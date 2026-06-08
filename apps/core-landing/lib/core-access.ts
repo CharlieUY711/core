@@ -18,7 +18,7 @@ function fromB64url(s: string): Uint8Array {
 async function getKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(secret),
+    new Uint8Array(new TextEncoder().encode(secret)),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']
@@ -28,9 +28,9 @@ async function getKey(secret: string): Promise<CryptoKey> {
 export type CorePayload = { app: string; sub?: string; exp: number }
 
 export async function signToken(payload: CorePayload, secret: string): Promise<string> {
-  const body = b64url(new TextEncoder().encode(JSON.stringify(payload)))
+  const body = b64url(new Uint8Array(new TextEncoder().encode(JSON.stringify(payload))))
   const key = await getKey(secret)
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
+  const sig = await crypto.subtle.sign('HMAC', key, new Uint8Array(new TextEncoder().encode(body)))
   return `${body}.${b64url(new Uint8Array(sig))}`
 }
 
@@ -41,13 +41,13 @@ export async function verifyToken(token: string, secret: string): Promise<CorePa
   const key = await getKey(secret)
   let ok = false
   try {
-    ok = await crypto.subtle.verify('HMAC', key, fromB64url(sig), new TextEncoder().encode(body))
+    ok = await crypto.subtle.verify('HMAC', key, new Uint8Array(fromB64url(sig)), new Uint8Array(new TextEncoder().encode(body)))
   } catch {
     return null
   }
   if (!ok) return null
   try {
-    const payload = JSON.parse(new TextDecoder().decode(fromB64url(body))) as CorePayload
+    const payload = JSON.parse(new TextDecoder().decode(new Uint8Array(fromB64url(body)))) as CorePayload
     if (!payload.exp || Date.now() > payload.exp) return null
     return payload
   } catch {
