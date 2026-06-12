@@ -1,5 +1,6 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "turbo run build --filter=core-landing",
-  "outputDirectory": ".next"
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter core-market build",
+  "outputDirectory": "apps/core-market/dist",
+  "regions": ["iad1"]
 }

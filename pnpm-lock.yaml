@@ -362,9 +362,9 @@ importers:
 
   apps/core-market:
     dependencies:
-      '@charlieuy711/core-apivault':
+      '@core/carrito':
         specifier: workspace:*
-        version: link:../../packages/core-apivault
+        version: link:../../packages/core-carrito
       '@emotion/react':
         specifier: 11.14.0
         version: 11.14.0(@types/react@19.2.17)(react@18.3.1)
@@ -764,6 +764,25 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/core-carrito:
+    dependencies:
+      react:
+        specifier: '>=18'
+        version: 18.3.1
+      react-dom:
+        specifier: '>=18'
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.0
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.7(@types/react@18.3.31)
+      typescript:
+        specifier: ^5.0.0
         version: 5.9.3
 
   packages/core-design:
