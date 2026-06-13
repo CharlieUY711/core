@@ -1,0 +1,51 @@
+{
+  "tools": {
+    "standalone": [
+      "tool-dev",
+      "tool-editor",
+      "tool-etiquetas"
+    ],
+    "unknown": [
+      "BackUp",
+      "Scan",
+      "tool-cargamasiva",
+      "tool-carrito_master",
+      "tool-geo",
+      "tool-MLMP",
+      "tool-perfil"
+    ],
+    "embedded": []
+  },
+  "packages": [
+    "core-apivault",
+    "core-auth",
+    "core-carrito",
+    "core-design",
+    "core-direcciones",
+    "core-foundation-builder",
+    "core-foundation-config-runtime",
+    "core-foundation-config-types",
+    "core-foundation-shared",
+    "core-globe",
+    "core-i18n",
+    "core-market",
+    "core-meta",
+    "core-mlmp",
+    "core-perfil",
+    "core-test",
+    "core-ui"
+  ],
+  "apps": [
+    "core-biblio",
+    "core-dashboard",
+    "core-dashboard2",
+    "core-foundation",
+    "core-foundation-builder",
+    "core-fundation",
+    "core-landing",
+    "core-market",
+    "core-marketing",
+    "core-workspace",
+    "tool-cargamasiva-master"
+  ]
+}

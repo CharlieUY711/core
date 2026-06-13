@@ -1,0 +1,44 @@
+{
+  "keepPackages": [
+    "core-auth",
+    "core-carrito",
+    "core-perfil",
+    "core-ui",
+    "core-i18n",
+    "core-meta",
+    "core-mlmp",
+    "core-apivault",
+    "core-globe",
+    "core-design",
+    "core-test",
+    "core-direcciones",
+    "core-foundation-shared",
+    "core-foundation-config-runtime",
+    "core-foundation-config-types"
+  ],
+  "duplicated": [
+    "core-market (package REMOVE)",
+    "core-foundation-builder (DECIDE: app or package, not both)"
+  ],
+  "toolsEmbedded": [
+    "tool-geo",
+    "tool-perfil",
+    "tool-carrito_master",
+    "tool-MLMP",
+    "tool-cargamasiva"
+  ],
+  "toolsStandalone": [
+    "tool-editor",
+    "tool-dev",
+    "tool-etiquetas"
+  ],
+  "keepApps": [
+    "core-market",
+    "core-dashboard",
+    "core-dashboard2",
+    "core-landing",
+    "core-marketing",
+    "core-workspace",
+    "core-biblio"
+  ]
+}

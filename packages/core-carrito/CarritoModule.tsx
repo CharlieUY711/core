@@ -714,15 +714,64 @@ async function buildSupabaseApi(apiUrl: string) {
 
     return {
       getItems: async (): Promise<CarritoItem[]> => {
+
         const raw = await getCarrito();
-        return raw.map(i => ({
-          id: i.id,
-          producto_id: i.producto_id,
-          producto_tipo: i.producto_tipo as 'market' | 'secondhand',
-          cantidad: i.cantidad,
-          precio_unitario: i.precio_unitario,
-          moneda: (i as any).moneda ?? 'UYU',
-        }));
+
+        const idsMarket = raw
+          .filter((x: any) => x.producto_tipo === "market")
+          .map((x: any) => x.producto_id);
+
+        const idsSecond = raw
+          .filter((x: any) => x.producto_tipo === "secondhand")
+          .map((x: any) => x.producto_id);
+
+        const { data: marketProducts } = await supabase
+          .from("products")
+          .select("id,nombre,imagen_principal")
+          .in("id", idsMarket);
+
+        const { data: secondProducts } = await supabase
+          .from("productos_secondhand")
+          .select("id,nombre,imagen_principal")
+          .in("id", idsSecond);
+
+        const marketMap = Object.fromEntries(
+          (marketProducts ?? []).map((p: any) => [String(p.id), p])
+        );
+
+        const secondMap = Object.fromEntries(
+          (secondProducts ?? []).map((p: any) => [String(p.id), p])
+        );
+
+        return raw.map((i: any) => {
+
+          const prod =
+            i.producto_tipo === "market"
+              ? marketMap[String(i.producto_id)]
+              : secondMap[String(i.producto_id)];
+
+          return {
+
+            id: i.id,
+
+            producto_id: i.producto_id,
+
+            producto_tipo: i.producto_tipo as "market" | "secondhand",
+
+            cantidad: i.cantidad,
+
+            precio_unitario: i.precio_unitario,
+
+            moneda: i.moneda ?? "UYU",
+
+            nombre: prod?.nombre ?? "",
+
+            imagen: prod?.imagen_principal ?? ""
+
+          };
+
+        });
+
       },
       updateQty: (id: string, qty: number) => actualizarItemCarrito(id, qty).then(() => void 0),
       removeItem: (id: string) => eliminarItemCarrito(id).then(() => void 0),
@@ -1375,3 +1424,4 @@ export default function CarritoModule({
      }}
    />
    ═══════════════════════════════════════════════════════════════════════ */
+

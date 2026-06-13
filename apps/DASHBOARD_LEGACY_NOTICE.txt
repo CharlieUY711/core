@@ -1,0 +1,6 @@
+LEGACY NOTICE:
+
+core-dashboard → migrated to tools/tool-dashboard
+core-dashboard2 → migrated to tools/tool-dashboard
+
+DO NOT DELETE until validation complete.

@@ -791,6 +791,8 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/core-direcciones: {}
+
   packages/core-globe: {}
 
   packages/core-i18n:
@@ -805,6 +807,8 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/core-perfil: {}
 
   packages/core-test: {}
 
