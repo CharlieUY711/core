@@ -1,5 +1,8 @@
 {
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "regions": ["iad1"]
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
