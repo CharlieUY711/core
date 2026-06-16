@@ -7,10 +7,6 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "dependencies": {
-    // tus deps reales acá
-  },
-  "devDependencies": {
-    // tus dev deps reales acá
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
