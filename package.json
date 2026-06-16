@@ -6,6 +6,9 @@
     "dev": "npm --filter core-market dev",
     "build": "npm --filter core-market build",
     "dev:all": "npm -r --parallel dev"
+"engines": {
+    "node": "18.x"
+  }
   },
   "workspaces": [
     "apps/*",
