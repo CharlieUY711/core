@@ -1,15 +1,13 @@
 {
-  "name": "core-monorepo",
+  "name": "core",
   "private": true,
-  "packageManager": "npm@9.15.0",
-  "scripts": {
-    "dev": "npm --filter core-market dev",
-    "build": "npm --filter core-market build",
-    "dev:all": "npm -r --parallel dev"
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": "18.x"
   },
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "tools/*"
+    "packages/*"
   ]
 }

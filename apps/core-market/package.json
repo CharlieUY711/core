@@ -1,13 +1,16 @@
 {
   "name": "core-market",
-  "private": true,
   "version": "0.0.1",
-  "type": "module",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    // tus deps reales acá
+  },
+  "devDependencies": {
+    // tus dev deps reales acá
+  }
 }
