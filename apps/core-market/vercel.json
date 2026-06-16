@@ -1,11 +1,6 @@
 {
-  "buildCommand": "pnpm --filter core-market build",
-  "outputDirectory": "apps/core-market/dist",
+  "version": 2,
   "installCommand": "pnpm install",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist"
 }
