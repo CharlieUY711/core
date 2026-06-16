@@ -1,5 +1,15 @@
 {
   "name": "core-monorepo",
   "private": true,
-  "packageManager": "pnpm@10.0.0"
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm --filter core-market dev",
+    "build": "pnpm --filter core-market build",
+    "dev:all": "pnpm -r --parallel dev"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools/*"
+  ]
 }
