@@ -1,8 +1,0 @@
-{
-  "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace apps/core-market",
-  "outputDirectory": "apps/core-market/dist",
-  "framework": "vite",
-  "regions": ["iad1"],
-  "turbo": false
-}
