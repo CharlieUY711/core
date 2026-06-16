@@ -1,7 +1,8 @@
 {
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "installCommand": "npm install -g pnpm@9.15.0 && pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter core-market build",
   "outputDirectory": "apps/core-market/dist",
   "framework": "vite",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "turbo": false
 }
