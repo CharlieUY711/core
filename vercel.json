@@ -1,0 +1,6 @@
+{
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter core-market build",
+  "outputDirectory": "apps/core-market/dist",
+  "regions": ["iad1"]
+}

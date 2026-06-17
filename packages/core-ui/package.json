@@ -1,5 +1,5 @@
 {
-  "name": "@charlieuy711/ui",
+  "name": "@core/core-ui",
   "version": "1.0.0",
   "private": false,
   "main": "./dist/index.js",
@@ -10,11 +10,21 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
-  "scripts": { "build": "tsc" },
-  "devDependencies": { "typescript": "^5", "@types/react": "^18" },
-  "peerDependencies": { "react": ">=18", "@charlieuy711/design": ">=1.0.0" },
-  "publishConfig": { "registry": "https://registry.npmjs.org" }
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/react": "^18"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "@charlieuy711/design": ">=1.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  }
 }
-
-

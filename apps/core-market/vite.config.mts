@@ -15,10 +15,10 @@ export default defineConfig({
       '@modulos': path.resolve(__dirname, '../../Charlie/Modulos'),
       '@constructor': path.resolve(__dirname, '../Constructor/src'),
 
-      // ── @core/carrito ────────────────────────────────────────────────
+      // ── @core/commerce ────────────────────────────────────────────────
       // Apunta al package local. En CI/CD Vercel esto funciona igual
       // porque pnpm workspaces linkea el package antes del build.
-      '@core/carrito': path.resolve(__dirname, '../../packages/core-carrito/src/index.ts'),
+      '@core/commerce': path.resolve(__dirname, '../../packages/core-carrito/src/index.ts'),
 
       // Alias que usa CarritoModule internamente para importar las APIs
       // de core-market en runtime sin crear una dependencia circular de tipos.
@@ -64,3 +64,4 @@ export default defineConfig({
     'import.meta.env.PROD': JSON.stringify(process.env.NODE_ENV === 'production'),
   },
 })
+

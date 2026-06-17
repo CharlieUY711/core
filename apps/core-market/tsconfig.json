@@ -23,10 +23,11 @@
       "@/*":            ["./src/*"],
       "@modulos/*":     ["../../Charlie/Modulos/*"],
 
-      "@core/carrito":  ["../../packages/core-carrito/src/index.ts"],
+      "@core/commerce":  ["../../packages/core-carrito/src/index.ts"],
       "@core-market/*": ["./src/*"]
     }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
+

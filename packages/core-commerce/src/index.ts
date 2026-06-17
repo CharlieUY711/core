@@ -1,4 +1,4 @@
-// @core/carrito — Public API
+// @core/commerce — Public API
 export { default } from './CarritoModule';
 export { default as CarritoModule } from './CarritoModule';
 
@@ -13,3 +13,4 @@ export type {
 
 // Adapters
 export { DEFAULT_GATEWAYS } from './adapters/gateways';
+

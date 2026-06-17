@@ -1,5 +1,5 @@
 {
-  "name": "@charlieuy711/core-apivault",
+  "name": "@core/core-apivault",
   "version": "1.0.0",
   "private": false,
   "main": "./dist/index.js",

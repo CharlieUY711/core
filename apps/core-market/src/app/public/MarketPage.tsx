@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // CORE Market — MarketPage.tsx
 // Página principal del marketplace
 // ═══════════════════════════════════════════════════════════
@@ -12,7 +12,7 @@ import { FlipCard } from './ProductCard';
 import { SlideCard } from './SHCard';
 import { CrossSellBar } from './CrossSellBar';
 import { LoginModal } from './LoginModal';
-import CarritoModule from '@core/carrito';
+import CarritoModule from '@core/commerce';
 import '../../styles/core-storefront.css';
 
 // ── Types ─────────────────────────────────────────────────
@@ -309,3 +309,4 @@ export default function MarketPage() {
 
   );  {/* ← CIERRE DEL RETURN */}
 }
+
