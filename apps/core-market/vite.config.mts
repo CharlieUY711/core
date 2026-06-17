@@ -18,7 +18,7 @@ export default defineConfig({
       // ── @core/commerce ────────────────────────────────────────────────
       // Apunta al package local. En CI/CD Vercel esto funciona igual
       // porque pnpm workspaces linkea el package antes del build.
-      '@core/commerce': path.resolve(__dirname, '../../packages/core-carrito/src/index.ts'),
+      '@core/commerce': path.resolve(__dirname, '../../packages/core-commerce/src/index.ts'),
 
       // Alias que usa CarritoModule internamente para importar las APIs
       // de core-market en runtime sin crear una dependencia circular de tipos.

@@ -23,7 +23,7 @@
       "@/*":            ["./src/*"],
       "@modulos/*":     ["../../Charlie/Modulos/*"],
 
-      "@core/commerce":  ["../../packages/core-carrito/src/index.ts"],
+      "@core/commerce":  ["../../packages/core-commerce/src/index.ts"],
       "@core-market/*": ["./src/*"]
     }
   },
