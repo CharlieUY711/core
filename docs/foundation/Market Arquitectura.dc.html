@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#EEECE5;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#EEECE5;color:#1C1B19;min-height:100vh;width:100%;padding:72px 64px 96px;">
+  <div style="max-width:1180px;margin:0 auto;">
+
+    <!-- HEADER -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;border-bottom:1px solid #D6D3C9;padding-bottom:32px;">
+      <div>
+        <div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:18px;">Arquitectura de catálogo</div>
+        <h1 style="font-family:'Archivo Black';font-size:60px;line-height:.96;letter-spacing:-.01em;">Cómo dividir Market</h1>
+      </div>
+      <p style="font-size:17px;line-height:1.5;color:#56544C;max-width:340px;text-align:right;">Cada rubro es un <strong style="color:#3D5689;">Departamento</strong>. Lo demás se decide: ¿carpeta o filtro?</p>
+    </div>
+
+    <!-- MODEL: depth -->
+    <div style="margin-top:60px;">
+      <h2 style="font-family:'Archivo Black';font-size:22px;margin-bottom:8px;">El modelo de profundidad</h2>
+      <p style="font-size:16px;color:#56544C;margin-bottom:28px;">Máximo 3 niveles de carpeta. Más abajo de eso, son atributos (filtros), no jerarquía.</p>
+      <div style="display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;background:#3D5689;color:#fff;border-radius:12px;padding:22px 24px;">
+          <div style="font-size:12px;letter-spacing:.14em;opacity:.7;text-transform:uppercase;margin-bottom:8px;">Nivel 1</div>
+          <div style="font-family:'Archivo Black';font-size:21px;">Departamento</div>
+          <div style="font-size:14px;opacity:.85;margin-top:6px;">Electrónica</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#B0AB9C;font-size:26px;">›</div>
+        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #D6D3C9;border-radius:12px;padding:22px 24px;">
+          <div style="font-size:12px;letter-spacing:.14em;color:#8A8678;text-transform:uppercase;margin-bottom:8px;">Nivel 2</div>
+          <div style="font-family:'Archivo Black';font-size:21px;">Categoría</div>
+          <div style="font-size:14px;color:#56544C;margin-top:6px;">Computación</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#B0AB9C;font-size:26px;">›</div>
+        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #D6D3C9;border-radius:12px;padding:22px 24px;">
+          <div style="font-size:12px;letter-spacing:.14em;color:#8A8678;text-transform:uppercase;margin-bottom:8px;">Nivel 3</div>
+          <div style="font-family:'Archivo Black';font-size:21px;">Subcategoría</div>
+          <div style="font-size:14px;color:#56544C;margin-top:6px;">Notebooks</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#B0AB9C;font-size:26px;">›</div>
+        <div style="flex:1;min-width:160px;background:#EEECE5;border:2px dashed #C4C0B2;border-radius:12px;padding:22px 24px;">
+          <div style="font-size:12px;letter-spacing:.14em;color:#8A8678;text-transform:uppercase;margin-bottom:8px;">Hoja</div>
+          <div style="font-family:'Archivo Black';font-size:21px;color:#8A8678;">Producto</div>
+          <div style="font-size:14px;color:#8A8678;margin-top:6px;">+ filtros</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRINCIPLE: carpetas vs filtros -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:56px;">
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:32px;">
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#3D5689;font-weight:700;margin-bottom:14px;">Carpetas — para navegar</div>
+        <h3 style="font-family:'Archivo Black';font-size:20px;margin-bottom:14px;">¿Qué es el producto?</h3>
+        <p style="font-size:15.5px;line-height:1.55;color:#56544C;">Jerarquía estable y excluyente: un producto vive en una rama. Departamento › Categoría › Subcategoría. Es el árbol del menú.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:32px;">
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#9B3326;font-weight:700;margin-bottom:14px;">Filtros — para refinar</div>
+        <h3 style="font-family:'Archivo Black';font-size:20px;margin-bottom:14px;">¿Cómo es el producto?</h3>
+        <p style="font-size:15.5px;line-height:1.55;color:#56544C;">Atributos que cruzan todo: <strong>condición</strong> (nuevo/usado → Second), precio, ubicación, envío, cuotas, marca. Nunca carpetas.</p>
+      </div>
+    </div>
+
+    <!-- DEPARTMENTS -->
+    <div style="margin-top:80px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #D6D3C9;padding-bottom:18px;margin-bottom:36px;">
+        <h2 style="font-family:'Archivo Black';font-size:26px;">Los 11 departamentos</h2>
+        <span style="font-size:15px;color:#8A8678;">Estructura neutra · ejemplos de subcategorías</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Electrónica</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">01</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Celulares · Computación · Audio · Cámaras · Consolas</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Ropa y Calzado</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">02</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Mujer · Hombre · Calzado · Accesorios · Infantil</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Hogar</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">03</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Muebles · Decoración · Cocina · Jardín · Iluminación</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Electrodomésticos</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">04</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Heladeras · Lavado · Cocinas · Pequeños · Climatización</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Deportes</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">05</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Fitness · Ciclismo · Camping · Indumentaria · Equipos</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Vehículos</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">06</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Autos · Motos · Camiones · Náutica · Repuestos</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Inmuebles</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">07</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Departamentos · Casas · Terrenos · Locales · Alquiler</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Servicios</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">08</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Profesionales · Reparaciones · Eventos · Clases · Belleza</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Entretenimiento</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">09</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Libros · Música · Videojuegos · Instrumentos · Coleccionables</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Almacén</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">10</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Alimentos · Bebidas · Limpieza · Cuidado personal · Mascotas</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;"><h3 style="font-family:'Archivo Black';font-size:19px;color:#3D5689;">Otros</h3><span style="font-family:'Archivo Black';font-size:13px;color:#C4C0B2;">11</span></div>
+          <div style="font-size:14.5px;line-height:1.7;color:#56544C;">Cajón temporal. Si una subcategoría crece acá, se promueve a departamento.</div>
+        </div>
+
+        <div style="background:#EEECE5;border:2px dashed #C4C0B2;border-radius:14px;padding:24px;display:flex;flex-direction:column;justify-content:center;">
+          <h3 style="font-family:'Archivo Black';font-size:19px;color:#8A8678;margin-bottom:8px;">Regla de oro</h3>
+          <div style="font-size:14.5px;line-height:1.55;color:#56544C;">Un departamento nace cuando tiene volumen propio y vocabulario propio. Antes de eso, vive como categoría.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CROSS-CUTTING VERTICALS -->
+    <div style="margin-top:80px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #D6D3C9;padding-bottom:18px;margin-bottom:36px;">
+        <h2 style="font-family:'Archivo Black';font-size:26px;">Verticales transversales</h2>
+        <span style="font-size:15px;color:#8A8678;">No son carpetas — cruzan los departamentos</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:28px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div style="width:54px;height:54px;background:#2E7D57;border-radius:23%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:34px;line-height:1;flex:none;">M</div>
+            <div><div style="font-family:'Archivo Black';font-size:20px;">Second</div><div style="font-size:13px;color:#8A8678;">Condición: usado</div></div>
+          </div>
+          <p style="font-size:15px;line-height:1.55;color:#56544C;">Es un <strong>filtro</strong>, no un departamento. Un usado de Electrónica, Hogar o Ropa entra acá sin salir de su rama.</p>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:28px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div style="width:54px;height:54px;background:#9B3326;border-radius:23%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:34px;line-height:1;flex:none;">M</div>
+            <div><div style="font-family:'Archivo Black';font-size:20px;">Gourmet</div><div style="font-size:13px;color:#8A8678;">Curaduría premium</div></div>
+          </div>
+          <p style="font-size:15px;line-height:1.55;color:#56544C;">Una <strong>selección</strong> dentro de Almacén: delicatessen, vinos, especialidades. Misma carpeta, experiencia curada.</p>
+        </div>
+
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:28px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div style="width:54px;height:54px;background:#1C6E86;border-radius:23%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:34px;line-height:1;flex:none;">M</div>
+            <div><div style="font-family:'Archivo Black';font-size:20px;">Tech</div><div style="font-size:13px;color:#8A8678;">Curaduría premium</div></div>
+          </div>
+          <p style="font-size:15px;line-height:1.55;color:#56544C;">La cara aspiracional de Electrónica: lanzamientos, oficiales, gadgets. Una vidriera sobre la misma rama.</p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

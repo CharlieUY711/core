@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#E7E5DF;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#E7E5DF;width:max-content;min-width:100%;min-height:100vh;padding:48px;box-sizing:border-box;">
+
+  <div style="margin-bottom:32px;">
+    <div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:12px;">Ficha de producto · un mismo producto, tres contextos</div>
+    <h1 style="font-family:'Archivo Black';font-size:34px;color:#1C1B19;">Market · Second · Gourmet</h1>
+    <p style="font-size:14px;color:#8A8678;margin-top:10px;">Imagen 1:1 (1200×1200). Tocá <strong>ⓘ</strong> sobre la foto para girar la tarjeta.</p>
+  </div>
+
+  <div style="display:flex;gap:34px;align-items:flex-start;">
+
+    <!-- ============ MARKET ============ -->
+    <div style="flex:none;">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#3D5689;"></span>
+        <span style="font-family:'Archivo Black';font-size:14px;color:#1C1B19;">MARKET</span>
+        <span style="font-size:13px;color:#8A8678;">— catálogo general</span>
+      </div>
+      <div style="width:290px;height:592px;perspective:1400px;">
+        <div style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .55s ease;transform:{{ mT }};">
+
+          <!-- FRONT -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);opacity:{{ mFO }};transition:opacity .35s ease;">
+            <div style="height:4px;background:#3D5689;"></div>
+            <div style="position:relative;padding:14px 14px 0;">
+              <div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 10px,#EAE7E0 10px,#EAE7E0 20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;"><span style="font-family:monospace;font-size:12px;color:#A8A293;">foto del producto</span><span style="font-family:monospace;font-size:10px;color:#BEB8A9;">1200 × 1200</span></div>
+              <span style="position:absolute;top:24px;left:24px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#fff;background:#3D5689;border-radius:100px;padding:5px 11px;">OFICIAL</span>
+              <a onClick="{{ flipM }}" style="position:absolute;top:24px;right:24px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D5689" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="11" x2="12" y2="16"></line><circle cx="12" cy="8" r="0.7" fill="#3D5689"></circle></svg></a>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <div style="width:38px;height:38px;border-radius:7px;border:2px solid #3D5689;background:#F1EFEA;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+              </div>
+            </div>
+            <div style="padding:14px 18px 16px;">
+              <span style="display:inline-block;font-size:11px;letter-spacing:.08em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:5px 11px;">ALMACÉN</span>
+              <h2 style="font-size:18px;font-weight:700;line-height:1.25;margin-top:10px;color:#1C1B19;">Aceite de Oliva Extravirgen</h2>
+              <div style="font-size:14px;color:#8A8678;margin-top:2px;">Colinas de Garzón · 500 ml</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px;"><span style="font-family:'Archivo Black';font-size:30px;color:#3D5689;">$ 3.990</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="color:#3D5689;font-size:15px;letter-spacing:1px;">★★★★★</span><span style="font-size:13px;color:#8A8678;">4.8 · Vendedor oficial</span></div>
+              <div style="display:flex;gap:10px;margin-top:14px;align-items:stretch;height:44px;">
+                <div style="display:flex;align-items:center;border:1px solid #E4E1D8;border-radius:9px;overflow:hidden;"><span style="padding:0 13px;font-size:18px;color:#8A8678;">−</span><span style="padding:0 6px;font-size:15px;font-weight:600;">1</span><span style="padding:0 13px;font-size:18px;color:#8A8678;">+</span></div>
+                <a href="#" style="flex:1;background:#3D5689;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;display:flex;align-items:center;justify-content:center;" style-hover="background:#46639B;">Comprar</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- BACK -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);display:flex;flex-direction:column;opacity:{{ mBO }};transition:opacity .35s ease;">
+            <div style="background:#3D5689;padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;">
+              <div><div style="font-size:11px;letter-spacing:.1em;color:#B9C6DE;font-weight:700;">ALMACÉN</div><div style="font-family:'Archivo Black';color:#fff;font-size:17px;margin-top:4px;line-height:1.15;">Aceite de Oliva<br>Extravirgen</div></div>
+              <a onClick="{{ flipM }}" style="color:#fff;font-size:22px;cursor:pointer;text-decoration:none;line-height:1;">↩</a>
+            </div>
+            <div style="padding:20px;flex:1;overflow:auto;">
+              <p style="font-size:14px;line-height:1.6;color:#34322C;">Aceite de alta calidad de Colinas de Garzón, elaborado con aceitunas seleccionadas de los olivares de Garzón. Sabor suave y afrutado, de aroma fresco. Ideal para aliñar ensaladas, cocinar o acompañar.</p>
+              <div style="margin-top:18px;display:flex;flex-direction:column;gap:0;">
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Presentación</span><span style="font-weight:600;">500 ml</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Origen</span><span style="font-weight:600;">Garzón, UY</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px;"><span style="color:#8A8678;">Vendedor</span><span style="font-weight:600;">Colinas de Garzón</span></div>
+              </div>
+            </div>
+            <div style="padding:0 20px 20px;"><a href="#" style="display:flex;height:44px;background:#3D5689;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;align-items:center;justify-content:center;" style-hover="background:#46639B;">Comprar · $ 3.990</a></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SECOND ============ -->
+    <div style="flex:none;">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#2E7D57;"></span>
+        <span style="font-family:'Archivo Black';font-size:14px;color:#1C1B19;">SECOND</span>
+        <span style="font-size:13px;color:#8A8678;">— condición usado</span>
+      </div>
+      <div style="width:290px;height:592px;perspective:1400px;">
+        <div style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .55s ease;transform:{{ sT }};">
+
+          <!-- FRONT -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);opacity:{{ sFO }};transition:opacity .35s ease;">
+            <div style="height:4px;background:#2E7D57;"></div>
+            <div style="position:relative;padding:14px 14px 0;">
+              <div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#EDF4EF,#EDF4EF 10px,#E4EFE8 10px,#E4EFE8 20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;"><span style="font-family:monospace;font-size:12px;color:#8FB7A2;">foto del producto</span><span style="font-family:monospace;font-size:10px;color:#A6C8B6;">1200 × 1200</span></div>
+              <span style="position:absolute;top:24px;left:24px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#fff;background:#2E7D57;border-radius:100px;padding:5px 11px;">USADO</span>
+              <a onClick="{{ flipS }}" style="position:absolute;top:24px;right:24px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E7D57" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="11" x2="12" y2="16"></line><circle cx="12" cy="8" r="0.7" fill="#2E7D57"></circle></svg></a>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <div style="width:38px;height:38px;border-radius:7px;border:2px solid #2E7D57;background:#EDF4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+              </div>
+            </div>
+            <div style="padding:14px 18px 16px;">
+              <span style="display:inline-block;font-size:11px;letter-spacing:.08em;font-weight:700;color:#2E7D57;background:#EAF3EE;border-radius:100px;padding:5px 11px;">ALMACÉN · USADO</span>
+              <h2 style="font-size:18px;font-weight:700;line-height:1.25;margin-top:10px;color:#1C1B19;">Aceite de Oliva Extravirgen</h2>
+              <div style="font-size:14px;color:#8A8678;margin-top:2px;">Sin abrir · vence 2027</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px;"><span style="font-family:'Archivo Black';font-size:30px;color:#2E7D57;">$ 2.500</span><span style="font-size:14px;color:#A8A293;text-decoration:line-through;">$ 3.990</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="color:#2E7D57;font-size:15px;letter-spacing:1px;">★★★★★</span><span style="font-size:13px;color:#8A8678;">4.6 · Vendedor particular</span></div>
+              <div style="display:flex;gap:10px;margin-top:14px;align-items:stretch;height:44px;">
+                <div style="display:flex;align-items:center;border:1px solid #E4E1D8;border-radius:9px;overflow:hidden;"><span style="padding:0 13px;font-size:18px;color:#8A8678;">−</span><span style="padding:0 6px;font-size:15px;font-weight:600;">1</span><span style="padding:0 13px;font-size:18px;color:#8A8678;">+</span></div>
+                <a href="#" style="flex:1;background:#2E7D57;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;display:flex;align-items:center;justify-content:center;" style-hover="background:#2A7350;">Comprar</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- BACK -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);display:flex;flex-direction:column;opacity:{{ sBO }};transition:opacity .35s ease;">
+            <div style="background:#2E7D57;padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;">
+              <div><div style="font-size:11px;letter-spacing:.1em;color:#BBE0CD;font-weight:700;">ALMACÉN · USADO</div><div style="font-family:'Archivo Black';color:#fff;font-size:17px;margin-top:4px;line-height:1.15;">Aceite de Oliva<br>Extravirgen</div></div>
+              <a onClick="{{ flipS }}" style="color:#fff;font-size:22px;cursor:pointer;text-decoration:none;line-height:1;">↩</a>
+            </div>
+            <div style="padding:20px;flex:1;overflow:auto;">
+              <p style="font-size:14px;line-height:1.6;color:#34322C;">Botella sin abrir, comprada de más. En perfecto estado, conservada en lugar fresco. Vencimiento 2027. Se entrega en mano o por envío.</p>
+              <div style="margin-top:18px;display:flex;flex-direction:column;gap:0;">
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Condición</span><span style="font-weight:600;">Usado · sin abrir</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Vencimiento</span><span style="font-weight:600;">2027</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px;"><span style="color:#8A8678;">Vendedor</span><span style="font-weight:600;">Particular · Montevideo</span></div>
+              </div>
+            </div>
+            <div style="padding:0 20px 20px;"><a href="#" style="display:flex;height:44px;background:#2E7D57;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;align-items:center;justify-content:center;" style-hover="background:#2A7350;">Comprar · $ 2.500</a></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ GOURMET ============ -->
+    <div style="flex:none;">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#9B3326;"></span>
+        <span style="font-family:'Archivo Black';font-size:14px;color:#1C1B19;">GOURMET</span>
+        <span style="font-size:13px;color:#8A8678;">— curaduría premium de Almacén</span>
+      </div>
+      <div style="width:290px;height:592px;perspective:1400px;">
+        <div style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .55s ease;transform:{{ gT }};">
+
+          <!-- FRONT -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);opacity:{{ gFO }};transition:opacity .35s ease;">
+            <div style="height:4px;background:#9B3326;"></div>
+            <div style="position:relative;padding:14px 14px 0;">
+              <div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F5ECEA,#F5ECEA 10px,#EFE2DF 10px,#EFE2DF 20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;"><span style="font-family:monospace;font-size:12px;color:#C09B92;">foto del producto</span><span style="font-family:monospace;font-size:10px;color:#D2B2AB;">1200 × 1200</span></div>
+              <span style="position:absolute;top:24px;left:24px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#fff;background:#9B3326;border-radius:100px;padding:5px 11px;">GOURMET</span>
+              <a onClick="{{ flipG }}" style="position:absolute;top:24px;right:24px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9B3326" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="11" x2="12" y2="16"></line><circle cx="12" cy="8" r="0.7" fill="#9B3326"></circle></svg></a>
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <div style="width:38px;height:38px;border-radius:7px;border:2px solid #9B3326;background:#F5ECEA;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+                <div style="width:38px;height:38px;border-radius:7px;border:1px solid #E4E1D8;background:#F6F4EF;"></div>
+              </div>
+            </div>
+            <div style="padding:14px 18px 16px;">
+              <span style="display:inline-block;font-size:11px;letter-spacing:.08em;font-weight:700;color:#9B3326;background:#F5EAE7;border-radius:100px;padding:5px 11px;">ALMACÉN · GOURMET</span>
+              <h2 style="font-size:18px;font-weight:700;line-height:1.25;margin-top:10px;color:#1C1B19;">Aceite de Oliva Extravirgen</h2>
+              <div style="font-size:14px;color:#8A8678;margin-top:2px;">Colinas de Garzón · Selección</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px;"><span style="font-family:'Archivo Black';font-size:30px;color:#9B3326;">$ 3.990</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="color:#9B3326;font-size:15px;letter-spacing:1px;">★★★★★</span><span style="font-size:13px;color:#8A8678;">4.9 · Productor seleccionado</span></div>
+              <div style="display:flex;gap:10px;margin-top:14px;align-items:stretch;height:44px;">
+                <div style="display:flex;align-items:center;border:1px solid #E4E1D8;border-radius:9px;overflow:hidden;"><span style="padding:0 13px;font-size:18px;color:#8A8678;">−</span><span style="padding:0 6px;font-size:15px;font-weight:600;">1</span><span style="padding:0 13px;font-size:18px;color:#8A8678;">+</span></div>
+                <a href="#" style="flex:1;background:#9B3326;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;display:flex;align-items:center;justify-content:center;" style-hover="background:#8A2C21;">Comprar</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- BACK -->
+          <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);display:flex;flex-direction:column;opacity:{{ gBO }};transition:opacity .35s ease;">
+            <div style="background:#9B3326;padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;">
+              <div><div style="font-size:11px;letter-spacing:.1em;color:#E3BDB6;font-weight:700;">ALMACÉN · GOURMET</div><div style="font-family:'Archivo Black';color:#fff;font-size:17px;margin-top:4px;line-height:1.15;">Aceite de Oliva<br>Extravirgen</div></div>
+              <a onClick="{{ flipG }}" style="color:#fff;font-size:22px;cursor:pointer;text-decoration:none;line-height:1;">↩</a>
+            </div>
+            <div style="padding:20px;flex:1;overflow:auto;">
+              <p style="font-size:14px;line-height:1.6;color:#34322C;">Selección premium de Colinas de Garzón: aceitunas de un único olivar, prensado en frío. Notas de hierba fresca y almendra, final picante. Edición limitada de cosecha.</p>
+              <div style="margin-top:18px;display:flex;flex-direction:column;gap:0;">
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Cosecha</span><span style="font-weight:600;">2025 · limitada</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ECEAE2;font-size:13.5px;"><span style="color:#8A8678;">Prensado</span><span style="font-weight:600;">En frío</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px;"><span style="color:#8A8678;">Productor</span><span style="font-weight:600;">Colinas de Garzón</span></div>
+              </div>
+            </div>
+            <div style="padding:0 20px 20px;"><a href="#" style="display:flex;height:44px;background:#9B3326;color:#fff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;align-items:center;justify-content:center;" style-hover="background:#8A2C21;">Comprar · $ 3.990</a></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { m:false, s:false, g:false };
+  renderVals(){
+    const t = v => v ? 'rotateY(180deg)' : 'rotateY(0deg)';
+    return {
+      mT: t(this.state.m), sT: t(this.state.s), gT: t(this.state.g),
+      mFO: this.state.m ? '0' : '1', mBO: this.state.m ? '1' : '0',
+      sFO: this.state.s ? '0' : '1', sBO: this.state.s ? '1' : '0',
+      gFO: this.state.g ? '0' : '1', gBO: this.state.g ? '1' : '0',
+      flipM: () => this.setState(st => ({ m: !st.m })),
+      flipS: () => this.setState(st => ({ s: !st.s })),
+      flipG: () => this.setState(st => ({ g: !st.g })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#EEECE5;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#EEECE5;min-height:100vh;width:100%;">
+
+  <!-- ===== HEADER ===== -->
+  <header style="background:#0D2B55;width:100%;">
+
+    <!-- top row -->
+    <div style="display:flex;align-items:center;gap:22px;padding:14px 40px;">
+
+      <!-- logo -->
+      <a href="#" style="display:flex;align-items:center;gap:13px;text-decoration:none;flex:none;">
+        <div style="width:48px;height:48px;background:#fff;border-radius:22%;display:flex;align-items:center;justify-content:center;flex:none;">
+          <span style="font-family:'Archivo Black';color:#3D5689;font-size:31px;line-height:1;">M</span>
+        </div>
+        <div style="line-height:1;">
+          <div style="font-family:'Archivo Black';color:#fff;font-size:22px;letter-spacing:.02em;">MARKET</div>
+          <div style="font-size:10px;letter-spacing:.34em;color:#8FA0BC;font-weight:600;margin-top:3px;">BY CORE</div>
+        </div>
+      </a>
+
+      <!-- transversales: logos -->
+      <div style="display:flex;gap:10px;flex:none;">
+        <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:54px;padding-top:4px;background:#2E7D57;border-radius:22%;text-decoration:none;flex:none;overflow:hidden;" style-hover="opacity:.88"><span style="font-family:'Archivo Black';color:#fff;font-size:22px;line-height:1;">M</span><span style="font-family:'Archivo';font-weight:600;color:#fff;font-size:6.5px;letter-spacing:.09em;margin-top:2px;">SECOND</span></a>
+        <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:54px;padding-top:4px;background:#9B3326;border-radius:22%;text-decoration:none;flex:none;overflow:hidden;" style-hover="opacity:.88"><span style="font-family:'Archivo Black';color:#fff;font-size:22px;line-height:1;">M</span><span style="font-family:'Archivo';font-weight:600;color:#fff;font-size:6px;letter-spacing:.07em;margin-top:2px;">GOURMET</span></a>
+      </div>
+
+      <!-- search -->
+      <div style="flex:1;height:48px;background:#314B6E;border-radius:9px;display:flex;align-items:center;padding:0 20px;gap:12px;">
+        <span style="color:#A7B6CC;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">encontrá lo que buscás</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A7B6CC" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+      </div>
+
+      <!-- ingresar -->
+      <a href="#" style="flex:none;background:#3D5689;color:#fff;font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;text-decoration:none;padding:0 40px;height:48px;display:flex;align-items:center;border-radius:9px;" style-hover="background:#46639B;">Ingresar</a>
+
+      <!-- cart -->
+      <a href="#" style="flex:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="opacity:.8">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M2 3h3l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.2L21 7H6"></path></svg>
+      </a>
+
+    </div>
+
+    <!-- divider -->
+    <div style="height:2px;background:#2E7D57;width:100%;"></div>
+
+    <!-- nav row: alineado a las verticales -->
+    <nav style="display:flex;align-items:center;justify-content:center;gap:28px;padding:13px 40px;flex-wrap:wrap;">
+
+      <!-- verticales insignia -->
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#1C6E86;"><span style="width:7px;height:7px;border-radius:50%;background:#1C6E86;flex:none;"></span>Tech</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#A85636;"><span style="width:7px;height:7px;border-radius:50%;background:#A85636;flex:none;"></span>Home</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#7E3A70;"><span style="width:7px;height:7px;border-radius:50%;background:#7E3A70;flex:none;"></span>Vestimenta</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#C2611F;"><span style="width:7px;height:7px;border-radius:50%;background:#C2611F;flex:none;"></span>Entretenimiento</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#50617F;"><span style="width:7px;height:7px;border-radius:50%;background:#50617F;flex:none;"></span>Servicios</a>
+
+      <!-- separador -->
+      <span style="width:1px;height:20px;background:rgba(255,255,255,.18);"></span>
+
+      <!-- departamentos estándar -->
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Vehículos</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Inmuebles</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Almacén</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Otros</a>
+    </nav>
+
+  </header>
+
+  <!-- caption -->
+  <div style="max-width:1000px;margin:0 auto;padding:40px;">
+    <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:14px;">Ajustes aplicados</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 40px;font-size:14.5px;color:#34322C;line-height:1.5;">
+      <div>— Logo con la <strong>M</strong> del sistema (chip reverso para fondo navy)</div>
+      <div>— Transversales como pills: <strong style="color:#2E7D57;">SECOND</strong> + <strong style="color:#9B3326;">GOURMET</strong></div>
+      <div>— CTA «Ingresar» en <strong style="color:#3D5689;">Azul Madre #3D5689</strong></div>
+      <div>— Tipografía Archivo / Archivo Black</div>
+      <div>— Navy de la casa <strong>#0D2B55</strong> intacto (esencia)</div>
+      <div>— Menú alineado: 5 verticales (con punto) + departamentos estándar</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -23,8 +23,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getMLToken } from "../_shared/core-mlmp/TokenManager.ts";
-import { MLModuleError } from "../_shared/core-mlmp/MLModuleError.ts";
+import { getMLToken } from "../../../../../packages/core-mlmp/src/TokenManager.ts";
+import { MLModuleError } from "../../../../../packages/core-mlmp/src/MLModuleError.ts";
 
 // ---------------------------------------------------------------------------
 // Tipos locales

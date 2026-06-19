@@ -17,11 +17,37 @@ export const useShop = () => useContext(ShopContext);
 
 // ─── Menú ─────────────────────────────────────────────────────────────────────
 const commonMenu = [
-  { path: "/admin",        label: "Dashboard",   exact: true },
-  { path: "/admin/orders", label: "Mis ordenes"              },
+  { path: "/admin",               label: "Dashboard",         exact: true },
+  { path: "/admin/orders",        label: "Mis órdenes"                    },
+  { path: "/admin/publicaciones", label: "Mis publicaciones"              },
+  { path: "/admin/biblioteca",    label: "Biblioteca"                     },
+  { path: "/admin/editor",      label: "Editor"                         },
+  { path: "/admin/tool-editor", label: "Editor Pro"                     },
+  { path: "/admin/import",        label: "Importar"                       },
+  { path: "/admin/carga-masiva",  label: "Carga Masiva"                   },
+  { path: "/admin/export",        label: "Exportar"                       },
+  { path: "/admin/profile",       label: "Mi perfil"                      },
 ];
 
-const adminSections: { key: string; section: string; items: any[] }[] = [];
+const adminSections = [
+  {
+    key: "gestion",
+    section: "Gestión",
+    items: [
+      { path: "/admin/catalog",   label: "Catálogo",
+        children: [{ path: "/admin/catalog/articulos", label: "Artículos" }] },
+      { path: "/admin/analytics", label: "Analytics" },
+    ],
+  },
+  {
+    key: "integraciones",
+    section: "Integraciones",
+    items: [
+      { path: "/admin/ml",        label: "ML & MercadoPago" },
+      { path: "/admin/api-vault", label: "API Vault"        },
+    ],
+  },
+];
 
 // ─── Nombre de app desde BRAND ───────────────────────────────────────────────
 function useAppName() {

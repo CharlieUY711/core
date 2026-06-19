@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "../utils/supabase";
 
-export function useAdminOrders(limit = 200, isAdmin = false) {
-  const [orders, setOrders] = useState<any[]>([]);
+export function useAdminOrders(limit = 50, isAdmin = false) {
+  const [orders,  setOrders]  = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
-  const fetch = async () => {
+  const refetch = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-
-    const query = supabase
-      .from('admin_orders')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let query = supabase.from("ordenes")
+      .select("id, created_at, total_uyu, total_usd, moneda, estado, payment_status, source, mp_payment_id, paypal_order_id, user_id")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (!isAdmin) query.eq('user_id', user.id);
+    if (!isAdmin) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) query = query.eq("user_id", user.id);
+    }
 
     const { data, error } = await query;
     if (error) setError(error.message);
     else setOrders(data || []);
     setLoading(false);
-  };
+  }, [limit, isAdmin]);
 
-  useEffect(() => { fetch(); }, [isAdmin]);
-
-  return { orders, loading, error, refetch: fetch };
+  useEffect(() => { refetch(); }, [refetch]);
+  return { orders, loading, error, refetch };
 }
+
+
+
+

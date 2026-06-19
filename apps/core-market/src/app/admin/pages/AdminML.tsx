@@ -1,8 +1,12 @@
 /**
  * src/app/admin/pages/AdminML.tsx
  *
- * Módulo ML & MercadoPago — rediseñado con design tokens de CORE Market.
- * Incluye sección de integraciones MP con gestión de preferencias y pagos.
+ * Módulo ML & MercadoPago — sobre catalog_* (catalog_items, catalog_variants,
+ * catalog_listings, catalog_sync_log).
+ *
+ * Tablas eliminadas: admin_products, admin_ml_errors, ml_sync_queue,
+ *   productos_market, product_prices.
+ * Tablas nuevas: v_catalog_variants_full, catalog_listings, catalog_sync_log.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -12,16 +16,14 @@ const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const FUNCTIONS_URL     = `${SUPABASE_URL}/functions/v1`;
 
-// ── Design Tokens (inline, consistentes con brand.css / theme.css) ────────────
+// ── Design Tokens ─────────────────────────────────────────────────────────────
 const T = {
-  // Brand
   primary:       "#1A4F9C",
   primaryDark:   "#0D2B55",
   primaryLight:  "rgba(26,79,156,.1)",
   accent:        "#C9A84C",
   accentDark:    "#A8893C",
   accentLight:   "rgba(201,168,76,.1)",
-  // Semánticos
   success:       "#1D9E75",
   successBg:     "rgba(29,158,117,.1)",
   warning:       "#C9A84C",
@@ -29,28 +31,22 @@ const T = {
   danger:        "#C0392B",
   dangerBg:      "rgba(192,57,43,.1)",
   info:          "#2E6FC4",
-  // Fondo / superficie
   bgMain:        "#F2F5FA",
   bgDark:        "#081C38",
   bgCard:        "#ffffff",
-  // Texto
   textDark:      "#0D2B55",
   textBody:      "#4A4A4A",
   textMuted:     "#7A7A7A",
   textLight:     "#ffffff",
-  // Bordes
   border:        "#C8D5E8",
   borderLight:   "#E8EDF5",
-  // Radios
   radiusSm:      "4px",
   radiusMd:      "8px",
   radiusLg:      "12px",
   radiusPill:    "999px",
-  // Sombras
   shadowCard:    "0 2px 8px rgba(13,43,85,.08)",
   shadowMd:      "0 2px 8px rgba(13,43,85,.09)",
   shadowLg:      "0 8px 24px rgba(13,43,85,.14)",
-  // Tipografía
   fontBase:      "Calibri, 'Segoe UI', system-ui, sans-serif",
 };
 
@@ -64,10 +60,42 @@ interface Credential {
   isExpired: boolean; expiringSoon: boolean;
 }
 
-interface MLProduct {
-  id: string; nombre: string; ml_item_id: string; ml_status: string;
-  sync_status: string; stock: number; precio: number;
-  ml_last_sync: string | null; ml_permalink?: string;
+// Variante publicada en ML — join de v_catalog_variants_full + catalog_listings
+interface MLListing {
+  // de catalog_listings
+  listing_id:    string;
+  external_id:   string | null;
+  listing_status: string;
+  channel_attrs: Record<string, unknown>;
+  synced_at:     string | null;
+  last_error:    string | null;
+  // de v_catalog_variants_full
+  variant_id:    string;
+  sku:           string;
+  item_title:    string;
+  total_available: number;
+}
+
+// Error de sync — de catalog_sync_log
+interface SyncError {
+  id:          string;
+  listing_id:  string;
+  action:      string;
+  error_code:  string | null;
+  created_at:  string;
+  // join
+  external_id: string | null;
+  item_title:  string;
+}
+
+// Pago — de tabla orders
+interface MPPayment {
+  id:           string;
+  total:        number;
+  currency:     string;
+  status:       string;
+  ml_order_id:  string | null;
+  created_at:   string;
 }
 
 // ── Helpers API ───────────────────────────────────────────────────────────────
@@ -101,21 +129,30 @@ async function callMlSync(body: Record<string, unknown>) {
   return res.json();
 }
 
+async function callPublicar(variantId: string) {
+  const res = await fetch(`${FUNCTIONS_URL}/publicar-en-ml`, {
+    method: "POST",
+    headers: { Authorization: await getAuthHeader(), "Content-Type": "application/json" },
+    body:   JSON.stringify({ variantId }),
+  });
+  return res.json();
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
-type TabId = "ml-publicados" | "ml-cola" | "ml-errores" | "mp-pagos";
+type TabId = "ml-publicados" | "ml-pendientes" | "ml-errores" | "mp-pagos";
 
 export default function AdminML() {
   const [tab,           setTab]           = useState<TabId>("ml-publicados");
-  const [products,      setProducts]      = useState<MLProduct[]>([]);
-  const [errors,        setErrors]        = useState<any[]>([]);
-  const [queue,         setQueue]         = useState<any[]>([]);
+  const [listings,      setListings]      = useState<MLListing[]>([]);
+  const [pendientes,    setPendientes]    = useState<MLListing[]>([]);
+  const [syncErrors,    setSyncErrors]    = useState<SyncError[]>([]);
   const [creds,         setCreds]         = useState<Credential[]>([]);
-  const [mpPayments,    setMpPayments]    = useState<any[]>([]);
+  const [mpPayments,    setMpPayments]    = useState<MPPayment[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [credsLoading,  setCredsLoading]  = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [saving,        setSaving]        = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg,           setMsg]           = useState<{ text: string; type: "ok" | "err" | "warn" } | null>(null);
 
   const notify = (text: string, type: "ok" | "err" | "warn" = "ok") => {
@@ -127,23 +164,114 @@ export default function AdminML() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, e, q, pay] = await Promise.all([
-      supabase.from("admin_products").select("*")
-        .not("ml_item_id", "is", null)
-        .order("ml_last_sync", { ascending: false }),
-      supabase.from("admin_ml_errors").select("*"),
-      supabase.from("ml_sync_queue").select("*")
+
+    const [activeRes, pendingRes, errorsRes, paymentsRes] = await Promise.all([
+
+      // Publicados activos en ML
+      supabase
+        .from("catalog_listings")
+        .select(`
+          id, external_id, status, channel_attrs, synced_at, last_error,
+          variant_id,
+          catalog_variants!inner (
+            sku,
+            catalog_items!inner ( title )
+          )
+        `)
+        .eq("channel", "mercadolibre")
+        .in("status", ["active", "syncing", "paused"])
+        .order("synced_at", { ascending: false })
+        .limit(100),
+
+      // Pendientes / error (cola)
+      supabase
+        .from("catalog_listings")
+        .select(`
+          id, external_id, status, channel_attrs, synced_at, last_error,
+          variant_id,
+          catalog_variants!inner (
+            sku,
+            catalog_items!inner ( title )
+          )
+        `)
+        .eq("channel", "mercadolibre")
         .in("status", ["pending", "error"])
-        .order("created_at", { ascending: false }).limit(20),
-      supabase.from("orders")
-        .select("id, total, currency, payment_status, source, created_at, ml_order_id")
-        .eq("source", "mercadopago")
-        .order("created_at", { ascending: false }).limit(20),
+        .order("updated_at", { ascending: false })
+        .limit(50),
+
+      // Últimos errores en sync_log
+      supabase
+        .from("catalog_sync_log")
+        .select(`
+          id, listing_id, action, error_code, created_at,
+          catalog_listings!inner (
+            external_id,
+            catalog_variants!inner (
+              catalog_items!inner ( title )
+            )
+          )
+        `)
+        .eq("result", "error")
+        .order("created_at", { ascending: false })
+        .limit(50),
+
+      // Pagos — columnas reales de la tabla orders
+      supabase
+        .from("orders")
+        .select("id, total, currency, status, ml_order_id, created_at")
+        .not("ml_order_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
-    setProducts(p.data || []);
-    setErrors(e.data || []);
-    setQueue(q.data || []);
-    setMpPayments(pay.data || []);
+
+    // Mapear listings activos
+    setListings(
+      (activeRes.data ?? []).map((r: any) => ({
+        listing_id:      r.id,
+        external_id:     r.external_id,
+        listing_status:  r.status,
+        channel_attrs:   r.channel_attrs ?? {},
+        synced_at:       r.synced_at,
+        last_error:      r.last_error,
+        variant_id:      r.variant_id,
+        sku:             r.catalog_variants?.sku ?? "—",
+        item_title:      r.catalog_variants?.catalog_items?.title ?? "—",
+        total_available: 0, // se puede agregar join a catalog_inventory si se necesita en tabla
+      }))
+    );
+
+    // Mapear pendientes
+    setPendientes(
+      (pendingRes.data ?? []).map((r: any) => ({
+        listing_id:      r.id,
+        external_id:     r.external_id,
+        listing_status:  r.status,
+        channel_attrs:   r.channel_attrs ?? {},
+        synced_at:       r.synced_at,
+        last_error:      r.last_error,
+        variant_id:      r.variant_id,
+        sku:             r.catalog_variants?.sku ?? "—",
+        item_title:      r.catalog_variants?.catalog_items?.title ?? "—",
+        total_available: 0,
+      }))
+    );
+
+    // Mapear errores
+    setSyncErrors(
+      (errorsRes.data ?? []).map((r: any) => ({
+        id:          r.id,
+        listing_id:  r.listing_id,
+        action:      r.action,
+        error_code:  r.error_code,
+        created_at:  r.created_at,
+        external_id: r.catalog_listings?.external_id ?? null,
+        item_title:  r.catalog_listings?.catalog_variants?.catalog_items?.title ?? "—",
+      }))
+    );
+
+    // Mapear pagos
+    setMpPayments(paymentsRes.data ?? []);
+
     setLoading(false);
   }, []);
 
@@ -158,11 +286,8 @@ export default function AdminML() {
 
   useEffect(() => { load(); loadCreds(); }, []);
 
-  // Helpers de credenciales
   const mlCreds = creds.filter(c => c.platform === "MercadoLibre");
   const mpCreds = creds.filter(c => c.platform === "MercadoPago");
-  const getCred = (platform: string, siteId: string) =>
-    creds.find(c => c.platform === platform && c.siteId === siteId);
 
   // ── Acciones OAuth ──────────────────────────────────────────────────────────
 
@@ -187,7 +312,7 @@ export default function AdminML() {
   };
 
   const handleDisconnect = async (cred: Credential) => {
-    if (!confirm(`¿Desconectar ${cred.platform} ${cred.siteId}? Esto eliminará las credenciales del vault.`)) return;
+    if (!confirm(`¿Desconectar ${cred.platform} ${cred.siteId}?`)) return;
     const key = `${cred.platform}_${cred.siteId}`;
     setActionLoading(key);
     try {
@@ -202,57 +327,54 @@ export default function AdminML() {
 
   // ── Acciones de Sync ML ─────────────────────────────────────────────────────
 
-  const handleSyncItem = async (productId: string) => {
-    setSaving(productId);
-    try {
-      const data = await callMlSync({ action: "sync_item", product_id: productId });
-      if (data.ok) {
-        const warns = data.warnings?.length ? ` (${data.warnings.join("; ")})` : "";
-        notify(`Sincronizado ✓${warns}`, data.warnings?.length ? "warn" : "ok");
-        await load();
-      } else notify(data.error ?? "Error en sync", "err");
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
-
+  // Sync completo — llama ml-sync con statuses pending+error
   const handleSyncAll = async () => {
     setSaving("all");
     try {
-      const data = await callMlSync({ action: "sync_all" });
-      if (data.ok) { notify(`${data.enqueued} productos encolados ✓`); await load(); }
-      else notify(data.error ?? "Error", "err");
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
-
-  const handleProcessQueue = async () => {
-    setSaving("queue");
-    try {
-      const data = await callMlSync({ action: "process_queue" });
+      const data = await callMlSync({ statuses: ["pending", "error", "active"], limit: 100 });
       if (data.ok) {
-        notify(`Procesados: ${data.processed} ✓ | Errores: ${data.errors}`, data.errors > 0 ? "warn" : "ok");
+        notify(`Procesados: ${data.processed} | Errores: ${data.error}`, data.error > 0 ? "warn" : "ok");
         await load();
       } else notify(data.error ?? "Error", "err");
     } catch (err: any) { notify(err.message || "Error", "err"); }
     finally { setSaving(null); }
   };
 
-  const handleSetStatus = async (productId: string, status: "active" | "paused") => {
-    setSaving(`status_${productId}`);
+  // Republicar una variante específica
+  const handlePublicar = async (variantId: string) => {
+    setSaving(variantId);
     try {
-      const data = await callMlSync({ action: "sync_status", product_id: productId, status });
-      if (data.ok) { notify(`Estado → "${status}" ✓`); await load(); }
-      else notify(data.error ?? "Error", "err");
+      const data = await callPublicar(variantId);
+      if (data.ok) { notify(`Publicado ✓ (${data.action})`); await load(); }
+      else notify(data.error ?? "Error al publicar", "err");
     } catch (err: any) { notify(err.message || "Error", "err"); }
     finally { setSaving(null); }
   };
 
-  const handleRetry = async (productId: string) => {
-    setSaving(productId);
+  // Pausar / activar listing directo en catalog_listings
+  const handleSetStatus = async (listingId: string, status: "paused" | "active") => {
+    setSaving(`status_${listingId}`);
     try {
-      await supabase.from("ml_sync_queue")
-        .update({ status: "pending", retries: 0, updated_at: new Date().toISOString() })
-        .eq("product_id", productId).eq("status", "error");
+      const { error } = await supabase
+        .from("catalog_listings")
+        .update({ status })
+        .eq("id", listingId);
+      if (error) throw error;
+      notify(`Estado → "${status}" ✓`);
+      await load();
+    } catch (err: any) { notify(err.message || "Error", "err"); }
+    finally { setSaving(null); }
+  };
+
+  // Reintentar listing con error: resetear a pending
+  const handleRetry = async (listingId: string) => {
+    setSaving(listingId);
+    try {
+      const { error } = await supabase
+        .from("catalog_listings")
+        .update({ status: "pending", last_error: null })
+        .eq("id", listingId);
+      if (error) throw error;
       notify("Reintento encolado ✓");
       await load();
     } catch (err: any) { notify(err.message || "Error", "err"); }
@@ -262,10 +384,10 @@ export default function AdminML() {
   // ── Tabs ────────────────────────────────────────────────────────────────────
 
   const TABS: { id: TabId; label: string; section: "ml" | "mp" }[] = [
-    { id: "ml-publicados",    label: `Publicados (${products.length})`,   section: "ml" },
-    { id: "ml-cola",          label: `Cola (${queue.filter(q => q.status === "pending").length})`, section: "ml" },
-    { id: "ml-errores",       label: `Errores (${errors.length})`,        section: "ml" },
-    { id: "mp-pagos",         label: `Pagos (${mpPayments.length})`,      section: "mp" },
+    { id: "ml-publicados",  label: `Publicados (${listings.length})`,            section: "ml" },
+    { id: "ml-pendientes",  label: `Cola (${pendientes.length})`,                section: "ml" },
+    { id: "ml-errores",     label: `Errores (${syncErrors.length})`,             section: "ml" },
+    { id: "mp-pagos",       label: `Pagos ML (${mpPayments.length})`,            section: "mp" },
   ];
 
   const mlTab = tab.startsWith("ml-");
@@ -276,12 +398,11 @@ export default function AdminML() {
   return (
     <div style={{ fontFamily: T.fontBase, display: "flex", flexDirection: "column", gap: 0 }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div style={{
         background: T.bgCard, borderRadius: T.radiusLg,
         boxShadow: T.shadowCard, marginBottom: 16,
-        border: `1px solid ${T.border}`,
-        overflow: "hidden",
+        border: `1px solid ${T.border}`, overflow: "hidden",
       }}>
 
         {/* Título + acciones globales */}
@@ -299,16 +420,14 @@ export default function AdminML() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn label={saving === "all" ? "Encolando…" : "Sync Todo"}
+            <Btn label={saving === "all" ? "Sincronizando…" : "↺ Sync Todo"}
               variant="primary" disabled={saving === "all"} onClick={handleSyncAll} />
-            <Btn label={saving === "queue" ? "Procesando…" : "Procesar Cola"}
-              variant="secondary" disabled={saving === "queue"} onClick={handleProcessQueue} />
             <Btn label="Actualizar" variant="ghost" disabled={false}
               onClick={() => { load(); loadCreds(); }} />
           </div>
         </div>
 
-        {/* Toast de notificación */}
+        {/* Toast */}
         {msg && (
           <div style={{
             padding: "10px 24px", fontSize: 12, fontWeight: 600,
@@ -326,10 +445,10 @@ export default function AdminML() {
           borderBottom: `1px solid ${T.borderLight}`,
         }}>
           {[
-            { label: "Cuentas conectadas", value: creds.length,                                     accent: T.success  },
-            { label: "Publicados en ML",   value: products.length,                                  accent: T.accent   },
-            { label: "Errores de sync",    value: errors.length,                                    accent: T.danger   },
-            { label: "Cola pendiente",     value: queue.filter(q => q.status === "pending").length, accent: T.primary  },
+            { label: "Cuentas conectadas", value: creds.length,         accent: T.success },
+            { label: "Publicados en ML",   value: listings.length,      accent: T.accent  },
+            { label: "Errores de sync",    value: syncErrors.length,    accent: T.danger  },
+            { label: "Cola pendiente",     value: pendientes.length,    accent: T.primary },
           ].map((k, i) => (
             <div key={k.label} style={{
               padding: "16px 24px",
@@ -338,24 +457,23 @@ export default function AdminML() {
               <div style={{ fontSize: 11, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
                 {k.label}
               </div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: k.value > 0 && k.label !== "Publicados en ML" && k.label !== "Cuentas conectadas" ? k.accent : T.textDark }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: T.textDark }}>
                 {k.value}
               </div>
             </div>
           ))}
         </div>
 
-        {/* ── Cuentas conectadas + tabs ─────────────────────────────────────── */}
+        {/* Cuentas + tabs */}
         <div style={{ display: "flex", borderBottom: `1px solid ${T.border}` }}>
 
-          {/* ── MercadoLibre ── */}
+          {/* MercadoLibre */}
           <div style={{ flex: 1, borderRight: `1px solid ${T.border}` }}>
             <div style={{
               padding: "12px 20px 0",
               background: mlTab ? T.bgMain : "transparent",
               borderBottom: mlTab ? `2px solid ${T.accent}` : "2px solid transparent",
             }}>
-              {/* Fila única: logo + nombre + status + botones */}
               {credsLoading ? (
                 <div style={{ fontSize: 11, color: T.textMuted, padding: "8px 0 10px" }}>Cargando…</div>
               ) : mlCreds.length === 0 ? (
@@ -364,8 +482,7 @@ export default function AdminML() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>MercadoLibre</span>
                   <button onClick={() => handleConnect("MercadoLibre", "MLU")} style={{
                     marginLeft: "auto", padding: "4px 10px", background: T.accent, color: "#fff",
-                    border: "none", borderRadius: T.radiusSm, cursor: "pointer",
-                    fontWeight: 700, fontSize: 10, textTransform: "uppercase",
+                    border: "none", borderRadius: T.radiusSm, cursor: "pointer", fontWeight: 700, fontSize: 10, textTransform: "uppercase",
                   }}>+ Conectar</button>
                 </div>
               ) : mlCreds.map(cred => {
@@ -378,9 +495,7 @@ export default function AdminML() {
                 return (
                   <div key={cred.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <img src="/ML_logo.png" alt="ML" style={{ width: 20, height: 20, objectFit: "contain", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: T.textDark }}>
-                      {cred.nickname || cred.siteId}
-                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.textDark }}>{cred.nickname || cred.siteId}</span>
                     {cred.isGlobal && <span style={{ fontSize: 9, fontWeight: 700, color: T.primary, background: T.primaryLight, padding: "1px 5px", borderRadius: T.radiusPill }}>Global</span>}
                     <span style={{ fontSize: 10, color: statusColor, fontWeight: 600 }}>● {expiryLabel}</span>
                     <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
@@ -390,25 +505,23 @@ export default function AdminML() {
                   </div>
                 );
               })}
-              {/* Tabs ML */}
               <div style={{ display: "flex", gap: 0 }}>
                 {TABS.filter(t => t.section === "ml").map(t => (
                   <TabBtn key={t.id} label={t.label} active={tab === t.id}
                     onClick={() => setTab(t.id)}
-                    hasAlert={t.id === "ml-errores" && errors.length > 0} />
+                    hasAlert={t.id === "ml-errores" && syncErrors.length > 0} />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* ── MercadoPago ── */}
+          {/* MercadoPago */}
           <div style={{ flex: 1 }}>
             <div style={{
               padding: "12px 20px 0",
               background: mpTab ? T.bgMain : "transparent",
               borderBottom: mpTab ? `2px solid #009EE3` : "2px solid transparent",
             }}>
-              {/* Fila única: logo + nombre + status + botones */}
               {credsLoading ? (
                 <div style={{ fontSize: 11, color: T.textMuted, padding: "8px 0 10px" }}>Cargando…</div>
               ) : mpCreds.length === 0 ? (
@@ -417,8 +530,7 @@ export default function AdminML() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>MercadoPago</span>
                   <button onClick={() => handleConnect("MercadoPago", "MLU")} style={{
                     marginLeft: "auto", padding: "4px 10px", background: "#009EE3", color: "#fff",
-                    border: "none", borderRadius: T.radiusSm, cursor: "pointer",
-                    fontWeight: 700, fontSize: 10, textTransform: "uppercase",
+                    border: "none", borderRadius: T.radiusSm, cursor: "pointer", fontWeight: 700, fontSize: 10, textTransform: "uppercase",
                   }}>+ Conectar</button>
                 </div>
               ) : mpCreds.map(cred => {
@@ -431,9 +543,7 @@ export default function AdminML() {
                 return (
                   <div key={cred.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <img src="/MP_logo.png" alt="MP" style={{ width: 20, height: 20, objectFit: "contain", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: T.textDark }}>
-                      {cred.nickname || cred.siteId}
-                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.textDark }}>{cred.nickname || cred.siteId}</span>
                     {cred.isGlobal && <span style={{ fontSize: 9, fontWeight: 700, color: "#009EE3", background: "rgba(0,158,227,.1)", padding: "1px 5px", borderRadius: T.radiusPill }}>Global</span>}
                     <span style={{ fontSize: 10, color: statusColor, fontWeight: 600 }}>● {expiryLabel}</span>
                     <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
@@ -443,12 +553,10 @@ export default function AdminML() {
                   </div>
                 );
               })}
-              {/* Tabs MP */}
               <div style={{ display: "flex", gap: 0 }}>
                 {TABS.filter(t => t.section === "mp").map(t => (
                   <TabBtn key={t.id} label={t.label} active={tab === t.id}
-                    accentColor="#009EE3"
-                    onClick={() => setTab(t.id)} />
+                    accentColor="#009EE3" onClick={() => setTab(t.id)} />
                 ))}
               </div>
             </div>
@@ -456,57 +564,52 @@ export default function AdminML() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          TAB: ML — PUBLICADOS
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ TAB: ML — PUBLICADOS ══════════════════════════════════════════════ */}
       {tab === "ml-publicados" && (
         <Card>
-          <TableHeader cols={["Producto", "ML Item ID", "Estado", "Stock", "Sync", "Último sync", "Acciones"]} />
+          <TableHeader cols={["Producto", "SKU", "ML Item ID", "Estado", "Último sync", "Acciones"]} />
           <tbody>
             {loading ? (
-              <LoadingRow colSpan={7} />
-            ) : products.length === 0 ? (
-              <EmptyRow colSpan={7} text="Sin productos publicados en ML" />
-            ) : products.map((p, idx) => (
-              <tr key={p.id} style={{
+              <LoadingRow colSpan={6} />
+            ) : listings.length === 0 ? (
+              <EmptyRow colSpan={6} text="Sin publicaciones activas en ML" />
+            ) : listings.map((l, idx) => (
+              <tr key={l.listing_id} style={{
                 borderBottom: `1px solid ${T.borderLight}`,
                 background: idx % 2 === 0 ? T.bgCard : T.bgMain,
               }}>
-                <td style={tdStyle({ maxWidth: 180 })}>{p.nombre}</td>
-                <td style={{ padding: "10px 16px" }}>
-                  <a href={`https://articulo.mercadolibre.com.uy/${p.ml_item_id}`}
-                    target="_blank" rel="noreferrer"
-                    style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: T.primary, textDecoration: "none" }}>
-                    {p.ml_item_id} ↗
-                  </a>
+                <td style={tdStyle({ maxWidth: 200 })}>{l.item_title}</td>
+                <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>
+                  {l.sku}
                 </td>
-                <td style={{ padding: "10px 16px" }}><MLStatusBadge status={p.ml_status} /></td>
-                <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700,
-                  color: p.stock === 0 ? T.danger : T.textDark }}>{p.stock}</td>
-                <td style={{ padding: "10px 16px" }}><SyncBadge status={p.sync_status} /></td>
+                <td style={{ padding: "10px 16px" }}>
+                  {l.external_id ? (
+                    <a href={`https://articulo.mercadolibre.com.uy/${l.external_id}`}
+                      target="_blank" rel="noreferrer"
+                      style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: T.primary, textDecoration: "none" }}>
+                      {l.external_id} ↗
+                    </a>
+                  ) : <span style={{ color: T.textMuted, fontSize: 11 }}>—</span>}
+                </td>
+                <td style={{ padding: "10px 16px" }}><ListingStatusBadge status={l.listing_status} /></td>
                 <td style={{ padding: "10px 16px", fontSize: 11, color: T.textMuted }}>
-                  {p.ml_last_sync
-                    ? new Date(p.ml_last_sync).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+                  {l.synced_at
+                    ? new Date(l.synced_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
                     : "—"}
                 </td>
                 <td style={{ padding: "10px 16px" }}>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <Btn label="↺ Sync" variant="primary" size="xs"
-                      disabled={saving === p.id} onClick={() => handleSyncItem(p.id)} />
-                    {p.ml_status === "active"
+                      disabled={saving === l.variant_id} onClick={() => handlePublicar(l.variant_id)} />
+                    {l.listing_status === "active"
                       ? <Btn label="⏸ Pausar" variant="ghost" size="xs"
-                          disabled={saving === `status_${p.id}`}
-                          onClick={() => handleSetStatus(p.id, "paused")} />
-                      : p.ml_status === "paused"
+                          disabled={saving === `status_${l.listing_id}`}
+                          onClick={() => handleSetStatus(l.listing_id, "paused")} />
+                      : l.listing_status === "paused"
                       ? <Btn label="▶ Activar" variant="success" size="xs"
-                          disabled={saving === `status_${p.id}`}
-                          onClick={() => handleSetStatus(p.id, "active")} />
+                          disabled={saving === `status_${l.listing_id}`}
+                          onClick={() => handleSetStatus(l.listing_id, "active")} />
                       : null}
-                    {p.sync_status === "error" && (
-                      <Btn label="🔁 Reintentar" variant="danger" size="xs"
-                        disabled={saving === p.id} onClick={() => handleRetry(p.id)} />
-                    )}
-                    {saving === p.id && <span style={{ fontSize: 11, color: T.textMuted, lineHeight: "24px" }}>⏳</span>}
                   </div>
                 </td>
               </tr>
@@ -515,36 +618,33 @@ export default function AdminML() {
         </Card>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          TAB: ML — COLA
-      ══════════════════════════════════════════════════════════════════════ */}
-      {tab === "ml-cola" && (
+      {/* ══ TAB: ML — COLA (PENDIENTES) ═══════════════════════════════════════ */}
+      {tab === "ml-pendientes" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Btn label={saving === "queue" ? "Procesando…" : "▶ Procesar ahora"}
-              variant="primary" disabled={saving === "queue"} onClick={handleProcessQueue} />
+            <Btn label={saving === "all" ? "Sincronizando…" : "▶ Procesar ahora"}
+              variant="primary" disabled={saving === "all"} onClick={handleSyncAll} />
           </div>
           <Card>
-            <TableHeader cols={["Producto ID", "Acción", "Estado", "Reintentos", "Creado"]} />
+            <TableHeader cols={["Producto", "SKU", "Estado", "Último error", "Acciones"]} />
             <tbody>
-              {queue.length === 0 ? (
+              {pendientes.length === 0 ? (
                 <EmptyRow colSpan={5} text="Cola vacía ✓" success />
-              ) : queue.map((q, idx) => (
-                <tr key={q.id} style={{
+              ) : pendientes.map((l, idx) => (
+                <tr key={l.listing_id} style={{
                   borderBottom: `1px solid ${T.borderLight}`,
                   background: idx % 2 === 0 ? T.bgCard : T.bgMain,
                 }}>
-                  <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>
-                    {q.product_id?.substring(0, 12)}…
+                  <td style={tdStyle({ maxWidth: 200 })}>{l.item_title}</td>
+                  <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>{l.sku}</td>
+                  <td style={{ padding: "10px 16px" }}><ListingStatusBadge status={l.listing_status} /></td>
+                  <td style={{ padding: "10px 16px", fontSize: 11, color: T.danger, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {l.last_error ?? "—"}
                   </td>
-                  <td style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: T.textDark }}>{q.action}</td>
-                  <td style={{ padding: "10px 16px" }}><SyncBadge status={q.status} /></td>
-                  <td style={{ padding: "10px 16px", fontSize: 13,
-                    color: q.retries >= 3 ? T.danger : T.textBody, fontWeight: q.retries >= 3 ? 700 : 400 }}>
-                    {q.retries}
-                  </td>
-                  <td style={{ padding: "10px 16px", fontSize: 11, color: T.textMuted }}>
-                    {new Date(q.created_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  <td style={{ padding: "10px 16px" }}>
+                    <Btn label="🔁 Reintentar" variant="danger" size="xs"
+                      disabled={saving === l.listing_id}
+                      onClick={() => handleRetry(l.listing_id)} />
                   </td>
                 </tr>
               ))}
@@ -553,12 +653,10 @@ export default function AdminML() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          TAB: ML — ERRORES
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ TAB: ML — ERRORES ═════════════════════════════════════════════════ */}
       {tab === "ml-errores" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {errors.length === 0 ? (
+          {syncErrors.length === 0 ? (
             <div style={{
               padding: "3rem", textAlign: "center", color: T.success,
               fontWeight: 700, fontSize: 14,
@@ -567,38 +665,39 @@ export default function AdminML() {
             }}>
               ✓ Sin errores de sincronización
             </div>
-          ) : errors.map(e => (
-            <div key={e.product_id} style={{
+          ) : syncErrors.map(e => (
+            <div key={e.id} style={{
               background: T.bgCard, borderRadius: T.radiusMd,
               border: `1px solid ${T.border}`, borderLeft: `3px solid ${T.danger}`,
               padding: "14px 20px", boxShadow: T.shadowCard,
               display: "flex", alignItems: "center", gap: 16,
             }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.textDark }}>{e.product_name}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.textDark }}>{e.item_title}</div>
                 <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                  ML ID: <code style={{ fontFamily: "'Courier New', monospace" }}>{e.ml_item_id || "—"}</code>
-                  {" · "}Reintentos: {e.retries}{" · "}{e.queue_action}
+                  ML ID: <code style={{ fontFamily: "'Courier New', monospace" }}>{e.external_id || "—"}</code>
+                  {" · "}Acción: {e.action}
+                  {e.error_code && <>{" · "}<span style={{ color: T.danger }}>{e.error_code}</span></>}
+                  {" · "}{new Date(e.created_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </div>
               </div>
               <Btn label="🔁 Reintentar" variant="danger" size="sm"
-                disabled={saving === e.product_id} onClick={() => handleRetry(e.product_id)} />
+                disabled={saving === e.listing_id}
+                onClick={() => handleRetry(e.listing_id)} />
             </div>
           ))}
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          TAB: MP — PAGOS
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ TAB: MP — PAGOS ══════════════════════════════════════════════════ */}
       {tab === "mp-pagos" && (
         <Card>
-          <TableHeader cols={["Orden ID", "Total", "Estado pago", "Fuente", "Fecha"]} />
+          <TableHeader cols={["Orden ID", "Total", "Estado", "ML Order ID", "Fecha"]} />
           <tbody>
             {loading ? (
               <LoadingRow colSpan={5} />
             ) : mpPayments.length === 0 ? (
-              <EmptyRow colSpan={5} text="Sin pagos registrados via MercadoPago" />
+              <EmptyRow colSpan={5} text="Sin órdenes de ML registradas" />
             ) : mpPayments.map((pay, idx) => (
               <tr key={pay.id} style={{
                 borderBottom: `1px solid ${T.borderLight}`,
@@ -610,8 +709,10 @@ export default function AdminML() {
                 <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700, color: T.textDark }}>
                   {pay.currency} {Number(pay.total).toLocaleString("es-UY")}
                 </td>
-                <td style={{ padding: "10px 16px" }}><PayStatusBadge status={pay.payment_status} /></td>
-                <td style={{ padding: "10px 16px", fontSize: 11, color: T.textMuted }}>{pay.source}</td>
+                <td style={{ padding: "10px 16px" }}><OrderStatusBadge status={pay.status} /></td>
+                <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>
+                  {pay.ml_order_id ?? "—"}
+                </td>
                 <td style={{ padding: "10px 16px", fontSize: 11, color: T.textMuted }}>
                   {new Date(pay.created_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </td>
@@ -625,102 +726,7 @@ export default function AdminML() {
   );
 }
 
-// ── Componentes UI ────────────────────────────────────────────────────────────
-
-function CredCard({ cred, loading, onRefresh, onDisconnect, accentColor }: {
-  cred: Credential; loading: boolean;
-  onRefresh: () => void; onDisconnect: () => void;
-  accentColor?: string;
-}) {
-  const isML   = cred.platform === "MercadoLibre";
-  const accent = accentColor ?? (isML ? T.accent : "#009EE3");
-  const icon   = isML ? "🟡" : "💙";
-
-  const diffMs   = new Date(cred.expiresAt).getTime() - Date.now();
-  const diffHrs  = Math.max(0, Math.floor(diffMs / 3_600_000));
-  const diffDays = Math.floor(diffHrs / 24);
-  const expiryLabel = cred.isExpired ? "Vencido"
-    : diffDays > 1 ? `Vence en ${diffDays} días`
-    : diffHrs > 0  ? `Vence en ${diffHrs}h`
-    : "Vence pronto";
-
-  const statusColor = cred.isExpired ? T.danger : cred.expiringSoon ? T.warning : T.success;
-  const statusDot   = cred.isExpired ? "●" : cred.expiringSoon ? "●" : "●";
-
-  return (
-    <div style={{
-      background: T.bgCard, borderRadius: T.radiusMd, boxShadow: T.shadowCard,
-      border: `1px solid ${T.border}`, borderLeft: `3px solid ${accent}`,
-      padding: "14px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-    }}>
-      <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 15 }}>{icon}</span>
-          <span style={{ fontWeight: 700, fontSize: 13, color: T.textDark }}>{cred.platform}</span>
-          <span style={{
-            padding: "1px 7px", borderRadius: T.radiusPill,
-            fontSize: 10, fontWeight: 700, background: T.primaryLight, color: T.primary,
-          }}>{cred.siteId}</span>
-          {cred.isGlobal && (
-            <span style={{
-              padding: "1px 7px", borderRadius: T.radiusPill,
-              fontSize: 10, fontWeight: 700, background: T.primaryLight, color: T.primary,
-            }}>Global</span>
-          )}
-        </div>
-        {cred.nickname && (
-          <div style={{ fontSize: 12, color: T.textMuted }}>
-            Cuenta: <strong style={{ color: T.textDark }}>{cred.nickname}</strong>
-            {cred.sellerId && <span style={{ color: T.textMuted }}> · ID {cred.sellerId}</span>}
-          </div>
-        )}
-      </div>
-
-      <div style={{ textAlign: "right", minWidth: 120 }}>
-        <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>Estado</div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: statusColor, display: "flex", alignItems: "center", gap: 5, justifyContent: "flex-end" }}>
-          <span style={{ color: statusColor }}>{statusDot}</span> {expiryLabel}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-        <Btn label="↺ Renovar"   variant="secondary" size="sm" disabled={loading} onClick={onRefresh} />
-        <Btn label="Desconectar" variant="danger"    size="sm" disabled={loading} onClick={onDisconnect} />
-      </div>
-    </div>
-  );
-}
-
-function EmptyCard({ icon, platform, siteId, label, accentColor, onConnect }: {
-  icon: string; platform: string; siteId: string;
-  label?: string; accentColor?: string; onConnect: () => void;
-}) {
-  const accent = accentColor ?? T.accent;
-  return (
-    <div style={{
-      background: T.bgCard, borderRadius: T.radiusMd, border: `2px dashed ${T.border}`,
-      padding: "14px 20px", display: "flex", alignItems: "center",
-      justifyContent: "space-between", gap: 16,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 20 }}>{icon}</span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: T.textDark }}>
-            {platform} <span style={{ color: T.textMuted, fontWeight: 400 }}>{siteId}</span>
-          </div>
-          <div style={{ fontSize: 11, color: T.textMuted }}>Sin cuenta conectada</div>
-        </div>
-      </div>
-      <button onClick={onConnect} style={{
-        padding: "6px 16px", background: accent, color: "#fff",
-        border: "none", borderRadius: T.radiusSm, cursor: "pointer",
-        fontWeight: 700, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase",
-      }}>
-        + Conectar
-      </button>
-    </div>
-  );
-}
+// ── Componentes UI ─────────────────────────────────────────────────────────────
 
 function TabBtn({ label, active, accentColor, hasAlert, onClick }: {
   label: string; active: boolean; accentColor?: string;
@@ -734,8 +740,7 @@ function TabBtn({ label, active, accentColor, hasAlert, onClick }: {
       marginBottom: "-2px", cursor: "pointer",
       fontWeight: active ? 700 : 500, fontSize: 12,
       color: active ? accent : T.textMuted,
-      transition: "all 0.12s",
-      position: "relative",
+      transition: "all 0.12s", position: "relative",
     }}>
       {label}
       {hasAlert && (
@@ -753,19 +758,17 @@ function Btn({ label, variant = "secondary", size = "md", disabled, onClick }: {
   size?: "xs" | "sm" | "md"; disabled: boolean; onClick: () => void;
 }) {
   const styles: Record<string, React.CSSProperties> = {
-    primary:   { background: T.primary,  color: "#fff",    border: "none" },
-    secondary: { background: "transparent", color: T.primary, border: `1px solid ${T.border}` },
-    ghost:     { background: "transparent", color: T.textMuted, border: `1px solid ${T.border}` },
-    danger:    { background: "transparent", color: T.danger, border: `1px solid ${T.danger}` },
-    success:   { background: "transparent", color: T.success, border: `1px solid ${T.success}` },
+    primary:   { background: T.primary,     color: "#fff",       border: "none" },
+    secondary: { background: "transparent", color: T.primary,    border: `1px solid ${T.border}` },
+    ghost:     { background: "transparent", color: T.textMuted,  border: `1px solid ${T.border}` },
+    danger:    { background: "transparent", color: T.danger,     border: `1px solid ${T.danger}` },
+    success:   { background: "transparent", color: T.success,    border: `1px solid ${T.success}` },
   };
-  const padding = size === "xs" ? "3px 8px" : size === "sm" ? "5px 12px" : "7px 16px";
-  const fontSize = size === "xs" ? 10 : size === "sm" ? 11 : 11;
-
+  const padding  = size === "xs" ? "3px 8px"  : size === "sm" ? "5px 12px" : "7px 16px";
+  const fontSize = size === "xs" ? 10         : size === "sm" ? 11          : 11;
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      ...styles[variant],
-      padding, fontSize, fontWeight: 600, letterSpacing: "0.06em",
+      ...styles[variant], padding, fontSize, fontWeight: 600, letterSpacing: "0.06em",
       textTransform: "uppercase", borderRadius: T.radiusSm,
       cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
       transition: "opacity 0.12s", whiteSpace: "nowrap",
@@ -778,12 +781,10 @@ function Btn({ label, variant = "secondary", size = "md", disabled, onClick }: {
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      background: T.bgCard, borderRadius: T.radiusMd, border: `1px solid ${T.border}`,
-      boxShadow: T.shadowCard, overflow: "hidden",
+      background: T.bgCard, borderRadius: T.radiusMd,
+      border: `1px solid ${T.border}`, boxShadow: T.shadowCard, overflow: "hidden",
     }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        {children}
-      </table>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>{children}</table>
     </div>
   );
 }
@@ -823,23 +824,6 @@ function EmptyRow({ colSpan, text, success }: { colSpan: number; text: string; s
   );
 }
 
-function SectionNote({ text }: { text: string }) {
-  return <p style={{ margin: "0 0 4px", fontSize: 12, color: T.textMuted }}>{text}</p>;
-}
-
-function InfoNote({ text, color }: { text: string; color?: string }) {
-  const c = color ?? T.primary;
-  return (
-    <div style={{
-      padding: "10px 16px", borderRadius: T.radiusMd,
-      background: `${c}11`, border: `1px solid ${c}33`,
-      fontSize: 12, color: c,
-    }}>
-      💡 {text}
-    </div>
-  );
-}
-
 function tdStyle(extra?: React.CSSProperties): React.CSSProperties {
   return {
     padding: "10px 16px", fontSize: 13, fontWeight: 600, color: T.textDark,
@@ -848,11 +832,14 @@ function tdStyle(extra?: React.CSSProperties): React.CSSProperties {
   };
 }
 
-function MLStatusBadge({ status }: { status: string }) {
+function ListingStatusBadge({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
-    active: [T.successBg, T.success],
-    paused: [T.warningBg, T.warning],
-    closed: [T.dangerBg,  T.danger],
+    active:   [T.successBg, T.success],
+    syncing:  [T.primaryLight, T.primary],
+    paused:   [T.warningBg, T.warning],
+    pending:  [T.warningBg, T.warning],
+    error:    [T.dangerBg,  T.danger],
+    delisted: ["#f1f5f9",   T.textMuted],
   };
   const [bg, color] = map[status] ?? ["#f1f5f9", T.textMuted];
   return (
@@ -862,27 +849,12 @@ function MLStatusBadge({ status }: { status: string }) {
   );
 }
 
-function SyncBadge({ status }: { status: string }) {
-  const map: Record<string, [string, string, string]> = {
-    synced:  [T.successBg, T.success, "Sync ✓"],
-    error:   [T.dangerBg,  T.danger,  "Error ✕"],
-    pending: [T.warningBg, T.warning, "Pendiente"],
-    done:    [T.successBg, T.success, "Done ✓"],
-  };
-  const [bg, color, label] = map[status] ?? ["#f1f5f9", T.textMuted, status || "—"];
-  return (
-    <span style={{ padding: "2px 9px", borderRadius: T.radiusPill, fontSize: 10, fontWeight: 700, background: bg, color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-      {label}
-    </span>
-  );
-}
-
-function PayStatusBadge({ status }: { status: string }) {
+function OrderStatusBadge({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
-    paid:     [T.successBg, T.success],
-    pending:  [T.warningBg, T.warning],
-    refunded: [T.primaryLight, T.primary],
-    failed:   [T.dangerBg, T.danger],
+    confirmed: [T.successBg, T.success],
+    pending:   [T.warningBg, T.warning],
+    cancelled: [T.dangerBg,  T.danger],
+    delivered: [T.successBg, T.success],
   };
   const [bg, color] = map[status] ?? ["#f1f5f9", T.textMuted];
   return (

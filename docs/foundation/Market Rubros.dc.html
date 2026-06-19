@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#EEECE5;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#EEECE5;color:#1C1B19;min-height:100vh;width:100%;padding:72px 64px 96px;">
+  <div style="max-width:1160px;margin:0 auto;">
+
+    <!-- HEADER -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;border-bottom:1px solid #D6D3C9;padding-bottom:32px;">
+      <div>
+        <div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:18px;">Sistema de marca</div>
+        <h1 style="font-family:'Archivo Black';font-size:64px;line-height:.96;letter-spacing:-.01em;color:#1C1B19;">Market por rubros</h1>
+      </div>
+      <p style="font-size:17px;line-height:1.5;color:#56544C;max-width:330px;text-align:right;">Una sola marca madre, una familia de rubros. El símbolo no cambia — cambia el color.</p>
+    </div>
+
+    <!-- MASTER -->
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:56px;align-items:center;margin-top:64px;">
+      <div style="width:300px;height:300px;background:#3D5689;border-radius:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 18px 40px rgba(61,86,137,.28);">
+        <div style="font-family:'Archivo Black';color:#fff;font-size:170px;line-height:.74;">M</div>
+        <div style="font-family:'Archivo Black';color:#fff;font-size:34px;letter-spacing:.05em;margin-top:6px;">MARKET</div>
+      </div>
+      <div>
+        <div style="display:inline-block;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#3D5689;font-weight:700;border:1px solid #C3CADD;border-radius:100px;padding:6px 14px;margin-bottom:22px;">La marca madre</div>
+        <h2 style="font-family:'Archivo Black';font-size:32px;margin-bottom:16px;">Marketplace</h2>
+        <p style="font-size:18px;line-height:1.6;color:#56544C;max-width:520px;">El eCommerce multiempresa. El azul <strong style="color:#3D5689;">#3D5689</strong> es la firma de la casa: es lo primero que el usuario reconoce, antes que cualquier rubro. Todo lo demás cuelga de aquí.</p>
+      </div>
+    </div>
+
+    <!-- RUBROS -->
+    <div style="margin-top:88px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #D6D3C9;padding-bottom:18px;margin-bottom:44px;">
+        <h2 style="font-family:'Archivo Black';font-size:26px;">Los rubros</h2>
+        <span style="font-size:15px;color:#8A8678;">Mismo símbolo · distinto color</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:32px;">
+
+        <!-- SECOND -->
+        <div>
+          <div style="width:100%;aspect-ratio:1;background:#2E7D57;border-radius:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(46,125,87,.26);">
+            <div style="font-family:'Archivo Black';color:#fff;font-size:108px;line-height:.74;">M</div>
+            <div style="font-family:'Archivo Black';color:#fff;font-size:22px;letter-spacing:.05em;margin-top:4px;">MARKET</div>
+          </div>
+          <div style="margin-top:20px;">
+            <h3 style="font-family:'Archivo Black';font-size:22px;">Second</h3>
+            <p style="font-size:14.5px;line-height:1.5;color:#56544C;margin-top:8px;">Segunda mano y reuso. El verde dice circular, accesible, consciente.</p>
+            <div style="font-size:12px;letter-spacing:.08em;color:#2E7D57;font-weight:700;margin-top:12px;">#2E7D57</div>
+          </div>
+        </div>
+
+        <!-- GOURMET -->
+        <div>
+          <div style="width:100%;aspect-ratio:1;background:#9B3326;border-radius:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(155,51,38,.26);">
+            <div style="font-family:'Archivo Black';color:#fff;font-size:108px;line-height:.74;">M</div>
+            <div style="font-family:'Archivo Black';color:#fff;font-size:22px;letter-spacing:.05em;margin-top:4px;">MARKET</div>
+          </div>
+          <div style="margin-top:20px;">
+            <h3 style="font-family:'Archivo Black';font-size:22px;">Gourmet</h3>
+            <p style="font-size:14.5px;line-height:1.5;color:#56544C;margin-top:8px;">Comida y delicatessen. El terracota aporta calidez y un aire premium.</p>
+            <div style="font-size:12px;letter-spacing:.08em;color:#9B3326;font-weight:700;margin-top:12px;">#9B3326</div>
+          </div>
+        </div>
+
+        <!-- TECH -->
+        <div>
+          <div style="width:100%;aspect-ratio:1;background:#1C6E86;border-radius:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(28,110,134,.26);">
+            <div style="font-family:'Archivo Black';color:#fff;font-size:108px;line-height:.74;">M</div>
+            <div style="font-family:'Archivo Black';color:#fff;font-size:22px;letter-spacing:.05em;margin-top:4px;">MARKET</div>
+          </div>
+          <div style="margin-top:20px;">
+            <h3 style="font-family:'Archivo Black';font-size:22px;">Tech</h3>
+            <p style="font-size:14.5px;line-height:1.5;color:#56544C;margin-top:8px;">Electrónica y gadgets. El cian/teal se siente digital sin pelear con el azul madre.</p>
+            <div style="font-size:12px;letter-spacing:.08em;color:#1C6E86;font-weight:700;margin-top:12px;">#1C6E86</div>
+          </div>
+        </div>
+
+        <!-- TEMPLATE / ETC -->
+        <div>
+          <div style="width:100%;aspect-ratio:1;background:#EEECE5;border:2px dashed #BDB9AC;border-radius:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="font-family:'Archivo Black';color:#BDB9AC;font-size:108px;line-height:.74;">M</div>
+            <div style="font-family:'Archivo Black';color:#BDB9AC;font-size:22px;letter-spacing:.05em;margin-top:4px;">MARKET</div>
+          </div>
+          <div style="margin-top:20px;">
+            <h3 style="font-family:'Archivo Black';font-size:22px;color:#8A8678;">+ Nuevo rubro</h3>
+            <p style="font-size:14.5px;line-height:1.5;color:#56544C;margin-top:8px;">El sistema es abierto: Hogar, Moda, Pets… cada rubro elige un color y entra a la familia.</p>
+            <div style="font-size:12px;letter-spacing:.08em;color:#8A8678;font-weight:700;margin-top:12px;">Color a definir</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- NOMENCLATURA / LOCKUPS -->
+    <div style="margin-top:88px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #D6D3C9;padding-bottom:18px;margin-bottom:36px;">
+        <h2 style="font-family:'Archivo Black';font-size:26px;">Nomenclatura</h2>
+        <span style="font-size:15px;color:#8A8678;">El rubro se nombra como sufijo</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0;border:1px solid #D6D3C9;border-radius:14px;overflow:hidden;background:#fff;">
+
+        <div style="display:flex;align-items:center;gap:20px;padding:22px 28px;border-bottom:1px solid #ECEAE2;">
+          <div style="width:46px;height:46px;background:#2E7D57;border-radius:24%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:30px;line-height:1;flex:none;">M</div>
+          <div style="font-size:26px;"><strong style="font-family:'Archivo Black';">MARKET</strong> <span style="color:#2E7D57;font-weight:700;">Second</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;padding:22px 28px;border-bottom:1px solid #ECEAE2;">
+          <div style="width:46px;height:46px;background:#9B3326;border-radius:24%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:30px;line-height:1;flex:none;">M</div>
+          <div style="font-size:26px;"><strong style="font-family:'Archivo Black';">MARKET</strong> <span style="color:#9B3326;font-weight:700;">Gourmet</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;padding:22px 28px;">
+          <div style="width:46px;height:46px;background:#1C6E86;border-radius:24%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black';color:#fff;font-size:30px;line-height:1;flex:none;">M</div>
+          <div style="font-size:26px;"><strong style="font-family:'Archivo Black';">MARKET</strong> <span style="color:#1C6E86;font-weight:700;">Tech</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ESENCIA: CONSTANTS vs VARIABLES -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:88px;">
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:36px;">
+        <h3 style="font-family:'Archivo Black';font-size:20px;margin-bottom:22px;">La esencia que se mantiene</h3>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#3D5689;font-weight:700;">—</span><span>La <strong>M</strong> y su construcción geométrica</span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#3D5689;font-weight:700;">—</span><span>La caja <strong>squircle</strong> y sus proporciones</span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#3D5689;font-weight:700;">—</span><span>El wordmark <strong>MARKET</strong></span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#3D5689;font-weight:700;">—</span><span>La tipografía <strong>Archivo Black</strong></span></div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:36px;">
+        <h3 style="font-family:'Archivo Black';font-size:20px;margin-bottom:22px;">Lo que cambia por rubro</h3>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#9B3326;font-weight:700;">+</span><span>El <strong>color</strong> del símbolo</span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#9B3326;font-weight:700;">+</span><span>El <strong>sufijo de nombre</strong> (MARKET · Rubro)</span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#9B3326;font-weight:700;">+</span><span>Opcional: un <strong>ícono de categoría</strong> de apoyo</span></div>
+          <div style="display:flex;gap:14px;font-size:16px;line-height:1.45;color:#34322C;"><span style="color:#9B3326;font-weight:700;">+</span><span>El <strong>tono de comunicación</strong> de cada vertical</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APLICACIÓN: app icons -->
+    <div style="margin-top:88px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #D6D3C9;padding-bottom:18px;margin-bottom:36px;">
+        <h2 style="font-family:'Archivo Black';font-size:26px;">En aplicación</h2>
+        <span style="font-size:15px;color:#8A8678;">Una familia que se reconoce de un vistazo</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:#1C1B19;border-radius:18px;padding:40px 44px;">
+        <div style="width:88px;height:88px;background:#3D5689;border-radius:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Archivo Black';color:#fff;font-size:50px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:10px;letter-spacing:.04em;margin-top:2px;">MARKET</div></div>
+        <div style="width:88px;height:88px;background:#2E7D57;border-radius:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Archivo Black';color:#fff;font-size:50px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:10px;letter-spacing:.04em;margin-top:2px;">MARKET</div></div>
+        <div style="width:88px;height:88px;background:#9B3326;border-radius:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Archivo Black';color:#fff;font-size:50px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:10px;letter-spacing:.04em;margin-top:2px;">MARKET</div></div>
+        <div style="width:88px;height:88px;background:#1C6E86;border-radius:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Archivo Black';color:#fff;font-size:50px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:10px;letter-spacing:.04em;margin-top:2px;">MARKET</div></div>
+        <p style="color:#8A8678;font-size:15px;line-height:1.5;max-width:240px;margin-left:8px;">Cuatro íconos, una sola lógica. El usuario salta de rubro sin perder a Market de vista.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

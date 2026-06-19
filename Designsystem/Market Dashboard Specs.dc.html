@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#D9D6CC;}
+  @media print{ body{background:#fff;} .sheet{box-shadow:none !important;margin:0 !important;} }
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;color:#1C1B19;background:#D9D6CC;width:100%;padding:48px 0 80px;">
+  <div class="sheet" style="max-width:960px;margin:0 auto;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.12);padding:72px 72px 88px;">
+
+    <!-- COVER -->
+    <div style="border-bottom:3px solid #1C1B19;padding-bottom:30px;">
+      <div style="font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:14px;">Especificaciones gráficas · v1.0</div>
+      <h1 style="font-family:'Archivo Black';font-size:54px;line-height:.96;letter-spacing:-.01em;">Dashboard Market</h1>
+      <p style="font-size:17px;line-height:1.55;color:#56544C;margin-top:16px;max-width:580px;">Panel de administración. Hereda el sistema del Header (navy, Azul Madre, Archivo) y las tarjetas adoptan el lenguaje de la ficha de producto.</p>
+    </div>
+
+    <!-- ANATOMIA -->
+    <div style="margin-top:40px;">
+      <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:14px;">Anatomía</div>
+      <div style="border:1px solid #E4E1D8;border-radius:10px;overflow:hidden;display:flex;height:300px;">
+        <!-- sidebar mini -->
+        <div style="width:150px;flex:none;background:#0D2B55;display:flex;flex-direction:column;">
+          <div style="padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;"><div style="width:26px;height:26px;background:#fff;border-radius:22%;display:flex;align-items:center;justify-content:center;"><span style="font-family:'Archivo Black';color:#3D5689;font-size:16px;line-height:1;">M</span></div><div style="font-family:'Archivo Black';color:#fff;font-size:12px;">MARKET</div></div>
+          <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;"><div style="width:24px;height:24px;border-radius:50%;background:#314B6E;border:2px solid #3D5689;"></div><div style="font-size:9px;color:#fff;font-weight:700;">Carlos V.</div></div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:6px;"><div style="background:#3D5689;border-radius:6px;height:26px;display:flex;align-items:center;padding:0 10px;color:#fff;font-size:10px;font-weight:600;">Dashboard</div><div style="height:26px;display:flex;align-items:center;padding:0 10px;color:#B9C4D6;font-size:10px;">Mis órdenes</div></div>
+        </div>
+        <!-- main mini -->
+        <div style="flex:1;display:flex;flex-direction:column;background:#F0EFEA;">
+          <div style="height:42px;background:#0D2B55;display:flex;align-items:center;justify-content:space-between;padding:0 16px;"><span style="color:#fff;font-weight:700;font-size:13px;">Dashboard</span><span style="background:#3D5689;color:#fff;font-size:9px;font-weight:700;border-radius:5px;padding:5px 11px;">Ver tienda</span></div>
+          <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.07);"><div style="height:3px;background:#3D5689;"></div><div style="padding:10px;"><span style="font-size:7px;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:3px 7px;">ÓRDENES</span><div style="font-family:'Archivo Black';font-size:18px;margin-top:8px;">128</div></div></div>
+            <div style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.07);"><div style="height:3px;background:#2E7D57;"></div><div style="padding:10px;"><span style="font-size:7px;font-weight:700;color:#2E7D57;background:#EAF3EE;border-radius:100px;padding:3px 7px;">PAGADAS</span><div style="font-family:'Archivo Black';font-size:18px;margin-top:8px;">94</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;font-family:'Roboto Mono',monospace;font-size:11px;color:#8A8678;">
+        <div>① Sidebar navy · 282px fijo</div>
+        <div>② Topbar navy · 74px</div>
+        <div>③ Ítem activo · Azul Madre</div>
+        <div>④ KPI · franja superior + pill</div>
+        <div>⑤ Lienzo · #F0EFEA</div>
+        <div>⑥ Grid · 4 columnas · gap 20px</div>
+      </div>
+    </div>
+
+    <!-- 01 LAYOUT -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid #1C1B19;padding-bottom:12px;margin:64px 0 28px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:#3D5689;">01</span><h2 style="font-family:'Archivo Black';font-size:24px;">Estructura y layout</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 56px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Sidebar · ancho</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">282px (fijo)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Topbar · alto</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">74px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Contenido · padding</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">36px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Topbar · padding lateral</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">0 36px</span></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Grid KPI · columnas</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">repeat(4,1fr)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Grid KPI · gap</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">20px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Sidebar · ítem nav</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">13px 16px · r9</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Controles topbar · alto</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">44px · r9</span></div>
+      </div>
+    </div>
+
+    <!-- 02 COLOR -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid #1C1B19;padding-bottom:12px;margin:64px 0 28px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:#3D5689;">02</span><h2 style="font-family:'Archivo Black';font-size:24px;">Color</h2>
+    </div>
+    <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:14px;">Estructura</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:78px;background:#0D2B55;"></div><div style="padding:12px 14px;"><div style="font-family:'Archivo Black';font-size:13.5px;">Navy casa</div><div style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;margin-top:4px;">#0D2B55</div><div style="font-size:11.5px;color:#A8A293;margin-top:2px;">sidebar · topbar</div></div></div>
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:78px;background:#3D5689;"></div><div style="padding:12px 14px;"><div style="font-family:'Archivo Black';font-size:13.5px;">Azul Madre</div><div style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;margin-top:4px;">#3D5689</div><div style="font-size:11.5px;color:#A8A293;margin-top:2px;">ítem activo · CTA</div></div></div>
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:78px;background:#F0EFEA;"></div><div style="padding:12px 14px;"><div style="font-family:'Archivo Black';font-size:13.5px;">Lienzo</div><div style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;margin-top:4px;">#F0EFEA</div><div style="font-size:11.5px;color:#A8A293;margin-top:2px;">fondo del contenido</div></div></div>
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:78px;background:#FFFFFF;border-bottom:1px solid #E4E1D8;"></div><div style="padding:12px 14px;"><div style="font-family:'Archivo Black';font-size:13.5px;">Tarjeta</div><div style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;margin-top:4px;">#FFFFFF</div><div style="font-size:11.5px;color:#A8A293;margin-top:2px;">KPI</div></div></div>
+    </div>
+    <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8A8678;font-weight:600;margin:22px 0 14px;">Acentos de KPI · franja + pill (color / tinte)</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:5px 11px;">ÓRDENES TOTALES</span><span style="font-size:13px;color:#56544C;">Azul Madre</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#3D5689</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#EBEFF6</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#2E7D57;background:#EAF3EE;border-radius:100px;padding:5px 11px;">PAGADAS</span><span style="font-size:13px;color:#56544C;">Verde Second</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#2E7D57</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#EAF3EE</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#C2611F;background:#F8EEE4;border-radius:100px;padding:5px 11px;">PENDIENTES</span><span style="font-size:13px;color:#56544C;">Naranja</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#C2611F</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#F8EEE4</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#1C6E86;background:#E6F0F3;border-radius:100px;padding:5px 11px;">REVENUE</span><span style="font-size:13px;color:#56544C;">Teal Tech</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#1C6E86</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#E6F0F3</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#7E3A70;background:#F2EAF0;border-radius:100px;padding:5px 11px;">PRODUCTOS</span><span style="font-size:13px;color:#56544C;">Púrpura Vestim.</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#7E3A70</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#F2EAF0</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#A85636;background:#F4ECE8;border-radius:100px;padding:5px 11px;">ML ACTIVOS</span><span style="font-size:13px;color:#56544C;">Terracota Home</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#A85636</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#F4ECE8</span></div>
+      <div style="display:grid;grid-template-columns:150px 1fr 110px 110px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #ECEAE2;"><span style="display:inline-block;justify-self:start;font-size:11px;letter-spacing:.08em;font-weight:700;color:#B23B30;background:#F7E9E7;border-radius:100px;padding:5px 11px;">ALERTA</span><span style="font-size:13px;color:#56544C;">Rojo · sin stock / errores</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#B23B30</span><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">#F7E9E7</span></div>
+    </div>
+
+    <!-- 03 TARJETA KPI -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid #1C1B19;padding-bottom:12px;margin:64px 0 28px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:#3D5689;">03</span><h2 style="font-family:'Archivo Black';font-size:24px;">Tarjeta KPI</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:40px;align-items:start;">
+      <div>
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.09);">
+          <div style="height:4px;background:#3D5689;"></div>
+          <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;"><span style="display:inline-block;font-size:11px;letter-spacing:.08em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:5px 11px;">ÓRDENES TOTALES</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D5689" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+            <div style="font-family:'Archivo Black';font-size:38px;color:#1C1B19;line-height:1;">128</div>
+          </div>
+        </div>
+        <div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#8A8678;margin-top:12px;text-align:center;">mismo lenguaje que la ficha de producto</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Fondo / radio</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">#FFFFFF · 14px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Sombra</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;">0 8px 24px rgba(0,0,0,.09)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Franja de acento (top)</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">4px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Padding interno</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">22px 24px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Pill etiqueta</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">11px · 700 · r100</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Valor</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">Archivo Black · 38px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:14px;color:#56544C;">Ícono</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">20px · stroke 2 · acento</span></div>
+      </div>
+    </div>
+
+    <!-- 04 TIPOGRAFIA -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid #1C1B19;padding-bottom:12px;margin:64px 0 28px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:#3D5689;">04</span><h2 style="font-family:'Archivo Black';font-size:24px;">Tipografía</h2>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="display:grid;grid-template-columns:220px 1fr 150px;gap:20px;align-items:center;padding:13px 0;border-bottom:1px solid #ECEAE2;"><span style="font-family:'Archivo Black';font-size:34px;line-height:1;">128</span><span style="font-size:14px;color:#56544C;">Valor KPI · Archivo Black</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;color:#8A8678;">38px</span></div>
+      <div style="display:grid;grid-template-columns:220px 1fr 150px;gap:20px;align-items:center;padding:13px 0;border-bottom:1px solid #ECEAE2;"><span style="font-weight:700;font-size:24px;">Dashboard</span><span style="font-size:14px;color:#56544C;">Título topbar · Archivo Bold</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;color:#8A8678;">24px · 700</span></div>
+      <div style="display:grid;grid-template-columns:220px 1fr 150px;gap:20px;align-items:center;padding:13px 0;border-bottom:1px solid #ECEAE2;"><span style="font-weight:600;font-size:15px;">Dashboard / Mis órdenes</span><span style="font-size:14px;color:#56544C;">Ítem nav · Archivo SemiBold</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;color:#8A8678;">15px · 600</span></div>
+      <div style="display:grid;grid-template-columns:220px 1fr 150px;gap:20px;align-items:center;padding:13px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:11px;letter-spacing:.08em;font-weight:700;color:#3D5689;">ÓRDENES TOTALES</span><span style="font-size:14px;color:#56544C;">Pill KPI · Archivo Bold mayús.</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;color:#8A8678;">11px · .08em</span></div>
+      <div style="display:grid;grid-template-columns:220px 1fr 150px;gap:20px;align-items:center;padding:13px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:#8A8678;">Resumen general</span><span style="font-size:14px;color:#56544C;">Sección · Archivo SemiBold</span><span style="font-family:'Roboto Mono',monospace;font-size:12.5px;color:#8A8678;">13px · .16em</span></div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin-top:60px;border-top:1px solid #ECEAE2;padding-top:22px;display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">
+      <span>Market · Dashboard specs v1.0</span><span>Junio 2026</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
