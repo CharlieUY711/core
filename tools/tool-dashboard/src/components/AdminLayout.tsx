@@ -15,18 +15,37 @@ export const ShopContext = createContext<ShopCtx>({
 });
 export const useShop = () => useContext(ShopContext);
 
-// ─── Menú ─────────────────────────────────────────────────────────────────────
+// ─── Menú común (visible para todos) ─────────────────────────────────────────
 const commonMenu = [
   { path: "/admin",        label: "Dashboard",   exact: true },
   { path: "/admin/orders", label: "Mis ordenes"              },
 ];
 
-const adminSections: { key: string; section: string; items: any[] }[] = [];
-
-// ─── Nombre de app desde BRAND ───────────────────────────────────────────────
-function useAppName() {
-  return BRAND.name;
-}
+// ─── Secciones admin (colapsables, solo visibles para isAdmin) ────────────────
+const adminSections: {
+  key: string;
+  section: string;
+  items: {
+    path: string;
+    label: string;
+    children?: { path: string; label: string }[];
+  }[];
+}[] = [
+  {
+    key: "comercial",
+    section: "📈 Desarrollo Comercial",
+    items: [
+      {
+        path: "/admin/comercial/aceite-de-oliva",
+        label: "🌿 Aceite de Oliva",
+      },
+      {
+        path: "/admin/comercial/jamon-curado",
+        label: "🥩 Jamón Curado",
+      },
+    ],
+  },
+];
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 function hexToRgb(hex: string) {
@@ -94,7 +113,6 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; location: any }) {
-  const appName = useAppName();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
@@ -125,7 +143,7 @@ function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; loc
       <div style={{ padding: "1.1rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.02em",
           lineHeight: 1, color: "#fff" }}>
-          {appName || BRAND.name}
+          {BRAND.name}
         </div>
         <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.62rem", marginTop: "3px" }}>
           Admin Panel
@@ -170,7 +188,7 @@ function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; loc
                       {item.label}
                     </Link>
                     {"children" in item && item.children && active &&
-                      item.children.map((child: any) => (
+                      item.children.map((child) => (
                         <Link key={child.path} to={child.path} style={{
                           display: "flex", alignItems: "center",
                           padding: "0.4rem 1.5rem 0.4rem 2.8rem",
@@ -202,7 +220,10 @@ function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; loc
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 function Topbar({ location }: { location: any }) {
-  const allItems = [...commonMenu, ...adminSections.flatMap(s => s.items)];
+  const allItems = [
+    ...commonMenu,
+    ...adminSections.flatMap(s => s.items),
+  ];
 
   const activeSection = adminSections.find(s =>
     s.items.some(i => location.pathname.startsWith(i.path))
@@ -281,4 +302,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-
