@@ -1,0 +1,14 @@
+/* @core/shell — CSS variables. Importado desde globals.css */
+:root {
+  --shell-sidebar-w: 240px;
+  --shell-topbar-h: 56px;
+  --shell-sidebar-bg: #0f172a;
+  --shell-sidebar-fg: #e2e8f0;
+  --shell-topbar-bg: #ffffff;
+  --shell-topbar-fg: #0f172a;
+  --shell-border: #1e293b;
+  --shell-hover: rgba(255,255,255,0.06);
+  --shell-accent: #6366f1;
+  --shell-text-muted: #64748b;
+  --shell-content-bg: #f8fafc;
+}

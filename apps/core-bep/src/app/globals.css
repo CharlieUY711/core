@@ -1,0 +1,89 @@
+@import './shell-vars.css';
+
+/*
+ * ── @core/shell theming — paste into apps/core-bep/src/app/globals.css ──
+ *
+ * Override any CSS variable to match BEP's brand.
+ * If you don't add this block, the default dark-sidebar + indigo-accent
+ * palette from ShellLayout will be used.
+ */
+
+:root {
+  /* Sidebar */
+  --shell-sidebar-w: 240px;
+  --shell-sidebar-bg: #0f172a;   /* slate-900  */
+  --shell-sidebar-fg: #e2e8f0;   /* slate-200  */
+
+  /* Topbar */
+  --shell-topbar-h: 56px;
+  --shell-topbar-bg: #ffffff;
+  --shell-topbar-fg: #0f172a;
+
+  /* Borders / hover / accent */
+  --shell-border: #1e293b;       /* slate-800 for sidebar; override per-scope if needed */
+  --shell-hover: rgba(255, 255, 255, 0.06);
+  --shell-accent: #6366f1;       /* indigo-500 — swap to BEP brand color */
+  --shell-text-muted: #64748b;   /* slate-500 */
+
+  /* Content area */
+  --shell-content-bg: #f8fafc;   /* slate-50  */
+}
+
+/* Example: topbar border should use light grey, not sidebar dark */
+header.shell-topbar {
+  --shell-border: #e2e8f0; /* slate-200 */
+}
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  :root {
+    --color-brand: #534ab7;
+    --color-brand-light: #eeedfe;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .bep-card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+  }
+
+  .bep-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .bep-input {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+           placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .bep-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           bg-brand-600 text-white text-sm font-medium
+           hover:bg-brand-800 active:scale-95
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .bep-btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           border border-gray-300 bg-white text-gray-700 text-sm font-medium
+           hover:bg-gray-50 active:scale-95
+           transition-all duration-150;
+  }
+}
+
+
