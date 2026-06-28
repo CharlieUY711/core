@@ -3,8 +3,8 @@ document_id: SPEC-001C
 document_id_map: CN-META-0001
 document_type: MetaModel
 title: "SPEC-001C — Meta Model (derivado del BEP Real Slice)"
-version: 0.1.0
-status: Draft
+version: 1.0.0
+status: Approved
 flow_step: "3 — 001C → Meta Model"
 derives_from:
   - "SPEC-001B (CN-KMODEL-0001) — carry-forward: arquetipos + invariantes + constraints de relacion"
@@ -17,7 +17,9 @@ normative_level: MUST
 implementation_status: Specified
 created: "2026-06-28"
 updated: "2026-06-28"
-validation_gate: "Pendiente — requiere validacion formal antes de pasar a Approved y antes del paso 4"
+validation_gate: "CERRADA — validada por CN-REV-0001 (ARB). Approved Baseline Candidate."
+reviewed_by: "CN-REV-0001"
+approved_on: "2026-06-28"
 prohibitions: ["entidades futuras (Proposal/Bid/Approval)", "tablas", "implementacion", "SQL", "eventos", "politicas de infraestructura"]
 ---
 
@@ -35,7 +37,7 @@ prohibitions: ["entidades futuras (Proposal/Bid/Approval)", "tablas", "implement
 
 Durante la construcción (bottom-up), SPEC-001C **se deriva** del Knowledge Model (SPEC-001B). Una vez validado, **asciende** a su lugar de autoridad: en la jerarquía de SPEC-000 el Meta Model es **Tier 1 (`CN-META`)**, por encima del Knowledge Model (Tier 2, `CN-KMODEL`). Es decir: nace de lo real verificado, y luego gobierna como esquema. Esta dualidad es intencional y se cierra en el paso 4, cuando la Biblioteca re-asume como capa superior.
 
-`status: Draft`. No pasa a `Approved` hasta superar la **compuerta de validación formal** (§5).
+`status: Approved`. No pasa a `Approved` hasta superar la **compuerta de validación formal** (§5).
 
 ---
 
@@ -191,17 +193,19 @@ El objetivo del modelo BEP real es **L3**.
 
 ---
 
-## 5. Compuerta de validación formal
+## 5. Compuerta de validación formal — CERRADA
+
+> Validada por `CN-REV-0001` (ARB) el 2026-06-28. Todos los puntos satisfechos.
 
 SPEC-001C **no** pasa a `Approved` hasta superar este checklist (gobernanza de SPEC-000 §5/§6):
 
-- [ ] Los seis arquetipos están completos en los siete atributos meta (§A).
-- [ ] Las diez entidades verificadas de 001B clasifican sin ambigüedad por §C.1.
-- [ ] Cada invariante (§B) tiene enunciado, origen y criterio de verificación.
-- [ ] La excepción del hub (§C.2) está documentada y acotada.
-- [ ] No se introdujo nada de la lista de prohibiciones.
-- [ ] La matriz de trazabilidad (§7) cubre toda regla.
-- [ ] Revisión registrada (`CN-REV`) por el ARB.
+- [x] Los seis arquetipos están completos en los siete atributos meta (§A).
+- [x] Las diez entidades verificadas de 001B clasifican sin ambigüedad por §C.1.
+- [x] Cada invariante (§B) tiene enunciado, origen y criterio de verificación.
+- [x] La excepción del hub (§C.2) está documentada y acotada.
+- [x] No se introdujo nada de la lista de prohibiciones.
+- [x] La matriz de trazabilidad (§7) cubre toda regla.
+- [x] Revisión registrada (`CN-REV`) por el ARB.
 
 Mientras el checklist no esté completo, el estado permanece `Draft`.
 
