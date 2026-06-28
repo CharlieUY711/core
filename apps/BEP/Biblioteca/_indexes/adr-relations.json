@@ -1,0 +1,97 @@
+[
+  {
+    "from": "CN-ADR-T001B-01",
+    "type": "reverses",
+    "to": "KModel v1.0.0 (decision de modelado ideal)"
+  },
+  {
+    "from": "CN-ADR-T001B-01",
+    "type": "enables",
+    "to": "CN-ADR-T001B-05"
+  },
+  {
+    "from": "CN-ADR-T001B-02",
+    "type": "constrains",
+    "to": "CN-ADR-T001B-04"
+  },
+  {
+    "from": "CN-ADR-T001B-02",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-03"
+  },
+  {
+    "from": "CN-ADR-T001B-03",
+    "type": "constrains",
+    "to": "CN-ADR-T001B-04"
+  },
+  {
+    "from": "CN-ADR-T001B-03",
+    "type": "constrains",
+    "to": "CN-ADR-T001B-07"
+  },
+  {
+    "from": "CN-ADR-T001B-03",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-02"
+  },
+  {
+    "from": "CN-ADR-T001B-04",
+    "type": "constrained-by",
+    "to": "CN-ADR-T001B-03"
+  },
+  {
+    "from": "CN-ADR-T001B-04",
+    "type": "constrained-by",
+    "to": "CN-ADR-T001B-02"
+  },
+  {
+    "from": "CN-ADR-T001B-04",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-08"
+  },
+  {
+    "from": "CN-ADR-T001B-05",
+    "type": "enables",
+    "to": "SPEC-001C (Meta Model)"
+  },
+  {
+    "from": "CN-ADR-T001B-05",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-06"
+  },
+  {
+    "from": "CN-ADR-T001B-05",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-08"
+  },
+  {
+    "from": "CN-ADR-T001B-06",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-05"
+  },
+  {
+    "from": "CN-ADR-T001B-06",
+    "type": "opens",
+    "to": "RFC: lifecycle unificado entre arquetipos"
+  },
+  {
+    "from": "CN-ADR-T001B-07",
+    "type": "constrained-by",
+    "to": "CN-ADR-T001B-03"
+  },
+  {
+    "from": "CN-ADR-T001B-07",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-02"
+  },
+  {
+    "from": "CN-ADR-T001B-08",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-05"
+  },
+  {
+    "from": "CN-ADR-T001B-08",
+    "type": "relates-to",
+    "to": "CN-ADR-T001B-04"
+  }
+]

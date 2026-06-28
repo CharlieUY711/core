@@ -1,0 +1,108 @@
+[
+  {
+    "temp_id": "CN-ADR-T001B-01",
+    "final_id": null,
+    "title": "Re-anclar el Knowledge Model de BEP al esquema real verificado",
+    "kind": "reversal",
+    "status": "Proposed",
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "risk": "Medio",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-02",
+    "final_id": null,
+    "title": "Compliance Item como hub central de trazabilidad",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "compliance_matrix",
+      "requirements",
+      "documents",
+      "bom_lines",
+      "manufacturers"
+    ],
+    "risk": "Medio",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-03",
+    "final_id": null,
+    "title": "Modelo de datos estrictamente relacional (FK-first, sin EAV ni schema dinamico)",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "risk": "Bajo",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-04",
+    "final_id": null,
+    "title": "Polimorfismo confinado a Decision.linked_entities",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "decisions"
+    ],
+    "risk": "Bajo",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-05",
+    "final_id": null,
+    "title": "Clasificacion por arquetipos como modelo organizador de entidades",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "risk": "Bajo",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-06",
+    "final_id": null,
+    "title": "Ciclos de vida explicitos por entidad (sin lifecycle unificado en este slice)",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "bom_lines",
+      "documents",
+      "requirements",
+      "rfqs",
+      "risks"
+    ],
+    "risk": "Medio",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-07",
+    "final_id": null,
+    "title": "Metadata de IA como atributos semanticos en fila",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "documents",
+      "circulars"
+    ],
+    "risk": "Medio",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  },
+  {
+    "temp_id": "CN-ADR-T001B-08",
+    "final_id": null,
+    "title": "Modelo temporal y de inmutabilidad",
+    "kind": "architectural",
+    "status": "Proposed",
+    "impacted_entities": [
+      "decisions",
+      "project_queries"
+    ],
+    "risk": "Bajo",
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)"
+  }
+]

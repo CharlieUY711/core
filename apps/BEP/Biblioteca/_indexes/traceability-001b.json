@@ -1,0 +1,107 @@
+[
+  {
+    "adr": "CN-ADR-T001B-01",
+    "source_sections": [
+      "SPEC-001B CHANGE NOTE",
+      "SPEC-001B §3 (Core Entities)"
+    ],
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-02",
+    "source_sections": [
+      "SPEC-001B §3.6",
+      "SPEC-001B §Relationship Model",
+      "SPEC-001B §Knowledge Graph Foundation"
+    ],
+    "impacted_entities": [
+      "compliance_matrix",
+      "requirements",
+      "documents",
+      "bom_lines",
+      "manufacturers"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-03",
+    "source_sections": [
+      "SPEC-001B §Data Model Constraints"
+    ],
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-04",
+    "source_sections": [
+      "SPEC-001B §3.11",
+      "SPEC-001B §Relationship Model"
+    ],
+    "impacted_entities": [
+      "decisions"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-05",
+    "source_sections": [
+      "SPEC-001B §Arquetypes"
+    ],
+    "impacted_entities": [
+      "(todas)"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-06",
+    "source_sections": [
+      "SPEC-001B §Lifecycle Model"
+    ],
+    "impacted_entities": [
+      "bom_lines",
+      "documents",
+      "requirements",
+      "rfqs",
+      "risks"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-07",
+    "source_sections": [
+      "SPEC-001B §AI Metadata Model",
+      "SPEC-001B §Semantic Readiness"
+    ],
+    "impacted_entities": [
+      "documents",
+      "circulars"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  },
+  {
+    "adr": "CN-ADR-T001B-08",
+    "source_sections": [
+      "SPEC-001B §Temporal Model",
+      "SPEC-001B §3.11",
+      "SPEC-001B §3.10"
+    ],
+    "impacted_entities": [
+      "decisions",
+      "project_queries"
+    ],
+    "source_spec": "SPEC-001B (CN-KMODEL-0001)",
+    "source_of_truth": "BEP-master.md §4"
+  }
+]
