@@ -1,0 +1,6 @@
+{
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter core-bep build",
+  "outputDirectory": "apps/core-bep/.next",
+  "regions": ["iad1"]
+}

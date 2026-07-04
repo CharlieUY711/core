@@ -1,0 +1,3 @@
+[submodule "tools/tool-marketing"]
+	path = tools/tool-marketing
+	url = https://github.com/CharlieUY711/core-marketing.git
