@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#EEECE5;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#EEECE5;color:#1C1B19;min-height:100vh;width:100%;padding:64px 56px 88px;">
+  <div style="max-width:1040px;margin:0 auto;">
+
+    <!-- HEADER -->
+    <div style="border-bottom:1px solid #D6D3C9;padding-bottom:28px;">
+      <div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:16px;">Decisión de arquitectura</div>
+      <h1 style="font-family:'Archivo Black';font-size:50px;line-height:.98;letter-spacing:-.01em;">Second y Gourmet no son lo mismo</h1>
+      <p style="font-size:17px;line-height:1.55;color:#56544C;margin-top:16px;max-width:640px;">Los puse como pills gemelos, pero funcionan distinto. Uno cruza todo; el otro vive dentro de un rubro. Eso decide qué hacer con cada uno.</p>
+    </div>
+
+    <!-- TWO PANELS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:44px;">
+
+      <!-- SECOND -->
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:16px;padding:32px;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+          <div style="width:64px;height:64px;background:#2E7D57;border-radius:20%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><div style="font-family:'Archivo Black';color:#fff;font-size:30px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:8px;letter-spacing:.04em;margin-top:1px;">MARKET</div></div>
+          <div><div style="font-family:'Archivo Black';font-size:22px;">Second</div><div style="font-size:13px;color:#2E7D57;font-weight:700;letter-spacing:.04em;">TRANSVERSAL · condición</div></div>
+        </div>
+        <p style="font-size:15px;line-height:1.55;color:#34322C;margin-bottom:20px;">Cruza <strong>todos</strong> los departamentos. Un usado puede vivir en cualquier rubro.</p>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;gap:10px;background:#EAF3EE;border-left:3px solid #2E7D57;border-radius:6px;padding:9px 12px;font-size:14px;color:#2A6B4B;font-weight:600;">Tech · usado</div>
+          <div style="display:flex;align-items:center;gap:10px;background:#EAF3EE;border-left:3px solid #2E7D57;border-radius:6px;padding:9px 12px;font-size:14px;color:#2A6B4B;font-weight:600;">Home · usado</div>
+          <div style="display:flex;align-items:center;gap:10px;background:#EAF3EE;border-left:3px solid #2E7D57;border-radius:6px;padding:9px 12px;font-size:14px;color:#2A6B4B;font-weight:600;">Vestimenta · usado</div>
+          <div style="display:flex;align-items:center;gap:10px;background:#EAF3EE;border-left:3px solid #2E7D57;border-radius:6px;padding:9px 12px;font-size:14px;color:#2A6B4B;font-weight:600;">Vehículos · usado</div>
+          <div style="font-size:13px;color:#8A8678;padding:4px 2px;">…y el resto de los departamentos</div>
+        </div>
+        <div style="margin-top:22px;padding-top:18px;border-top:1px solid #ECEAE2;font-size:14.5px;line-height:1.55;color:#34322C;"><strong>Home propia</strong> con colores invertidos · mismos departamentos que Market · <strong style="color:#2E7D57;">pill global ✓</strong></div>
+      </div>
+
+      <!-- GOURMET -->
+      <div style="background:#fff;border:1px solid #D6D3C9;border-radius:16px;padding:32px;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+          <div style="width:64px;height:64px;background:#9B3326;border-radius:20%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;"><div style="font-family:'Archivo Black';color:#fff;font-size:30px;line-height:.7;">M</div><div style="font-family:'Archivo Black';color:#fff;font-size:8px;letter-spacing:.04em;margin-top:1px;">MARKET</div></div>
+          <div><div style="font-family:'Archivo Black';font-size:22px;">Gourmet</div><div style="font-size:13px;color:#9B3326;font-weight:700;letter-spacing:.04em;">CURADURÍA · de un rubro</div></div>
+        </div>
+        <p style="font-size:15px;line-height:1.55;color:#34322C;margin-bottom:20px;">Vive dentro de <strong>un</strong> departamento: Tienda. No existe "Gourmet Vehículos".</p>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;gap:10px;border-radius:6px;padding:9px 12px;font-size:14px;color:#B0AB9C;">Tech</div>
+          <div style="display:flex;align-items:center;gap:10px;border-radius:6px;padding:9px 12px;font-size:14px;color:#B0AB9C;">Home</div>
+          <div style="display:flex;align-items:center;gap:10px;background:#F5EAE7;border-left:3px solid #9B3326;border-radius:6px;padding:9px 12px;font-size:14px;color:#8A2C21;font-weight:700;">Tienda <span style="font-weight:500;color:#9B3326;">› recorte premium</span></div>
+          <div style="display:flex;align-items:center;gap:10px;border-radius:6px;padding:9px 12px;font-size:14px;color:#B0AB9C;">Vehículos</div>
+          <div style="font-size:13px;color:#8A8678;padding:4px 2px;">el resto no aplica</div>
+        </div>
+        <div style="margin-top:22px;padding-top:18px;border-top:1px solid #ECEAE2;font-size:14.5px;line-height:1.55;color:#34322C;">Es una <strong>vidriera</strong> de Tienda · <strong style="color:#9B3326;">no es pill global ✗</strong></div>
+      </div>
+
+    </div>
+
+    <!-- RECOMMENDATION -->
+    <div style="margin-top:48px;">
+      <h2 style="font-family:'Archivo Black';font-size:24px;border-bottom:2px solid #1C1B19;padding-bottom:12px;margin-bottom:28px;">Qué hacer con Gourmet</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div style="background:#1C1B19;border-radius:14px;padding:30px;">
+          <div style="display:inline-block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#1C1B19;background:#9B3326;border-radius:100px;padding:5px 13px;font-weight:700;margin-bottom:16px;color:#fff;">Recomendada</div>
+          <h3 style="font-family:'Archivo Black';font-size:19px;color:#fff;margin-bottom:12px;">Destacado dentro de Tienda</h3>
+          <p style="font-size:14.5px;line-height:1.6;color:#B7B3A8;">Gourmet es la home curada de Tienda, con skin terracota. Se entra <strong style="color:#E8DFD8;">desde Tienda</strong>, no desde un pill global. El pill global queda solo para Second.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #D6D3C9;border-radius:14px;padding:30px;">
+          <div style="display:inline-block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8A8678;border:1px solid #D6D3C9;border-radius:100px;padding:5px 13px;font-weight:700;margin-bottom:16px;">Alternativa</div>
+          <h3 style="font-family:'Archivo Black';font-size:19px;margin-bottom:12px;">Promoverlo a vertical</h3>
+          <p style="font-size:14.5px;line-height:1.6;color:#56544C;">Si el negocio apuesta fuerte a gastronomía, Gourmet entra al <strong>menú de verticales</strong> con su punto y home propia — pero su catálogo sigue siendo el food premium, no "todo".</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

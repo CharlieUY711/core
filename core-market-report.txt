@@ -1,0 +1,158 @@
+
+======================================================================
+CORE-MARKET — REPORTE DE CARRITO/CHECKOUT/PWA (solo lectura)
+======================================================================
+Raíz monorepo: C:\CORE
+Archivos totales escaneados: 3339
+
+======================================================================
+1) ESTRUCTURA: apps/ y packages/
+======================================================================
+apps/ (7): BEP, core-bep, core-game, core-landing, core-market, core-MCP, core-orquesta
+packages/ (23): bep-config, bep-supabase, core, core-apivault, core-auth, core-catalog, core-commerce, core-design, core-direcciones, core-foundation-config-runtime, core-foundation-config-types, core-globe, core-i18n, core-meta, core-mlmp, core-perfil, core-shell, core-test, core-ui, crear-orden, db, game-ui, rewards
+
+======================================================================
+2) IMPORTS @core/* Y SI EXISTEN DE VERDAD
+======================================================================
+  @core/commerce  →  ❌ NO existe en packages/ (importado en 21 archivo(s))
+      apps/core-market/src/app/public/CarritoPage.tsx
+      apps/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_181901/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_183229/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_221323/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_223357/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_223904/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260620_224651/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260621_081959/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260621_082054/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260621_092330/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260621_094048/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260621_095249/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260622_112519/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260622_112917/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260622_113347/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260622_113439/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260622_115420/core-market/src/app/public/MarketPage.tsx
+      Designsystem/market-rebrand/_backup_20260623_125725/core-market/src/app/public/MarketPage.tsx
+      packages/core-commerce/src/adapters/gateways.ts
+  @core/core-apivault  →  ✅ existe en packages/ (importado en 1 archivo(s))
+      apps/core-orquesta/src/lib/vault.ts
+  @core/game-ui  →  ✅ existe en packages/ (importado en 2 archivo(s))
+      apps/core-game/src/main.tsx
+      packages/game-ui/examples/DashboardEmbed.tsx
+  @core/rewards  →  ✅ existe en packages/ (importado en 2 archivo(s))
+      apps/core-game/api/index.ts
+      apps/core-game/api/prisma-repo.ts
+  @core/session  →  ❌ NO existe en packages/ (importado en 1 archivo(s))
+      apps/core-market/src/src/app/services/carritoApi.ts
+  @core/shell  →  ❌ NO existe en packages/ (importado en 3 archivo(s))
+      apps/BEP/7aRCHIVOS/DashboardShellClient.tsx
+      apps/core-bep/src/app/(dashboard)/layout.tsx
+      apps/core-bep/src/components/layout/DashboardShellClient.tsx
+
+======================================================================
+3) ARCHIVOS DE CARRITO / CHECKOUT / ORDENES
+======================================================================
+  20260703_ordenes_persona_empresa.sql
+  20260704_crear_orden_segura_v3.sql
+  apps/core-market/.bak_precarrito_20260612_130241/package.json
+  apps/core-market/.bak_precarrito_20260612_130241/src__app__public__CarritoPage.tsx
+  apps/core-market/.bak_precarrito_20260612_130241/src__app__public__CheckoutPage.tsx
+  apps/core-market/.bak_precarrito_20260612_130241/tsconfig.json
+  apps/core-market/.bak_precarrito_20260612_130241/vite.config.ts
+  apps/core-market/carritoApi-fix (1)/carritoApi-fix (2).zip
+  apps/core-market/carritoApi-fix (1)/src/app/services/carritoApi.ts
+  apps/core-market/carritoApi-fix (1).zip
+  apps/core-market/carritoApi-fix (3).zip
+  apps/core-market/crear-orden-fix-v3 (1).zip
+  apps/core-market/functions/crear-orden/index.ts
+  apps/core-market/migrations/20260703_crear_orden_segura_v2.sql
+  apps/core-market/migrations/20260703_ordenes_persona_empresa.sql
+  apps/core-market/migrations/20260704_crear_orden_segura_v3.sql
+  apps/core-market/src/app/public/CarritoPage.tsx
+  apps/core-market/src/app/public/CheckoutPage.tsx
+  apps/core-market/src/app/public/DashboardOrdenes.tsx
+  apps/core-market/src/app/public/OrdenPage.tsx
+  apps/core-market/src/app/services/carritoApi.ts
+  apps/core-market/src/app/services/ordenesApi.ts
+  apps/core-market/src/services/carritoApi.ts
+  apps/core-market/src/src/app/services/carritoApi.ts
+  apps/core-market/supabase/functions/crear-orden/index.ts
+  Designsystem/market-rebrand/core-commerce/src/CarritoModule.tsx
+  Designsystem/market-rebrand/core-market/src/app/services/carritoApi.ts
+  Designsystem/market-rebrand/_backup_20260623_125725/core-commerce/src/CarritoModule.tsx
+  Designsystem/market-rebrand/_backup_20260623_125725/core-market/src/app/services/carritoApi.ts
+  packages/core-commerce/CarritoModule.tsx
+  packages/core-commerce/package.json
+  packages/core-commerce/src/adapters/gateways.ts
+  packages/core-commerce/src/CarritoModule.tsx
+  packages/core-commerce/src/index.ts
+  packages/core-commerce/tsconfig.json
+  packages/core-commerce.zip
+  packages/crear-orden/functions/crear-orden/index.ts
+  packages/crear-orden/migrations/20260703_ordenes_persona_empresa.sql
+  packages/crear-orden/migrations/20260704_crear_orden_segura_v3.sql
+  packages/crear-orden/README.md
+  packages/crear-orden-fix-v3.zip
+  public/Marca multirrubro y eCommerce.zip
+  tools/tool-game/src/lib/supabase/carritoApi.ts
+
+======================================================================
+4) MUTACIONES Y TABLAS EN ARCHIVOS DE CARRITO/CHECKOUT
+======================================================================
+    5×  mutación en apps/core-market/carritoApi-fix (1)/src/app/services/carritoApi.ts
+    5×  mutación en apps/core-market/src/app/services/carritoApi.ts
+    5×  mutación en apps/core-market/src/src/app/services/carritoApi.ts
+    5×  mutación en Designsystem/market-rebrand/core-market/src/app/services/carritoApi.ts
+    5×  mutación en Designsystem/market-rebrand/_backup_20260623_125725/core-market/src/app/services/carritoApi.ts
+    4×  mutación en tools/tool-game/src/lib/supabase/carritoApi.ts
+
+Tablas referenciadas (.from(...)):
+    4×  articulos
+   40×  carrito
+    3×  ordenes
+    4×  productos_market
+    5×  productos_secondhand
+    1×  products
+
+======================================================================
+5) PWA E INTEGRACIÓN CON INSTAGRAM
+======================================================================
+manifest.json encontrados: 1
+  tools/tool-game/public/manifest.json
+Service workers encontrados: 1
+  apps/core-game/public/sw.js
+Detección de navegador in-app de Instagram: no encontrada
+
+======================================================================
+6) MIGRACIONES SUPABASE (ordenes/carrito)
+======================================================================
+C:\CORE\supabase\migrations no existe.
+
+======================================================================
+7) GIT
+======================================================================
+branch: main
+archivos sin commitear: 101
+  (carrito/checkout)  M apps/core-market/src/app/services/carritoApi.ts
+  (carrito/checkout)  M packages/core-commerce/src/CarritoModule.tsx
+  (carrito/checkout) ?? 20260703_ordenes_persona_empresa.sql
+  (carrito/checkout) ?? 20260704_crear_orden_segura_v3.sql
+  (carrito/checkout) ?? "apps/core-market/carritoApi-fix (1)/"
+  (carrito/checkout) ?? packages/crear-orden/
+  (otro) M .gitignore
+  (otro)  M .npmrc
+  (otro)  M apps/BEP/Biblioteca/_tools/author_adrs.py
+  (otro)  M apps/BEP/Biblioteca/_tools/regen_derived.py
+  (otro)  M apps/core-bep/supabase/migrations/0006_security_hardening.sql
+  (otro)  M apps/core-bep/supabase/migrations/MIGRATION-0006-REPORT.md
+  (otro)  M apps/core-landing/app/globals.css
+  (otro)  M apps/core-landing/public/favicon.svg
+  (otro)  M apps/core-landing/public/logo-white.svg
+  (otro)  M apps/core-landing/public/logo.svg
+  (otro)  M apps/core-market/README.md
+  (otro)  M apps/core-market/public/favicon.svg
+  (otro)  M apps/core-market/public/logo-white.svg
+  (otro)  M apps/core-market/public/logo.svg
+  (otro)  M apps/core-market/src/app/components/brand/Brand.tsx

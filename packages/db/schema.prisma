@@ -1,0 +1,124 @@
+// packages/db — Modelo de datos de la feature de premios.
+// Postgres + Prisma. Encaja en el monorepo como @core/db (workspace:*),
+// consumido por apps/core-game y apps/core-market.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BenefitType {
+  PERCENTAGE_DISCOUNT
+  FIXED_DISCOUNT
+  FREE_SHIPPING
+  FREE_PRODUCT
+  GIFT_CARD
+}
+
+enum PrizeStatus {
+  PENDING
+  AVAILABLE
+  USED
+  EXPIRED
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+  ABANDONED
+}
+
+// Usuario de Market. La titularidad del premio se ancla a este id, nunca al
+// dispositivo. Gestionado por la capa de auth (Google / Apple / email).
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  carts  Cart[]
+  prizes Prize[]
+  plays  Play[]
+}
+
+// Catálogo: las plantillas de premio que pueden salir en la tirada.
+// El motor de tirada solo considera active = true y weight > 0.
+model Reward {
+  id          String      @id @default(cuid())
+  name        String
+  description String      @default("")
+  benefitType BenefitType
+  benefitValue Float      @default(0)
+  weight      Int         @default(1) // peso relativo de la tirada
+  validityMs  Int // vida del premio una vez ganado
+  active      Boolean     @default(true)
+  imageUrl    String?
+
+  prizes Prize[]
+
+  @@index([active])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  prizes Prize[]
+
+  // Un único carrito ACTIVE por usuario (índice parcial vía migración).
+  @@index([userId, status])
+}
+
+// Tirada. Su idempotencyKey único garantiza 1 tirada = 1 premio, incluso ante
+// requests repetidas o concurrentes (el unique de base resuelve la carrera).
+model Play {
+  id             String   @id @default(cuid())
+  userId         String
+  idempotencyKey String
+  createdAt      DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id])
+  prize Prize?
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+}
+
+// Premio ganado: la entidad con titularidad. Inmutable en userId.
+model Prize {
+  id     String @id @default(cuid())
+  code   String @unique // código público irrepetible (no reutilizable por enlace)
+  userId String
+  rewardId String
+  cartId String
+  playId String @unique // 1:1 con la tirada => no se puede duplicar
+
+  status PrizeStatus @default(AVAILABLE)
+
+  createdAt DateTime  @default(now())
+  startsAt  DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  // Snapshot del beneficio al ganarlo: el premio no cambia si cambia el catálogo.
+  benefitType  BenefitType
+  benefitValue Float       @default(0)
+  name         String
+
+  user   User   @relation(fields: [userId], references: [id])
+  reward Reward @relation(fields: [rewardId], references: [id])
+  cart   Cart   @relation(fields: [cartId], references: [id])
+  play   Play   @relation(fields: [playId], references: [id])
+
+  // Acelera "Mis Premios" y el barrido de vencimiento.
+  @@index([userId, status])
+  @@index([status, expiresAt])
+}

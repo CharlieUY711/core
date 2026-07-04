@@ -27,7 +27,7 @@
                    />
 
      Con tokens propios (override):
-                   <CarritoModule tokenOverrides={{ '--brand-accent': '#FF6835' }} />
+                   <CarritoModule tokenOverrides={{ '--c-accent': '#FF6835' }} />
    ═══════════════════════════════════════════════════════════════════════ */
 
 import { useState, useEffect, useCallback, useRef, CSSProperties } from 'react';
@@ -46,8 +46,16 @@ export interface CarritoItem {
   loading?: boolean;
 }
 
+export type TipoComprador = 'persona' | 'empresa';
+
 export interface CheckoutData {
+  tipo_comprador: TipoComprador;
+  /** Persona: nombre completo. Empresa: nombre de la persona de contacto. */
   nombre: string;
+  /** Persona: CI (opcional). Empresa: RUT (obligatorio, validado). */
+  documento?: string;
+  /** Solo empresa: razón social para la factura. */
+  razon_social?: string;
   email: string;
   telefono: string;
   direccion: string;
@@ -152,6 +160,39 @@ function fmt(n: number, moneda: 'UYU' | 'USD' = 'UYU') {
   return `$ ${Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 }
 
+// ── Validación de RUT / CI uruguayos (dígito verificador, DGI) ─────────
+// RUT: 12 dígitos = 2 (depto) + 6 (secuencial) + 3 (sucursal) + 1 (verificador).
+// Algoritmo módulo 11 sobre los primeros 11 dígitos con pesos fijos.
+function validarRUT(rutRaw: string): boolean {
+  const rut = rutRaw.replace(/\D/g, '');
+  if (rut.length !== 12) return false;
+  const pesos = [4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const digitos = rut.slice(0, 11).split('').map(Number);
+  const verificador = Number(rut[11]);
+  const suma = digitos.reduce((acc, d, i) => acc + d * pesos[i], 0);
+  const dv = (11 - (suma % 11)) % 11;
+  // Un dv de dos cifras (10) no corresponde a ningún RUT válido emitido por DGI.
+  if (dv > 9) return false;
+  return dv === verificador;
+}
+
+// CI uruguaya: 7 u 8 dígitos (incluye verificador). Validación opcional/informativa.
+function validarCI(ciRaw: string): boolean {
+  const ci = ciRaw.replace(/\D/g, '');
+  if (ci.length < 7 || ci.length > 8) return false;
+  const cuerpo = ci.length === 8 ? ci.slice(0, 7) : ci.padStart(7, '0');
+  const verificador = Number(ci[ci.length - 1]);
+  const pesos = [2, 9, 8, 7, 6, 3, 4];
+  const suma = cuerpo.split('').map(Number).reduce((acc, d, i) => acc + d * pesos[i], 0);
+  let dv = suma % 10;
+  if (dv !== 0) dv = 10 - dv;
+  return dv === verificador;
+}
+
+function fmtRUT(v: string) {
+  return v.replace(/\D/g, '').slice(0, 12);
+}
+
 function useTokens(overrides?: Record<string, string>) {
   useEffect(() => {
     if (!overrides) return;
@@ -208,9 +249,9 @@ const T = {
   } as CSSProperties,
 
   headerBadge: {
-    background: 'var(--brand-accent, #C9A84C)',
-    color: 'var(--color-bg-topbar, #0D2B55)',
-    borderRadius: 'var(--radius-pill, 999px)',
+    background: 'var(--c-accent, #C9A84C)',
+    color: 'var(--c-bg-navbar, #0D2B55)',
+    borderRadius: 'var(--r-pill, 999px)',
     fontSize: '11px',
     fontWeight: 700,
     minWidth: '20px',
@@ -257,13 +298,13 @@ const T = {
   body: {
     flex: 1,
     overflow: 'auto',
-    padding: 'var(--space-5, 24px)',
+    padding: 'var(--sp-5, 24px)',
   } as CSSProperties,
 
   grid: {
     display: 'grid',
     gridTemplateColumns: '1fr 360px',
-    gap: 'var(--space-5, 24px)',
+    gap: 'var(--sp-5, 24px)',
     maxWidth: '1080px',
     margin: '0 auto',
   } as CSSProperties,
@@ -276,19 +317,19 @@ const T = {
   // Card
   card: {
     background: '#fff',
-    border: '1px solid var(--color-border, #C8D5E8)',
-    borderRadius: 'var(--radius-md, 8px)',
+    border: '1px solid var(--c-border, #C8D5E8)',
+    borderRadius: 'var(--r-md, 8px)',
     boxShadow: 'var(--shadow-card, 0 2px 8px rgba(13,43,85,.08))',
     overflow: 'hidden',
   } as CSSProperties,
 
   cardHeader: {
-    padding: 'var(--space-4, 16px) var(--space-4, 16px)',
-    borderBottom: '1px solid var(--color-border, #C8D5E8)',
+    padding: 'var(--sp-4, 16px) var(--sp-4, 16px)',
+    borderBottom: '1px solid var(--c-border, #C8D5E8)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'var(--gray-50, #F2F5FA)',
+    background: 'var(--c-bg, #F2F5FA)',
   } as CSSProperties,
 
   cardHeaderTitle: {
@@ -296,20 +337,20 @@ const T = {
     fontWeight: 700,
     letterSpacing: '0.1em',
     textTransform: 'uppercase' as const,
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
     margin: 0,
   } as CSSProperties,
 
   cardBody: {
-    padding: 'var(--space-4, 16px)',
+    padding: 'var(--sp-4, 16px)',
   } as CSSProperties,
 
   // Item row
   itemRow: (loading?: boolean): CSSProperties => ({
     display: 'flex',
-    gap: 'var(--space-3, 12px)',
-    padding: 'var(--space-3, 12px)',
-    borderBottom: '1px solid var(--color-border, #C8D5E8)',
+    gap: 'var(--sp-3, 12px)',
+    padding: 'var(--sp-3, 12px)',
+    borderBottom: '1px solid var(--c-border, #C8D5E8)',
     opacity: loading ? 0.5 : 1,
     transition: 'opacity 200ms',
     alignItems: 'flex-start',
@@ -319,7 +360,7 @@ const T = {
     width: '72px',
     height: '72px',
     objectFit: 'cover' as const,
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
     background: 'var(--gray-100, #E8EDF5)',
     flexShrink: 0,
   } as CSSProperties,
@@ -327,7 +368,7 @@ const T = {
   itemName: {
     fontSize: '13px',
     fontWeight: 600,
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
     margin: '0 0 4px',
     lineHeight: 1.3,
   } as CSSProperties,
@@ -335,7 +376,7 @@ const T = {
   itemPrice: {
     fontSize: '14px',
     fontWeight: 700,
-    color: 'var(--color-primary, #1A4F9C)',
+    color: 'var(--c-cta, #1A4F9C)',
     margin: '0 0 8px',
   } as CSSProperties,
 
@@ -343,8 +384,8 @@ const T = {
   qtyWrap: {
     display: 'inline-flex',
     alignItems: 'center',
-    border: '1px solid var(--color-border, #C8D5E8)',
-    borderRadius: 'var(--radius-sm, 4px)',
+    border: '1px solid var(--c-border, #C8D5E8)',
+    borderRadius: 'var(--r-sm, 4px)',
     overflow: 'hidden',
     height: '28px',
   } as CSSProperties,
@@ -353,8 +394,8 @@ const T = {
     width: '28px',
     height: '28px',
     border: 'none',
-    background: 'var(--gray-50, #F2F5FA)',
-    color: 'var(--color-text-dark, #0D2B55)',
+    background: 'var(--c-bg, #F2F5FA)',
+    color: 'var(--c-text, #0D2B55)',
     fontSize: '16px',
     cursor: 'pointer',
     display: 'flex',
@@ -370,14 +411,14 @@ const T = {
     textAlign: 'center' as const,
     fontSize: '13px',
     fontWeight: 600,
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
   } as CSSProperties,
 
   // Badge tipo
   typeBadge: (tipo: string): CSSProperties => ({
     display: 'inline-block',
     padding: '2px 8px',
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
     fontSize: '9px',
     fontWeight: 700,
     letterSpacing: '0.08em',
@@ -386,8 +427,8 @@ const T = {
       ? 'rgba(26,79,156,.12)'
       : 'rgba(29,158,117,.12)',
     color: tipo === 'market'
-      ? 'var(--color-primary, #1A4F9C)'
-      : 'var(--color-success, #1D9E75)',
+      ? 'var(--c-cta, #1A4F9C)'
+      : 'var(--c-success, #1D9E75)',
   }),
 
   // Remove
@@ -395,7 +436,7 @@ const T = {
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    color: 'var(--color-danger, #C0392B)',
+    color: 'var(--c-danger, #C0392B)',
     fontSize: '18px',
     padding: '2px',
     lineHeight: 1,
@@ -413,8 +454,8 @@ const T = {
     padding: '6px 0',
     fontSize: bold ? '14px' : '13px',
     fontWeight: bold ? 700 : 400,
-    color: bold ? 'var(--color-text-dark, #0D2B55)' : 'var(--gray-400, #7A7A7A)',
-    borderTop: bold ? '1px solid var(--color-border, #C8D5E8)' : 'none',
+    color: bold ? 'var(--c-text, #0D2B55)' : 'var(--c-text-2, #7A7A7A)',
+    borderTop: bold ? '1px solid var(--c-border, #C8D5E8)' : 'none',
     marginTop: bold ? '8px' : 0,
     paddingTop: bold ? '12px' : '6px',
   }),
@@ -424,10 +465,10 @@ const T = {
     display: 'block',
     width: '100%',
     padding: '12px 20px',
-    background: 'var(--color-primary, #1A4F9C)',
+    background: 'var(--c-cta, #1A4F9C)',
     color: '#fff',
     border: 'none',
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
     fontSize: '11px',
     fontWeight: 700,
     letterSpacing: '0.1em',
@@ -441,10 +482,10 @@ const T = {
     display: 'block',
     width: '100%',
     padding: '12px 20px',
-    background: 'var(--brand-accent, #C9A84C)',
-    color: 'var(--brand-secondary, #0D2B55)',
+    background: 'var(--c-accent, #C9A84C)',
+    color: 'var(--c-text, #0D2B55)',
     border: 'none',
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
     fontSize: '11px',
     fontWeight: 700,
     letterSpacing: '0.1em',
@@ -456,27 +497,27 @@ const T = {
 
   btnSecondary: {
     background: 'transparent',
-    border: '1px solid var(--color-border, #C8D5E8)',
-    borderRadius: 'var(--radius-sm, 4px)',
+    border: '1px solid var(--c-border, #C8D5E8)',
+    borderRadius: 'var(--r-sm, 4px)',
     padding: '8px 16px',
     fontSize: '11px',
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase' as const,
     cursor: 'pointer',
-    color: 'var(--color-primary, #1A4F9C)',
+    color: 'var(--c-cta, #1A4F9C)',
     transition: 'all 200ms',
   } as CSSProperties,
 
   btnDanger: {
     background: 'transparent',
     border: '1px solid transparent',
-    color: 'var(--color-danger, #C0392B)',
+    color: 'var(--c-danger, #C0392B)',
     fontSize: '11px',
     fontWeight: 600,
     cursor: 'pointer',
     padding: '4px 8px',
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
   } as CSSProperties,
 
   btnClose: {
@@ -494,7 +535,7 @@ const T = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '4px',
-    marginBottom: 'var(--space-3, 12px)',
+    marginBottom: 'var(--sp-3, 12px)',
   } as CSSProperties,
 
   label: {
@@ -502,15 +543,15 @@ const T = {
     fontWeight: 700,
     letterSpacing: '0.06em',
     textTransform: 'uppercase' as const,
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
   } as CSSProperties,
 
   input: {
-    border: '1px solid var(--color-border, #C8D5E8)',
-    borderRadius: 'var(--radius-sm, 4px)',
+    border: '1px solid var(--c-border, #C8D5E8)',
+    borderRadius: 'var(--r-sm, 4px)',
     padding: '8px 12px',
     fontSize: '13px',
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box' as const,
@@ -521,14 +562,14 @@ const T = {
   // Gateway card
   gatewayCard: (selected: boolean): CSSProperties => ({
     border: selected
-      ? '2px solid var(--brand-accent, #C9A84C)'
-      : '1px solid var(--color-border, #C8D5E8)',
-    borderRadius: 'var(--radius-md, 8px)',
-    padding: 'var(--space-3, 12px) var(--space-4, 16px)',
+      ? '2px solid var(--c-accent, #C9A84C)'
+      : '1px solid var(--c-border, #C8D5E8)',
+    borderRadius: 'var(--r-md, 8px)',
+    padding: 'var(--sp-3, 12px) var(--sp-4, 16px)',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-3, 12px)',
+    gap: 'var(--sp-3, 12px)',
     background: selected ? 'var(--brand-accent-light, rgba(201,168,76,.07))' : '#fff',
     transition: 'all 200ms',
     marginBottom: 'var(--space-2, 8px)',
@@ -539,20 +580,20 @@ const T = {
     height: '16px',
     borderRadius: '50%',
     border: selected
-      ? '5px solid var(--brand-accent, #C9A84C)'
-      : '2px solid var(--color-border, #C8D5E8)',
+      ? '5px solid var(--c-accent, #C9A84C)'
+      : '2px solid var(--c-border, #C8D5E8)',
     flexShrink: 0,
     transition: 'all 200ms',
   }),
 
   // Empty state
   emptyWrap: {
-    padding: 'var(--space-8, 64px) var(--space-5, 24px)',
+    padding: 'var(--sp-8, 64px) var(--sp-5, 24px)',
     textAlign: 'center' as const,
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
-    gap: 'var(--space-3, 12px)',
+    gap: 'var(--sp-3, 12px)',
   } as CSSProperties,
 
   emptyIcon: {
@@ -564,33 +605,33 @@ const T = {
   emptyTitle: {
     fontSize: '16px',
     fontWeight: 700,
-    color: 'var(--color-text-dark, #0D2B55)',
+    color: 'var(--c-text, #0D2B55)',
     margin: 0,
   } as CSSProperties,
 
   emptyText: {
     fontSize: '13px',
-    color: 'var(--gray-400, #7A7A7A)',
+    color: 'var(--c-text-2, #7A7A7A)',
     margin: 0,
   } as CSSProperties,
 
   // Alerts
   alert: (type: 'success' | 'error' | 'info'): CSSProperties => ({
-    borderRadius: 'var(--radius-sm, 4px)',
+    borderRadius: 'var(--r-sm, 4px)',
     padding: '10px 14px',
     fontSize: '13px',
     fontWeight: 500,
     display: 'flex',
     alignItems: 'flex-start',
     gap: '8px',
-    marginBottom: 'var(--space-3, 12px)',
+    marginBottom: 'var(--sp-3, 12px)',
     background:
       type === 'success' ? 'rgba(29,158,117,.1)' :
       type === 'error' ? 'rgba(192,57,43,.1)' :
       'rgba(46,111,196,.1)',
     color:
-      type === 'success' ? 'var(--color-success, #1D9E75)' :
-      type === 'error' ? 'var(--color-danger, #C0392B)' :
+      type === 'success' ? 'var(--c-success, #1D9E75)' :
+      type === 'error' ? 'var(--c-danger, #C0392B)' :
       'var(--color-info, #2E6FC4)',
     border: `1px solid ${
       type === 'success' ? 'rgba(29,158,117,.25)' :
@@ -602,17 +643,17 @@ const T = {
   referenceCard: {
     background: 'var(--brand-secondary-dark, #081C38)',
     border: '1px solid rgba(201,168,76,.3)',
-    borderRadius: 'var(--radius-md, 8px)',
-    padding: 'var(--space-5, 24px)',
+    borderRadius: 'var(--r-md, 8px)',
+    padding: 'var(--sp-5, 24px)',
     textAlign: 'center' as const,
-    marginBottom: 'var(--space-4, 16px)',
+    marginBottom: 'var(--sp-4, 16px)',
   } as CSSProperties,
 
   referenceCode: {
     fontSize: '24px',
     fontWeight: 700,
     fontFamily: 'var(--font-mono, "Courier New", monospace)',
-    color: 'var(--brand-accent, #C9A84C)',
+    color: 'var(--c-accent, #C9A84C)',
     letterSpacing: '0.12em',
     margin: '8px 0',
   } as CSSProperties,
@@ -620,8 +661,8 @@ const T = {
   // Divider
   divider: {
     height: '1px',
-    background: 'var(--color-border, #C8D5E8)',
-    margin: 'var(--space-4, 16px) 0',
+    background: 'var(--c-border, #C8D5E8)',
+    margin: 'var(--sp-4, 16px) 0',
   } as CSSProperties,
 };
 
@@ -649,9 +690,9 @@ function StepDot({ done }: { done: boolean }) {
     <span style={{
       width: 16, height: 16,
       borderRadius: '50%',
-      background: done ? 'var(--brand-accent, #C9A84C)' : 'rgba(255,255,255,0.15)',
+      background: done ? 'var(--c-accent, #C9A84C)' : 'rgba(255,255,255,0.15)',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 9, color: done ? 'var(--brand-secondary, #0D2B55)' : 'transparent',
+      fontSize: 9, color: done ? 'var(--c-text, #0D2B55)' : 'transparent',
       flexShrink: 0,
     }}>✓</span>
   );
@@ -664,7 +705,7 @@ function InputField({ label, value, onChange, type = 'text', placeholder, requir
   const [focused, setFocused] = useState(false);
   return (
     <div style={T.inputGroup}>
-      <label style={T.label}>{label}{required && <span style={{ color: 'var(--color-danger,#C0392B)', marginLeft: 3 }}>*</span>}</label>
+      <label style={T.label}>{label}{required && <span style={{ color: 'var(--c-danger,#C0392B)', marginLeft: 3 }}>*</span>}</label>
       <input
         type={type}
         value={value}
@@ -674,12 +715,57 @@ function InputField({ label, value, onChange, type = 'text', placeholder, requir
         disabled={disabled}
         style={{
           ...T.input,
-          borderColor: focused ? 'var(--color-primary, #1A4F9C)' : 'var(--color-border, #C8D5E8)',
+          borderColor: focused ? 'var(--c-cta, #1A4F9C)' : 'var(--c-border, #C8D5E8)',
           boxShadow: focused ? '0 0 0 3px rgba(26,79,156,.1)' : undefined,
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
+    </div>
+  );
+}
+
+function TipoCompradorToggle({ value, onChange, disabled }: {
+  value: TipoComprador; onChange: (v: TipoComprador) => void; disabled?: boolean;
+}) {
+  const opts: { id: TipoComprador; label: string; icon: string }[] = [
+    { id: 'persona', label: 'Persona', icon: '🧑' },
+    { id: 'empresa', label: 'Empresa (RUT)', icon: '🏢' },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Tipo de comprador" style={{ display: 'flex', gap: 8, marginBottom: 'var(--sp-3, 12px)' }}>
+      {opts.map(o => {
+        const selected = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            disabled={disabled}
+            onClick={() => onChange(o.id)}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '10px 12px',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              borderRadius: 'var(--r-sm, 4px)',
+              border: selected ? '2px solid var(--c-accent, #C9A84C)' : '1px solid var(--c-border, #C8D5E8)',
+              background: selected ? 'var(--brand-accent-light, rgba(201,168,76,.07))' : '#fff',
+              color: 'var(--c-text, #0D2B55)',
+              cursor: disabled ? 'default' : 'pointer',
+              transition: 'all 200ms',
+            }}
+          >
+            <span aria-hidden>{o.icon}</span>{o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -730,6 +816,8 @@ async function buildSupabaseApi(apiUrl: string) {
           cantidad: i.cantidad,
           precio_unitario: i.precio_unitario,
           moneda: (i as any).moneda ?? 'UYU',
+          nombre: (i as any).nombre,
+          imagen: (i as any).imagen,
         }));
       },
       updateQty: (id: string, qty: number) => actualizarItemCarrito(id, qty).then(() => void 0),
@@ -792,13 +880,21 @@ export default function CarritoModule({
   const [error, setError] = useState('');
 
   // Form
+  const [tipoComprador, setTipoComprador] = useState<TipoComprador>('persona');
   const [nombre, setNombre] = useState('');
+  const [documento, setDocumento] = useState('');       // CI (persona) o RUT (empresa)
+  const [razonSocial, setRazonSocial] = useState('');    // solo empresa
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [ciudad, setCiudad] = useState('');
   const [codigoPostal, setCodigoPostal] = useState('');
   const [formError, setFormError] = useState('');
+
+  const documentoValido =
+    tipoComprador === 'empresa'
+      ? validarRUT(documento)
+      : documento.trim() === '' || validarCI(documento);
 
   // Order
   const [confirming, setConfirming] = useState(false);
@@ -882,12 +978,35 @@ export default function CarritoModule({
       setFormError('Email inválido.');
       return;
     }
+    if (tipoComprador === 'empresa') {
+      if (!razonSocial.trim()) {
+        setFormError('Ingresá la razón social de la empresa.');
+        return;
+      }
+      if (!validarRUT(documento)) {
+        setFormError('El RUT ingresado no es válido. Verificá los 12 dígitos.');
+        return;
+      }
+    } else if (documento.trim() !== '' && !validarCI(documento)) {
+      setFormError('La cédula ingresada no es válida.');
+      return;
+    }
     setFormError('');
     setConfirming(true);
     setOrderError('');
     try {
       const result = await apiRef.current!.createOrder(
-        { nombre, email, telefono, direccion, ciudad, codigo_postal: codigoPostal },
+        {
+          tipo_comprador: tipoComprador,
+          nombre,
+          documento: documento.trim() || undefined,
+          razon_social: tipoComprador === 'empresa' ? razonSocial.trim() : undefined,
+          email,
+          telefono,
+          direccion,
+          ciudad,
+          codigo_postal: codigoPostal,
+        },
         items
       );
       setOrderId(result.order_id);
@@ -947,7 +1066,7 @@ export default function CarritoModule({
   // ─── Loading ───────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ ...wrapStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: mode === 'page' ? '100vh' : '200px' }}>
-      <div style={{ textAlign: 'center', color: 'var(--color-text-dark, #0D2B55)', opacity: 0.5 }}>
+      <div style={{ textAlign: 'center', color: 'var(--c-text, #0D2B55)', opacity: 0.5 }}>
         <div style={{ fontSize: 32, marginBottom: 12, animation: 'spin 1s linear infinite' }}>⏳</div>
         <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cargando carrito…</div>
       </div>
@@ -1057,7 +1176,7 @@ export default function CarritoModule({
                       <p style={T.itemName}>{item.nombre || item.producto_id}</p>
                       <p style={T.itemPrice}>
                         {fmt(item.precio_unitario * item.cantidad, item.moneda)}
-                        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--gray-400,#7A7A7A)', marginLeft: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--c-text-2,#7A7A7A)', marginLeft: 6 }}>
                           ({fmt(item.precio_unitario, item.moneda)} c/u)
                         </span>
                       </p>
@@ -1102,7 +1221,7 @@ export default function CarritoModule({
                   </div>
                   <div style={T.summaryRow()}>
                     <span>Envío</span>
-                    <span style={{ color: 'var(--color-success, #1D9E75)', fontWeight: 600 }}>Gratis</span>
+                    <span style={{ color: 'var(--c-success, #1D9E75)', fontWeight: 600 }}>Gratis</span>
                   </div>
                   <div style={T.summaryRow(true)}>
                     <span>Total estimado</span>
@@ -1121,7 +1240,7 @@ export default function CarritoModule({
                   {mode === 'page' && (
                     <a href="/" style={{
                       display: 'block', textAlign: 'center', marginTop: 10,
-                      fontSize: 11, color: 'var(--gray-400,#7A7A7A)', textDecoration: 'none',
+                      fontSize: 11, color: 'var(--c-text-2,#7A7A7A)', textDecoration: 'none',
                       letterSpacing: '0.06em'
                     }}>
                       ← Seguir comprando
@@ -1133,7 +1252,7 @@ export default function CarritoModule({
                     {gateways.slice(0, 3).map(gw => (
                       <span key={gw.id} style={{ width: 44, height: 26, display: 'inline-block' }} title={gw.label} dangerouslySetInnerHTML={{ __html: gw.logo }} />
                     ))}
-                    <span style={{ fontSize: 10, color: 'var(--gray-400,#7A7A7A)', marginLeft: 4 }}>Pago seguro</span>
+                    <span style={{ fontSize: 10, color: 'var(--c-text-2,#7A7A7A)', marginLeft: 4 }}>Pago seguro</span>
                   </div>
                 </div>
               </div>
@@ -1143,7 +1262,7 @@ export default function CarritoModule({
 
         {/* ═══ STEP: FORM ═══ */}
         {step === 'form' && (
-          <div style={{ maxWidth: 680, margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'var(--space-5,24px)' }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'var(--sp-5,24px)' }}>
             <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
               <button style={{ ...T.btnSecondary, marginBottom: 16 }} onClick={() => setStep('cart')}>
                 ← Volver al carrito
@@ -1152,10 +1271,69 @@ export default function CarritoModule({
 
             <div style={{ ...T.card, gridColumn: isMobile ? '1' : '1 / -1' }}>
               <div style={T.cardHeader}>
+                <span style={T.cardHeaderTitle}>¿Quién compra?</span>
+              </div>
+              <div style={T.cardBody}>
+                <TipoCompradorToggle value={tipoComprador} onChange={setTipoComprador} disabled={confirming} />
+
+                {tipoComprador === 'empresa' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0 var(--sp-4,16px)' }}>
+                    <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
+                      <InputField
+                        label="Razón social"
+                        value={razonSocial}
+                        onChange={setRazonSocial}
+                        placeholder="Mi Empresa S.A."
+                        required
+                        disabled={confirming}
+                      />
+                    </div>
+                    <div>
+                      <InputField
+                        label="RUT"
+                        value={documento}
+                        onChange={v => setDocumento(fmtRUT(v))}
+                        placeholder="210012340017 (12 dígitos)"
+                        required
+                        disabled={confirming}
+                      />
+                      {documento.length === 12 && !documentoValido && (
+                        <div style={{ fontSize: 11, color: 'var(--c-danger, #C0392B)', marginTop: -8, marginBottom: 8 }}>
+                          RUT inválido — verificá el dígito verificador.
+                        </div>
+                      )}
+                    </div>
+                    <InputField
+                      label="Nombre de contacto"
+                      value={nombre}
+                      onChange={setNombre}
+                      placeholder="Persona a cargo de la compra"
+                      required
+                      disabled={confirming}
+                    />
+                  </div>
+                )}
+
+                {tipoComprador === 'persona' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0 var(--sp-4,16px)' }}>
+                    <InputField label="Nombre completo" value={nombre} onChange={setNombre} placeholder="Juan García" required disabled={confirming} />
+                    <InputField
+                      label="Cédula de identidad"
+                      value={documento}
+                      onChange={v => setDocumento(v.replace(/\D/g, '').slice(0, 8))}
+                      placeholder="12345678 (opcional)"
+                      disabled={confirming}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ ...T.card, gridColumn: isMobile ? '1' : '1 / -1' }}>
+              <div style={T.cardHeader}>
                 <span style={T.cardHeaderTitle}>Datos de contacto y envío</span>
               </div>
-              <div style={{ ...T.cardBody, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0 var(--space-4,16px)' }}>
-                <InputField label="Nombre completo" value={nombre} onChange={setNombre} placeholder="Juan García" required disabled={confirming} />
+              <div style={{ ...T.cardBody, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0 var(--sp-4,16px)' }}>
                 <InputField label="Email" value={email} onChange={setEmail} type="email" placeholder="juan@email.com" required disabled={confirming} />
                 <InputField label="Teléfono" value={telefono} onChange={setTelefono} type="tel" placeholder="099 123 456" disabled={confirming} />
                 <InputField label="Ciudad" value={ciudad} onChange={setCiudad} placeholder="Montevideo" required disabled={confirming} />
@@ -1165,10 +1343,10 @@ export default function CarritoModule({
                 <InputField label="Código postal" value={codigoPostal} onChange={setCodigoPostal} placeholder="11300" disabled={confirming} />
               </div>
 
-              {formError && <div style={{ ...T.alert('error'), margin: '0 var(--space-4,16px) var(--space-4,16px)' }}><span>⚠</span> {formError}</div>}
-              {orderError && <div style={{ ...T.alert('error'), margin: '0 var(--space-4,16px) var(--space-4,16px)' }}><span>✕</span> {orderError}</div>}
+              {formError && <div style={{ ...T.alert('error'), margin: '0 var(--sp-4,16px) var(--sp-4,16px)' }}><span>⚠</span> {formError}</div>}
+              {orderError && <div style={{ ...T.alert('error'), margin: '0 var(--sp-4,16px) var(--sp-4,16px)' }}><span>✕</span> {orderError}</div>}
 
-              <div style={{ padding: 'var(--space-4,16px)', borderTop: '1px solid var(--color-border,#C8D5E8)', display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ padding: 'var(--sp-4,16px)', borderTop: '1px solid var(--c-border,#C8D5E8)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   style={{ ...T.btnAccent, width: 'auto', padding: '12px 32px', opacity: confirming ? 0.7 : 1 }}
                   onClick={handleConfirm}
@@ -1180,11 +1358,11 @@ export default function CarritoModule({
             </div>
 
             {/* Mini resumen */}
-            <div style={{ ...T.card, gridColumn: isMobile ? '1' : '1 / -1', background: 'var(--gray-50,#F2F5FA)' }}>
+            <div style={{ ...T.card, gridColumn: isMobile ? '1' : '1 / -1', background: 'var(--c-bg,#F2F5FA)' }}>
               <div style={T.cardBody}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--gray-400,#7A7A7A)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--c-text-2,#7A7A7A)' }}>
                   <span>{items.length} productos · IVA incluido</span>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-dark,#0D2B55)', fontSize: 14 }}>{fmt(total)}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--c-text,#0D2B55)', fontSize: 14 }}>{fmt(total)}</span>
                 </div>
               </div>
             </div>
@@ -1199,16 +1377,16 @@ export default function CarritoModule({
             </button>
 
             {/* Confirmed total */}
-            <div style={{ ...T.card, marginBottom: 'var(--space-4,16px)' }}>
+            <div style={{ ...T.card, marginBottom: 'var(--sp-4,16px)' }}>
               <div style={T.cardBody}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-success,#1D9E75)', marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-success,#1D9E75)', marginBottom: 4 }}>
                       ✓ Total verificado
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--gray-400,#7A7A7A)' }}>Orden #{orderId.slice(0, 8).toUpperCase()}</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-text-2,#7A7A7A)' }}>Orden #{orderId.slice(0, 8).toUpperCase()}</div>
                   </div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-dark,#0D2B55)' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-text,#0D2B55)' }}>
                     {fmt(confirmedTotal)}
                   </div>
                 </div>
@@ -1234,11 +1412,11 @@ export default function CarritoModule({
                     <div style={T.gatewayRadio(gateway === gw.id)} />
                     <GatewayLogo svg={gw.logo} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-dark,#0D2B55)', marginBottom: 2 }}>{gw.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--gray-400,#7A7A7A)' }}>{gw.description}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text,#0D2B55)', marginBottom: 2 }}>{gw.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--c-text-2,#7A7A7A)' }}>{gw.description}</div>
                     </div>
                     {gw.currency !== 'any' && (
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--gray-400,#7A7A7A)', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--c-text-2,#7A7A7A)', textTransform: 'uppercase' }}>
                         {gw.currency}
                       </span>
                     )}
@@ -1261,7 +1439,7 @@ export default function CarritoModule({
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, opacity: 0.5 }}>
                   <span style={{ fontSize: 11 }}>🔒</span>
-                  <span style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--gray-400,#7A7A7A)' }}>
+                  <span style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--c-text-2,#7A7A7A)' }}>
                     Pago 100% seguro
                   </span>
                 </div>
@@ -1274,12 +1452,12 @@ export default function CarritoModule({
         {step === 'done' && payResult && (
           <div style={{ maxWidth: 520, margin: '0 auto' }}>
             <div style={{ ...T.card, textAlign: 'center' }}>
-              <div style={{ padding: 'var(--space-6,32px) var(--space-5,24px)' }}>
+              <div style={{ padding: 'var(--sp-6,32px) var(--sp-5,24px)' }}>
                 <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-dark,#0D2B55)', margin: '0 0 8px' }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text,#0D2B55)', margin: '0 0 8px' }}>
                   ¡Pedido recibido!
                 </h2>
-                <p style={{ fontSize: 13, color: 'var(--gray-400,#7A7A7A)', margin: '0 0 24px' }}>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2,#7A7A7A)', margin: '0 0 24px' }}>
                   Te enviamos los detalles a <strong>{email}</strong>
                 </p>
 
@@ -1379,9 +1557,9 @@ export default function CarritoModule({
    // 4. Token overrides para una marca diferente
    <CarritoModule
      tokenOverrides={{
-       '--color-primary': '#E53E3E',
-       '--brand-accent':  '#F6AD55',
-       '--color-bg-topbar': '#1A202C',
+       '--c-cta': '#E53E3E',
+       '--c-accent':  '#F6AD55',
+       '--c-bg-navbar': '#1A202C',
      }}
    />
    ═══════════════════════════════════════════════════════════════════════ */

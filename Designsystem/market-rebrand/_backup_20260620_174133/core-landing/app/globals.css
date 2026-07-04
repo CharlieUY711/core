@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Los tokens del ecosistema (--c-*) se inyectan en <html> en runtime y mandan.
+   Los valores fijos quedan como fallback si no hay estilo cargado. */
+:root {
+  --background: var(--c-bg, #ffffff);
+  --foreground: var(--c-text, #171717);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* tokens del ecosistema como colores Tailwind: bg-primary, text-muted, etc. */
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-accent: var(--c-accent);
+  --color-surface: var(--c-bg-surface);
+  --color-elev: var(--c-bg-elev);
+  --color-border: var(--c-border);
+  --color-muted: var(--c-text-2);
+  --color-danger: var(--c-danger);
+  --color-success: var(--c-success);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-base, Arial, Helvetica, sans-serif);
+}

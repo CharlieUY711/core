@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#F0EFEA;}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;background:#F0EFEA;min-height:100vh;width:100%;">
+
+  <!-- ===== HEADER ===== -->
+  <header style="background:#0D2B55;width:100%;">
+    <div style="display:flex;align-items:center;gap:22px;padding:14px 40px;">
+      <a href="#" style="display:flex;align-items:center;gap:13px;text-decoration:none;flex:none;">
+        <div style="width:48px;height:48px;background:#fff;border-radius:22%;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Archivo Black';color:#3D5689;font-size:31px;line-height:1;">M</span></div>
+        <div style="line-height:1;"><div style="font-family:'Archivo Black';color:#fff;font-size:22px;letter-spacing:.02em;">MARKET</div><div style="font-size:10px;letter-spacing:.34em;color:#8FA0BC;font-weight:600;margin-top:3px;">BY CORE</div></div>
+      </a>
+      <div style="display:flex;gap:10px;flex:none;">
+        <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:54px;padding-top:4px;background:#2E7D57;border-radius:22%;text-decoration:none;flex:none;overflow:hidden;"><span style="font-family:'Archivo Black';color:#fff;font-size:22px;line-height:1;">M</span><span style="font-family:'Archivo';font-weight:600;color:#fff;font-size:6.5px;letter-spacing:.09em;margin-top:2px;">SECOND</span></a>
+        <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:54px;padding-top:4px;background:#9B3326;border-radius:22%;text-decoration:none;flex:none;overflow:hidden;"><span style="font-family:'Archivo Black';color:#fff;font-size:22px;line-height:1;">M</span><span style="font-family:'Archivo';font-weight:600;color:#fff;font-size:6px;letter-spacing:.07em;margin-top:2px;">GOURMET</span></a>
+      </div>
+      <div style="flex:1;height:48px;background:#314B6E;border-radius:9px;display:flex;align-items:center;padding:0 20px;gap:12px;"><span style="color:#A7B6CC;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">aceite de oliva</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A7B6CC" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg></div>
+      <a href="#" style="flex:none;background:#3D5689;color:#fff;font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;text-decoration:none;padding:0 40px;height:48px;display:flex;align-items:center;border-radius:9px;" style-hover="background:#46639B;">Ingresar</a>
+      <a href="#" style="flex:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;text-decoration:none;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M2 3h3l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.2L21 7H6"></path></svg></a>
+    </div>
+    <div style="height:2px;background:#2E7D57;width:100%;"></div>
+    <nav style="display:flex;align-items:center;justify-content:center;gap:28px;padding:13px 40px;flex-wrap:wrap;">
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#1C6E86;"><span style="width:7px;height:7px;border-radius:50%;background:#1C6E86;"></span>Tech</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#A85636;"><span style="width:7px;height:7px;border-radius:50%;background:#A85636;"></span>Home</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#7E3A70;"><span style="width:7px;height:7px;border-radius:50%;background:#7E3A70;"></span>Vestimenta</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#C2611F;"><span style="width:7px;height:7px;border-radius:50%;background:#C2611F;"></span>Entretenimiento</a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="border-bottom-color:#50617F;"><span style="width:7px;height:7px;border-radius:50%;background:#50617F;"></span>Servicios</a>
+      <span style="width:1px;height:20px;background:rgba(255,255,255,.18);"></span>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Vehículos</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Inmuebles</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Tienda</a>
+      <a href="#" style="color:#B9C4D6;font-size:15px;font-weight:500;text-decoration:none;padding-bottom:5px;border-bottom:2px solid transparent;" style-hover="color:#fff;border-bottom-color:#3D5689;">Otros</a>
+    </nav>
+  </header>
+
+  <!-- ===== BODY ===== -->
+  <div style="max-width:1400px;margin:0 auto;padding:32px 40px 64px;">
+
+    <!-- breadcrumb + title -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:26px;">
+      <div>
+        <div style="font-size:13px;color:#8A8678;font-weight:500;margin-bottom:8px;">Inicio <span style="color:#C4C0B2;">›</span> Tienda <span style="color:#C4C0B2;">›</span> Aceites</div>
+        <h1 style="font-family:'Archivo Black';font-size:30px;color:#1C1B19;">Aceite de oliva</h1>
+        <div style="font-size:14px;color:#8A8678;margin-top:6px;">248 resultados</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:14px;color:#8A8678;">Ordenar por</span>
+        <div style="height:42px;background:#fff;border:1px solid #E4E1D8;border-radius:9px;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:14px;font-weight:600;color:#1C1B19;">Más relevantes <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8678" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
+      </div>
+    </div>
+
+    <!-- layout: filters + grid -->
+    <div style="display:flex;gap:28px;align-items:flex-start;">
+
+      <!-- filters -->
+      <aside style="width:248px;flex:none;background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:24px;">
+        <div style="font-family:'Archivo Black';font-size:16px;margin-bottom:18px;">Filtros</div>
+
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:12px;">Condición</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+          <label style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:#34322C;cursor:pointer;"><span style="width:18px;height:18px;border-radius:5px;background:#3D5689;display:flex;align-items:center;justify-content:center;flex:none;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>Nuevo</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:#34322C;cursor:pointer;"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid #C4C0B2;flex:none;"></span>Usado <span style="font-size:12px;color:#2E7D57;font-weight:600;">· Second</span></label>
+        </div>
+
+        <div style="height:1px;background:#ECEAE2;margin:0 -4px 20px;"></div>
+
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:12px;">Curaduría</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+          <label style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:#34322C;cursor:pointer;"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid #C4C0B2;flex:none;"></span>Gourmet <span style="font-size:12px;color:#9B3326;font-weight:600;">premium</span></label>
+        </div>
+
+        <div style="height:1px;background:#ECEAE2;margin:0 -4px 20px;"></div>
+
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:12px;">Precio</div>
+        <div style="display:flex;gap:8px;margin-bottom:22px;">
+          <div style="flex:1;height:40px;border:1px solid #E4E1D8;border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#8A8678;">Mín</div>
+          <div style="flex:1;height:40px;border:1px solid #E4E1D8;border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#8A8678;">Máx</div>
+        </div>
+
+        <div style="height:1px;background:#ECEAE2;margin:0 -4px 20px;"></div>
+
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:12px;">Envío</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:#34322C;cursor:pointer;"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid #C4C0B2;flex:none;"></span>Envío gratis</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:#34322C;cursor:pointer;"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid #C4C0B2;flex:none;"></span>Llega mañana</label>
+        </div>
+      </aside>
+
+      <!-- product grid -->
+      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">
+
+        <!-- 1 Market -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#3D5689;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 10px,#EAE7E0 10px,#EAE7E0 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#3D5689;border-radius:100px;padding:4px 9px;">OFICIAL</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:3px 9px;">TIENDA</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite de Oliva Extravirgen 500ml</div><div style="font-family:'Archivo Black';font-size:23px;color:#3D5689;margin-top:10px;">$ 3.990</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#3D5689;">★★★★★</span> 4.8 · Garzón</div></div>
+        </div>
+
+        <!-- 2 Second -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#2E7D57;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#EDF4EF,#EDF4EF 10px,#E4EFE8 10px,#E4EFE8 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#2E7D57;border-radius:100px;padding:4px 9px;">USADO</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#2E7D57;background:#EAF3EE;border-radius:100px;padding:3px 9px;">TIENDA · USADO</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite de Oliva sin abrir 500ml</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:10px;"><span style="font-family:'Archivo Black';font-size:23px;color:#2E7D57;">$ 2.500</span><span style="font-size:12px;color:#A8A293;text-decoration:line-through;">$ 3.990</span></div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#2E7D57;">★★★★★</span> 4.6 · Particular</div></div>
+        </div>
+
+        <!-- 3 Gourmet -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#9B3326;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F5ECEA,#F5ECEA 10px,#EFE2DF 10px,#EFE2DF 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#9B3326;border-radius:100px;padding:4px 9px;">GOURMET</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#9B3326;background:#F5EAE7;border-radius:100px;padding:3px 9px;">TIENDA · GOURMET</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite Selección Premium 500ml</div><div style="font-family:'Archivo Black';font-size:23px;color:#9B3326;margin-top:10px;">$ 3.990</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#9B3326;">★★★★★</span> 4.9 · Productor</div></div>
+        </div>
+
+        <!-- 4 Market -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#3D5689;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 10px,#EAE7E0 10px,#EAE7E0 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#3D5689;border-radius:100px;padding:4px 9px;">OFICIAL</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:3px 9px;">TIENDA</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite de Oliva Suave 1L</div><div style="font-family:'Archivo Black';font-size:23px;color:#3D5689;margin-top:10px;">$ 6.490</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#3D5689;">★★★★☆</span> 4.4 · Oficial</div></div>
+        </div>
+
+        <!-- 5 Market -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#3D5689;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 10px,#EAE7E0 10px,#EAE7E0 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#3D5689;border-radius:100px;padding:4px 9px;">OFICIAL</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:3px 9px;">TIENDA</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite de Oliva Intenso 500ml</div><div style="font-family:'Archivo Black';font-size:23px;color:#3D5689;margin-top:10px;">$ 4.290</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#3D5689;">★★★★★</span> 4.7 · Oficial</div></div>
+        </div>
+
+        <!-- 6 Gourmet -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#9B3326;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F5ECEA,#F5ECEA 10px,#EFE2DF 10px,#EFE2DF 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#9B3326;border-radius:100px;padding:4px 9px;">GOURMET</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#9B3326;background:#F5EAE7;border-radius:100px;padding:3px 9px;">TIENDA · GOURMET</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite Cosecha Temprana 250ml</div><div style="font-family:'Archivo Black';font-size:23px;color:#9B3326;margin-top:10px;">$ 5.200</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#9B3326;">★★★★★</span> 5.0 · Productor</div></div>
+        </div>
+
+        <!-- 7 Second -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#2E7D57;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#EDF4EF,#EDF4EF 10px,#E4EFE8 10px,#E4EFE8 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#2E7D57;border-radius:100px;padding:4px 9px;">USADO</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#2E7D57;background:#EAF3EE;border-radius:100px;padding:3px 9px;">TIENDA · USADO</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Pack 2 Aceites sin abrir</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:10px;"><span style="font-family:'Archivo Black';font-size:23px;color:#2E7D57;">$ 4.800</span><span style="font-size:12px;color:#A8A293;text-decoration:line-through;">$ 7.980</span></div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#2E7D57;">★★★★☆</span> 4.3 · Particular</div></div>
+        </div>
+
+        <!-- 8 Market -->
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.07);" style-hover="box-shadow:0 12px 30px rgba(0,0,0,.12);">
+          <div style="height:4px;background:#3D5689;"></div>
+          <div style="position:relative;padding:14px 14px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 10px,#EAE7E0 10px,#EAE7E0 20px);"></div><span style="position:absolute;top:24px;left:24px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:#3D5689;border-radius:100px;padding:4px 9px;">OFICIAL</span></div>
+          <div style="padding:13px 16px 16px;"><span style="display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:700;color:#3D5689;background:#EBEFF6;border-radius:100px;padding:3px 9px;">TIENDA</span><div style="font-size:14.5px;font-weight:600;line-height:1.3;margin-top:9px;color:#1C1B19;">Aceite de Oliva Orgánico 500ml</div><div style="font-family:'Archivo Black';font-size:23px;color:#3D5689;margin-top:10px;">$ 5.690</div><div style="font-size:12px;color:#8A8678;margin-top:5px;"><span style="color:#3D5689;">★★★★★</span> 4.9 · Oficial</div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- pagination -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:40px;">
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#fff;border:1px solid #E4E1D8;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="background:#F6F4EF;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8678" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></a>
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#3D5689;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;">1</a>
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#fff;border:1px solid #E4E1D8;color:#34322C;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="background:#F6F4EF;">2</a>
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#fff;border:1px solid #E4E1D8;color:#34322C;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="background:#F6F4EF;">3</a>
+      <span style="color:#8A8678;font-size:15px;padding:0 6px;">…</span>
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#fff;border:1px solid #E4E1D8;color:#34322C;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="background:#F6F4EF;">21</a>
+      <a href="#" style="width:42px;height:42px;border-radius:9px;background:#fff;border:1px solid #E4E1D8;display:flex;align-items:center;justify-content:center;text-decoration:none;" style-hover="background:#F6F4EF;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8678" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

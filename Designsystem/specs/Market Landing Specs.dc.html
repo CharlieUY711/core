@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --brand-madre:#3D5689; --brand-madre-hover:#46639B; --brand-navy:#0D2B55; --brand-navy-field:#314B6E;
+    --tech:#1C6E86; --home:#A85636; --vestimenta:#7E3A70; --entret:#C2611F; --servicios:#50617F;
+    --second:#2E7D57; --second-tint:#EAF3EE; --gourmet:#9B3326; --gourmet-tint:#F5EAE7; --madre-tint:#EBEFF6;
+    --ink:#1C1B19; --text:#34322C; --text-2:#56544C; --mute:#8A8678;
+    --border:#E4E1D8; --divider:#ECEAE2; --canvas:#F0EFEA; --surface:#F6F4EF; --card:#FFFFFF;
+    --r-input:7px; --r-control:9px; --r-card:14px;
+    --sh-subtle:0 1px 3px rgba(0,0,0,.05); --sh-card:0 8px 24px rgba(0,0,0,.07);
+    --paper:#D9D6CC; --mono:'Roboto Mono',monospace;
+  }
+  body{background:var(--paper);}
+  @media print{ body{background:#fff;} .sheet{box-shadow:none !important;margin:0 !important;} }
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;color:var(--ink);background:var(--paper);width:100%;padding:48px 0 80px;">
+  <div class="sheet" style="max-width:960px;margin:0 auto;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.12);padding:72px 72px 88px;">
+
+    <!-- COVER -->
+    <div style="border-bottom:3px solid var(--ink);padding-bottom:30px;">
+      <div style="font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:14px;">Especificaciones gráficas · v1.0 · tokens</div>
+      <h1 style="font-family:'Archivo Black';font-size:54px;line-height:.96;letter-spacing:-.01em;">Landing / Listado</h1>
+      <p style="font-size:17px;line-height:1.55;color:var(--text-2);margin-top:16px;max-width:610px;">Página de resultados: header, filtros y grid de productos. Todos los valores referencian <strong>tokens</strong> (<span style="font-family:var(--mono);font-size:14px;">var(--token)</span>).</p>
+    </div>
+
+    <!-- ANATOMIA -->
+    <div style="margin-top:36px;">
+      <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:14px;">Anatomía</div>
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div style="background:var(--brand-navy);padding:10px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;background:#fff;border-radius:22%;display:flex;align-items:center;justify-content:center;"><span style="font-family:'Archivo Black';color:var(--brand-madre);font-size:18px;line-height:1;">M</span></div>
+          <div style="flex:1;height:26px;background:var(--brand-navy-field);border-radius:6px;display:flex;align-items:center;padding:0 10px;"><span style="color:#A7B6CC;font-size:9px;">buscar…</span></div>
+          <span style="background:var(--brand-madre);color:#fff;font-size:9px;font-weight:700;border-radius:5px;padding:5px 10px;">Ingresar</span>
+        </div>
+        <div style="display:flex;background:var(--canvas);height:200px;">
+          <div style="width:120px;flex:none;background:var(--card);border-right:1px solid var(--divider);padding:12px;"><div style="font-size:9px;font-weight:700;margin-bottom:8px;">Filtros</div><div style="height:8px;background:var(--divider);border-radius:3px;margin-bottom:6px;"></div><div style="height:8px;background:var(--divider);border-radius:3px;width:70%;"></div></div>
+          <div style="flex:1;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            <div style="background:var(--card);border-radius:6px;overflow:hidden;box-shadow:var(--sh-card);"><div style="height:3px;background:var(--brand-madre);"></div><div style="height:40px;background:var(--surface);"></div><div style="padding:6px;"><span style="font-size:6px;font-weight:700;color:var(--brand-madre);background:var(--madre-tint);border-radius:100px;padding:2px 5px;">TIENDA</span></div></div>
+            <div style="background:var(--card);border-radius:6px;overflow:hidden;box-shadow:var(--sh-card);"><div style="height:3px;background:var(--second);"></div><div style="height:40px;background:#EDF4EF;"></div><div style="padding:6px;"><span style="font-size:6px;font-weight:700;color:var(--second);background:var(--second-tint);border-radius:100px;padding:2px 5px;">USADO</span></div></div>
+            <div style="background:var(--card);border-radius:6px;overflow:hidden;box-shadow:var(--sh-card);"><div style="height:3px;background:var(--gourmet);"></div><div style="height:40px;background:#F5ECEA;"></div><div style="padding:6px;"><span style="font-size:6px;font-weight:700;color:var(--gourmet);background:var(--gourmet-tint);border-radius:100px;padding:2px 5px;">GOURMET</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--mute);">
+        <div>① Header · var(--brand-navy)</div><div>② Filtros · var(--card) · 248px</div><div>③ Grid · 4 col · gap 20</div>
+        <div>④ Tarjeta · franja por contexto</div><div>⑤ Lienzo · var(--canvas)</div><div>⑥ Paginación · activo var(--brand-madre)</div>
+      </div>
+    </div>
+
+    <!-- 01 LAYOUT -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:56px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">01</span><h2 style="font-family:'Archivo Black';font-size:24px;">Layout</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 56px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Contenedor máx.</span><span style="font-family:var(--mono);font-size:13px;">1400px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Panel filtros</span><span style="font-family:var(--mono);font-size:13px;">248px · var(--r-card)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Gap filtros/grid</span><span style="font-family:var(--mono);font-size:13px;">28px</span></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Grid · columnas</span><span style="font-family:var(--mono);font-size:13px;">repeat(4,1fr)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Grid · gap</span><span style="font-family:var(--mono);font-size:13px;">20px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Paginación · ítem</span><span style="font-family:var(--mono);font-size:13px;">42px · var(--r-control)</span></div>
+      </div>
+    </div>
+
+    <!-- 02 TARJETA -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:56px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">02</span><h2 style="font-family:'Archivo Black';font-size:24px;">Tarjeta de producto</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:40px;align-items:start;">
+      <div>
+        <div style="background:var(--card);border-radius:var(--r-card);overflow:hidden;box-shadow:var(--sh-card);">
+          <div style="height:4px;background:var(--brand-madre);"></div>
+          <div style="padding:12px 12px 0;"><div style="width:100%;aspect-ratio:1;border-radius:10px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 8px,#EAE7E0 8px,#EAE7E0 16px);"></div></div>
+          <div style="padding:11px 14px 14px;"><span style="font-size:9px;font-weight:700;color:var(--brand-madre);background:var(--madre-tint);border-radius:100px;padding:3px 8px;">TIENDA</span><div style="font-size:12.5px;font-weight:600;margin-top:7px;">Producto 500ml</div><div style="font-family:'Archivo Black';font-size:20px;color:var(--brand-madre);margin-top:7px;">$ 3.990</div></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:12px;text-align:center;">var(--card) · var(--r-card) · var(--sh-card)</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Franja por contexto</span><span style="font-family:var(--mono);font-size:13px;">--brand-madre / --second / --gourmet</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Imagen</span><span style="font-family:var(--mono);font-size:13px;">1:1</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Badge</span><span style="font-family:var(--mono);font-size:13px;">OFICIAL · USADO · GOURMET</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Precio</span><span style="font-family:var(--mono);font-size:13px;">Archivo Black · 23px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Hover</span><span style="font-family:var(--mono);font-size:13px;">sombra → 0 12px 30px /.12</span></div>
+      </div>
+    </div>
+
+    <!-- 03 FILTROS -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:56px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">03</span><h2 style="font-family:'Archivo Black';font-size:24px;">Panel de filtros</h2>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="display:grid;grid-template-columns:180px 1fr 160px;gap:20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--divider);"><span style="font-weight:700;font-size:14px;">Condición</span><span style="font-size:13.5px;color:var(--text-2);">Nuevo · Usado (Second)</span><span style="font-family:var(--mono);font-size:12.5px;color:var(--mute);">var(--second)</span></div>
+      <div style="display:grid;grid-template-columns:180px 1fr 160px;gap:20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--divider);"><span style="font-weight:700;font-size:14px;">Curaduría</span><span style="font-size:13.5px;color:var(--text-2);">Gourmet premium</span><span style="font-family:var(--mono);font-size:12.5px;color:var(--mute);">var(--gourmet)</span></div>
+      <div style="display:grid;grid-template-columns:180px 1fr 160px;gap:20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--divider);"><span style="font-weight:700;font-size:14px;">Checkbox activo</span><span style="font-size:13.5px;color:var(--text-2);">cuadro relleno + check</span><span style="font-family:var(--mono);font-size:12.5px;color:var(--mute);">var(--brand-madre)</span></div>
+      <div style="display:grid;grid-template-columns:180px 1fr 160px;gap:20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--divider);"><span style="font-weight:700;font-size:14px;">Inputs precio</span><span style="font-size:13.5px;color:var(--text-2);">Mín / Máx</span><span style="font-family:var(--mono);font-size:12.5px;color:var(--mute);">var(--r-input) · 7px</span></div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin-top:60px;border-top:1px solid var(--divider);padding-top:22px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--mute);">
+      <span>Market · Landing/Listado specs v1.0 · tokens</span><span>Junio 2026</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --brand-madre:#3D5689; --brand-madre-hover:#46639B; --brand-navy:#0D2B55; --brand-navy-field:#314B6E;
+    --tech:#1C6E86; --home:#A85636; --vestimenta:#7E3A70; --entret:#C2611F; --servicios:#50617F;
+    --second:#2E7D57; --second-field:#256647; --gourmet:#9B3326; --gourmet-field:#822A20;
+    --madre-tint:#EBEFF6;
+    --ink:#1C1B19; --text:#34322C; --text-2:#56544C; --mute:#8A8678;
+    --border:#E4E1D8; --divider:#ECEAE2; --canvas:#F0EFEA; --surface:#F6F4EF; --card:#FFFFFF;
+    --r-control:9px; --r-card:14px;
+    --sh-card:0 8px 24px rgba(0,0,0,.09); --sh-elev:0 18px 50px rgba(0,0,0,.16); --sh-press:inset 0 3px 7px rgba(0,0,0,.45);
+    --paper:#D9D6CC; --mono:'Roboto Mono',monospace;
+  }
+  body{background:var(--paper);}
+  @media print{ body{background:#fff;} .sheet{box-shadow:none !important;margin:0 !important;} }
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',sans-serif;color:var(--ink);background:var(--paper);width:100%;padding:48px 0 80px;">
+  <div class="sheet" style="max-width:960px;margin:0 auto;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.12);padding:72px 72px 88px;">
+
+    <!-- COVER -->
+    <div style="border-bottom:3px solid var(--ink);padding-bottom:30px;">
+      <div style="font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:14px;">Especificaciones gráficas · v1.1 · tokens</div>
+      <h1 style="font-family:'Archivo Black';font-size:54px;line-height:.96;letter-spacing:-.01em;">Mobile Market</h1>
+      <p style="font-size:17px;line-height:1.55;color:var(--text-2);margin-top:16px;max-width:610px;">Vista única en 390px. Tres plataformas comparten estructura; el skin cambia con <strong>tokens</strong> (<span style="font-family:var(--mono);font-size:14px;">var(--token)</span>).</p>
+    </div>
+
+    <!-- 01 SWITCH PLATAFORMA -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:46px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">01</span><h2 style="font-family:'Archivo Black';font-size:24px;">Switch de plataforma</h2>
+    </div>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:22px;">Los tres logos viven en la barra. El activo queda <strong>apretado</strong> (<span style="font-family:var(--mono);font-size:12px;">var(--sh-press)</span>); los otros, con relieve.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div style="border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;">
+        <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:16px;">Activo · apretado</div>
+        <div style="display:inline-block;border-radius:24%;box-shadow:var(--sh-press);transform:translateY(2px);"><img src="logos/Market.png" style="width:64px;height:64px;display:block;border-radius:24%;"></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:16px;">box-shadow: var(--sh-press)<br>transform: translateY(1.5px)</div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;">
+        <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:16px;">Inactivo · relieve</div>
+        <div style="display:inline-block;border-radius:24%;"><img src="logos/Market-Second.png" style="width:64px;height:64px;display:block;border-radius:24%;box-shadow:0 2px 4px rgba(0,0,0,.3);"></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:16px;">0 2px 4px rgba(0,0,0,.3)<br>:active → se hunde</div>
+      </div>
+    </div>
+
+    <!-- 02 SKINS -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:56px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">02</span><h2 style="font-family:'Archivo Black';font-size:24px;">Skins por plataforma</h2>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="display:grid;grid-template-columns:130px repeat(3,1fr);gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--divider);font-family:var(--mono);font-size:11.5px;color:var(--mute);"><span>&nbsp;</span><span>Barra</span><span>Buscador</span><span>Acento</span></div>
+      <div style="display:grid;grid-template-columns:130px repeat(3,1fr);gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--divider);"><span style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand-madre);"></span><span style="font-family:'Archivo Black';font-size:14px;">Market</span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--brand-navy</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--brand-navy-field</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--brand-madre</span></div>
+      <div style="display:grid;grid-template-columns:130px repeat(3,1fr);gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--divider);"><span style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--second);"></span><span style="font-family:'Archivo Black';font-size:14px;">Second</span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--second</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--second-field</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--second</span></div>
+      <div style="display:grid;grid-template-columns:130px repeat(3,1fr);gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--divider);"><span style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--gourmet);"></span><span style="font-family:'Archivo Black';font-size:14px;">Gourmet</span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--gourmet</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--gourmet-field</span><span style="font-family:var(--mono);font-size:11.5px;color:var(--mute);">--gourmet</span></div>
+    </div>
+    <div style="margin-top:20px;font-size:13.5px;line-height:1.6;color:var(--text);background:var(--surface);border-radius:10px;padding:18px 20px;"><strong>Contenido:</strong> Second invierte (precio tachado, badge USADO, login blanco); Gourmet usa categorías propias y badge GOURMET. La <strong>tienda</strong> es uno de los departamentos en la línea inferior.</div>
+
+    <!-- 03 MEDIDAS -->
+    <div style="display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin:56px 0 26px;">
+      <span style="font-family:'Archivo Black';font-size:14px;color:var(--brand-madre);">03</span><h2 style="font-family:'Archivo Black';font-size:24px;">Medidas</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 56px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Pantalla</span><span style="font-family:var(--mono);font-size:13px;">390 × 760px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Imagen producto</span><span style="font-family:var(--mono);font-size:13px;">206px · 1:1</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Logo plataforma</span><span style="font-family:var(--mono);font-size:13px;">38px · r24%</span></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Buscador</span><span style="font-family:var(--mono);font-size:13px;">42px · var(--r-control)</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Barra de compra</span><span style="font-family:var(--mono);font-size:13px;">48px</span></div>
+        <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--divider);"><span style="font-size:14px;color:var(--text-2);">Marco teléfono</span><span style="font-family:var(--mono);font-size:13px;">r42px · var(--sh-elev)</span></div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin-top:60px;border-top:1px solid var(--divider);padding-top:22px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--mute);">
+      <span>Market · Mobile specs v1.1 · tokens</span><span>Junio 2026</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

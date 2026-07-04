@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Spectral:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#D9D6CC;}
+  select{font-family:'Archivo',sans-serif;font-size:14px;color:#1C1B19;background:#fff;border:1px solid #E4E1D8;border-radius:8px;padding:10px 12px;width:100%;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A8678' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+  @media print{ body{background:#fff;} .controls{display:none !important;} .sheet{box-shadow:none !important;margin:0 !important;} .wrap{display:block !important;padding:0 !important;} }
+</style>
+</helmet>
+
+<div class="wrap" style="font-family:'Archivo',sans-serif;color:#1C1B19;background:#D9D6CC;min-height:100vh;width:100%;display:flex;gap:36px;padding:40px;align-items:flex-start;">
+
+  <!-- ===== CONTROLES ===== -->
+  <aside class="controls" style="width:320px;flex:none;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.1);padding:28px;position:sticky;top:40px;">
+    <div style="font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#8A8678;font-weight:600;margin-bottom:8px;">Generador</div>
+    <h1 style="font-family:'Archivo Black';font-size:26px;line-height:1.05;margin-bottom:6px;">Design tokens</h1>
+    <p style="font-size:13.5px;color:#56544C;line-height:1.5;margin-bottom:24px;">Elegí cada opción y se arma el documento a la derecha. Imprimí para exportarlo.</p>
+
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Color primario</label>
+        <select value="{{ primary }}" onChange="{{ onPrimary }}"><option value="#3D5689">Azul Madre · #3D5689</option><option value="#1C6E86">Teal · #1C6E86</option><option value="#7E3A70">Púrpura · #7E3A70</option><option value="#2E7D57">Verde · #2E7D57</option><option value="#9B3326">Terracota · #9B3326</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Fondo oscuro</label>
+        <select value="{{ dark }}" onChange="{{ onDark }}"><option value="#0D2B55">Navy casa · #0D2B55</option><option value="#1C1B19">Tinta · #1C1B19</option><option value="#23303F">Pizarra · #23303F</option><option value="#2A2438">Berenjena · #2A2438</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Familia de acentos</label>
+        <select value="{{ accentName }}" onChange="{{ onAccent }}"><option value="Multirrubro">Multirrubro (5)</option><option value="Cálida">Cálida (5)</option><option value="Fría">Fría (5)</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Tipografía · títulos</label>
+        <select value="{{ fontTitle }}" onChange="{{ onFontTitle }}"><option value="Archivo Black">Archivo Black</option><option value="Space Grotesk">Space Grotesk</option><option value="Spectral">Spectral</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Tipografía · cuerpo</label>
+        <select value="{{ fontBody }}" onChange="{{ onFontBody }}"><option value="Archivo">Archivo</option><option value="Space Grotesk">Space Grotesk</option><option value="Spectral">Spectral</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Radio de tarjeta</label>
+        <select value="{{ radius }}" onChange="{{ onRadius }}"><option value="6">6px · marcado</option><option value="14">14px · estándar</option><option value="22">22px · suave</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Sombra</label>
+        <select value="{{ shadowKey }}" onChange="{{ onShadow }}"><option value="subtle">Sutil</option><option value="card">Tarjeta</option><option value="elev">Elevada</option></select>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#8A8678;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Densidad de espaciado</label>
+        <select value="{{ density }}" onChange="{{ onDensity }}"><option value="3">Compacta (base 3)</option><option value="4">Normal (base 4)</option><option value="5">Cómoda (base 5)</option></select>
+      </div>
+    </div>
+
+    <button onClick="{{ doPrint }}" style="margin-top:24px;width:100%;height:48px;background:#1C1B19;color:#fff;font-family:'Archivo';font-weight:700;font-size:15px;border:none;border-radius:9px;cursor:pointer;">Exportar / Imprimir</button>
+  </aside>
+
+  <!-- ===== DOCUMENTO GENERADO ===== -->
+  <div class="sheet" style="flex:1;max-width:760px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.12);padding:60px 60px 72px;">
+
+    <div style="border-bottom:3px solid #1C1B19;padding-bottom:26px;">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:30px;">
+        <div style="width:54px;height:54px;border-radius:18%;display:flex;align-items:center;justify-content:center;flex:none;background:{{ primary }};"><span style="font-family:'Archivo Black';color:#fff;font-size:32px;line-height:.7;">M</span></div>
+        <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#8A8678;font-weight:600;">Documento generado · design tokens</div>
+      </div>
+      <h2 style="font-size:48px;line-height:.96;letter-spacing:-.015em;font-family:{{ fontTitleCss }};">Sistema de diseño</h2>
+    </div>
+
+    <!-- COLOR -->
+    <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid #1C1B19;padding-bottom:10px;margin:44px 0 22px;">
+      <span style="font-family:'Archivo Black';font-size:13px;color:{{ primary }};">01</span><h3 style="font-size:22px;font-family:{{ fontTitleCss }};">Color</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px;">
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:74px;background:{{ primary }};"></div><div style="padding:11px 14px;"><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#8A8678;">--primary</div><div style="font-family:'Roboto Mono',monospace;font-size:13px;color:#56544C;margin-top:3px;">{{ primary }}</div></div></div>
+      <div style="border:1px solid #E4E1D8;border-radius:11px;overflow:hidden;"><div style="height:74px;background:{{ dark }};"></div><div style="padding:11px 14px;"><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#8A8678;">--dark</div><div style="font-family:'Roboto Mono',monospace;font-size:13px;color:#56544C;margin-top:3px;">{{ dark }}</div></div></div>
+    </div>
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8A8678;font-weight:600;margin:8px 0 12px;">Acentos · {{ accentName }}</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+      <div style="text-align:center;"><div style="height:50px;border-radius:9px;background:{{ accent1 }};"></div><div style="font-family:'Roboto Mono',monospace;font-size:10px;color:#56544C;margin-top:6px;">{{ accent1 }}</div></div>
+      <div style="text-align:center;"><div style="height:50px;border-radius:9px;background:{{ accent2 }};"></div><div style="font-family:'Roboto Mono',monospace;font-size:10px;color:#56544C;margin-top:6px;">{{ accent2 }}</div></div>
+      <div style="text-align:center;"><div style="height:50px;border-radius:9px;background:{{ accent3 }};"></div><div style="font-family:'Roboto Mono',monospace;font-size:10px;color:#56544C;margin-top:6px;">{{ accent3 }}</div></div>
+      <div style="text-align:center;"><div style="height:50px;border-radius:9px;background:{{ accent4 }};"></div><div style="font-family:'Roboto Mono',monospace;font-size:10px;color:#56544C;margin-top:6px;">{{ accent4 }}</div></div>
+      <div style="text-align:center;"><div style="height:50px;border-radius:9px;background:{{ accent5 }};"></div><div style="font-family:'Roboto Mono',monospace;font-size:10px;color:#56544C;margin-top:6px;">{{ accent5 }}</div></div>
+    </div>
+
+    <!-- TIPOGRAFIA -->
+    <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid #1C1B19;padding-bottom:10px;margin:44px 0 22px;">
+      <span style="font-family:'Archivo Black';font-size:13px;color:{{ primary }};">02</span><h3 style="font-size:22px;font-family:{{ fontTitleCss }};">Tipografía</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+      <div style="border:1px solid #E4E1D8;border-radius:12px;padding:22px;"><div style="font-size:40px;line-height:1;font-family:{{ fontTitleCss }};">Aa</div><div style="font-weight:700;font-size:15px;margin-top:12px;">{{ fontTitle }}</div><div style="font-size:13px;color:#56544C;margin-top:4px;">Títulos · --font-title</div></div>
+      <div style="border:1px solid #E4E1D8;border-radius:12px;padding:22px;"><div style="font-size:40px;line-height:1;font-family:{{ fontBodyCss }};">Aa</div><div style="font-weight:700;font-size:15px;margin-top:12px;">{{ fontBody }}</div><div style="font-size:13px;color:#56544C;margin-top:4px;">Cuerpo · --font-body</div></div>
+    </div>
+    <p style="font-size:15px;line-height:1.6;color:#34322C;margin-top:16px;font-family:{{ fontBodyCss }};">Texto de muestra del cuerpo. El sistema usa esta familia para descripciones, etiquetas e interfaz, manteniendo legibilidad y ritmo en todo el producto.</p>
+
+    <!-- COMPONENTE -->
+    <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid #1C1B19;padding-bottom:10px;margin:44px 0 22px;">
+      <span style="font-family:'Archivo Black';font-size:13px;color:{{ primary }};">03</span><h3 style="font-size:22px;font-family:{{ fontTitleCss }};">Componente · radio + sombra</h3>
+    </div>
+    <div style="display:flex;gap:24px;align-items:flex-start;">
+      <div style="width:200px;background:#fff;overflow:hidden;border-radius:{{ radiusPx }};box-shadow:{{ shadowCss }};">
+        <div style="height:4px;background:{{ primary }};"></div>
+        <div style="height:96px;background-image:repeating-linear-gradient(45deg,#F1EFEA,#F1EFEA 9px,#EAE7E0 9px,#EAE7E0 18px);"></div>
+        <div style="padding:14px;"><span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff;border-radius:100px;padding:3px 9px;background:{{ primary }};">TIENDA</span><div style="font-weight:700;font-size:14px;margin-top:9px;font-family:{{ fontBodyCss }};">Producto</div><div style="font-size:22px;margin-top:7px;font-family:{{ fontTitleCss }};color:{{ primary }};">$ 3.990</div></div>
+      </div>
+      <div style="flex:1;padding-top:6px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:13.5px;color:#56544C;">Radio</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">{{ radiusPx }}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:13.5px;color:#56544C;">Sombra</span><span style="font-family:'Roboto Mono',monospace;font-size:11.5px;">{{ shadowCss }}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ECEAE2;"><span style="font-size:13.5px;color:#56544C;">Franja</span><span style="font-family:'Roboto Mono',monospace;font-size:13px;">4px · --primary</span></div>
+      </div>
+    </div>
+
+    <!-- ESPACIADO -->
+    <div style="display:flex;align-items:baseline;gap:14px;border-bottom:2px solid #1C1B19;padding-bottom:10px;margin:44px 0 22px;">
+      <span style="font-family:'Archivo Black';font-size:13px;color:{{ primary }};">04</span><h3 style="font-size:22px;font-family:{{ fontTitleCss }};">Espaciado · base {{ density }}</h3>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:16px;">
+      <div style="text-align:center;"><div style="width:{{ sp1 }};height:{{ sp1 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp1 }}</div></div>
+      <div style="text-align:center;"><div style="width:{{ sp2 }};height:{{ sp2 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp2 }}</div></div>
+      <div style="text-align:center;"><div style="width:{{ sp3 }};height:{{ sp3 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp3 }}</div></div>
+      <div style="text-align:center;"><div style="width:{{ sp4 }};height:{{ sp4 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp4 }}</div></div>
+      <div style="text-align:center;"><div style="width:{{ sp5 }};height:{{ sp5 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp5 }}</div></div>
+      <div style="text-align:center;"><div style="width:{{ sp6 }};height:{{ sp6 }};background:{{ primary }};margin:0 auto 8px;"></div><div style="font-family:'Roboto Mono',monospace;font-size:11px;color:#56544C;">{{ sp6 }}</div></div>
+    </div>
+
+    <div style="margin-top:48px;border-top:1px solid #ECEAE2;padding-top:20px;display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:12px;color:#8A8678;">
+      <span>Documento generado</span><span>Market · generador v1.0</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    primary:'#3D5689', dark:'#0D2B55', accentName:'Multirrubro',
+    fontTitle:'Archivo Black', fontBody:'Archivo',
+    radius:'14', shadowKey:'card', density:'4'
+  };
+  renderVals(){
+    const palettes = {
+      'Multirrubro':['#1C6E86','#A85636','#7E3A70','#C2611F','#50617F'],
+      'Cálida':['#C2611F','#A85636','#9B3326','#B07A1E','#7E3A70'],
+      'Fría':['#1C6E86','#3D5689','#50617F','#2E7D57','#5B5B8A'],
+    };
+    const shadows = {
+      subtle:'0 1px 3px rgba(0,0,0,.06)',
+      card:'0 8px 24px rgba(0,0,0,.09)',
+      elev:'0 18px 50px rgba(0,0,0,.16)',
+    };
+    const a = palettes[this.state.accentName] || palettes['Multirrubro'];
+    const base = parseInt(this.state.density, 10) || 4;
+    const steps = [1,2,4,6,8,12].map(m => (base*m)+'px');
+    const set = key => e => this.setState({ [key]: e.target.value });
+    const ff = name => name === 'Archivo Black'
+      ? "'Archivo Black',sans-serif"
+      : (name === 'Spectral' ? "'Spectral',serif" : "'"+name+"',sans-serif");
+    return {
+      primary:this.state.primary, dark:this.state.dark, accentName:this.state.accentName,
+      fontTitle:this.state.fontTitle, fontBody:this.state.fontBody,
+      fontTitleCss: ff(this.state.fontTitle), fontBodyCss: ff(this.state.fontBody),
+      radius:this.state.radius, radiusPx:this.state.radius+'px',
+      shadowKey:this.state.shadowKey, shadowCss: shadows[this.state.shadowKey],
+      density:this.state.density,
+      accent1:a[0], accent2:a[1], accent3:a[2], accent4:a[3], accent5:a[4],
+      sp1:steps[0], sp2:steps[1], sp3:steps[2], sp4:steps[3], sp5:steps[4], sp6:steps[5],
+      onPrimary:set('primary'), onDark:set('dark'), onAccent:set('accentName'),
+      onFontTitle:set('fontTitle'), onFontBody:set('fontBody'),
+      onRadius:set('radius'), onShadow:set('shadowKey'), onDensity:set('density'),
+      doPrint: () => window.print(),
+    };
+  }
+}
+</script>
+</body>
+</html>

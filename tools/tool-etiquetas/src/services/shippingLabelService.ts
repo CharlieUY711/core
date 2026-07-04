@@ -6,6 +6,7 @@
 import { supabase } from '@/lib/supabase'
 import type { ShippingLabelRow } from '@/lib/supabase'
 import jsPDF from 'jspdf'
+import QRCode from 'qrcode'
 import type {
   ShippingLabel,
   ShippingLabelFormData,
@@ -63,10 +64,43 @@ function generateTrackingNumber(carrier: Carrier): string {
 }
 
 // ──────────────────────────────────────────────
+// QR de datos de entrega
+// ──────────────────────────────────────────────
+// El QR lleva los datos necesarios para la entrega (no solo el número de
+// pedido), para que cualquier lector estándar -la agencia, un repartidor, o
+// más adelante el flujo de cierre de entrega- pueda leerlos sin re-teclear
+// nada. Se genera en el mismo momento en que se crea la etiqueta.
+
+function buildDeliveryQRPayload(labelData: Omit<ShippingLabel, 'id' | 'labelUrl'>): string {
+  const addr = labelData.recipientAddress
+  const direccion = [
+    `${addr.street} ${addr.number}${addr.floor ? `, ${addr.floor}` : ''}${addr.door ? ` ${addr.door}` : ''}`,
+    `${addr.postalCode} ${addr.city}, ${addr.province}`,
+    addr.country,
+  ].filter(Boolean).join(' - ')
+
+  return JSON.stringify({
+    pedido: labelData.orderId,
+    tracking: labelData.trackingNumber,
+    nombre: labelData.recipientName,
+    telefono: labelData.recipientPhone ?? null,
+    direccion,
+  })
+}
+
+async function generateQRDataUrl(payload: string): Promise<string> {
+  return QRCode.toDataURL(payload, {
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    width: 256,
+  })
+}
+
+// ──────────────────────────────────────────────
 // Generación de PDF (local, sin storage por ahora)
 // ──────────────────────────────────────────────
 
-function generateLabelPDF(labelData: Omit<ShippingLabel, 'id' | 'labelUrl'>): Blob {
+async function generateLabelPDF(labelData: Omit<ShippingLabel, 'id' | 'labelUrl'>): Promise<Blob> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [100, 150] })
 
   const W = doc.internal.pageSize.getWidth()
@@ -170,6 +204,17 @@ function generateLabelPDF(labelData: Omit<ShippingLabel, 'id' | 'labelUrl'>): Bl
     doc.text('✓ Seguro incluido', W - margin - 25, y)
   }
 
+  // QR con los datos de entrega (pedido, tracking, destinatario, dirección)
+  const qrPayload = buildDeliveryQRPayload(labelData)
+  const qrDataUrl = await generateQRDataUrl(qrPayload)
+  const qrSize = 26 // mm
+  const qrX = W - margin - qrSize
+  const qrY = y + 4
+  doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
+  doc.setFontSize(5.5)
+  doc.setTextColor(150, 150, 150)
+  doc.text('Datos de entrega', qrX + qrSize / 2, qrY + qrSize + 3, { align: 'center' })
+
   // Footer
   const pageH = doc.internal.pageSize.getHeight()
   doc.setFontSize(6)
@@ -222,7 +267,7 @@ export async function createShippingLabel(
 
   // Generar PDF y subirlo a Supabase Storage
   try {
-    const pdfBlob = generateLabelPDF(label)
+    const pdfBlob = await generateLabelPDF(label)
     const filePath = `${userId}/${label.id}.pdf`
 
     const { error: storageError } = await supabase.storage

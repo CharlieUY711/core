@@ -11,3 +11,5 @@ temp/
 tools/BackUp/
 tools/tool-dashboard/core-dashboard-legacy/
 tools/tool-dashboard/core-dashboard2-legacy/
+.vercel
+.env*

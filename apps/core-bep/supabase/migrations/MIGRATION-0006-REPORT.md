@@ -1,217 +1,137 @@
-# MIGRATION-0006-REPORT — Security Hardening
+# MIGRATION-0006-REPORT.md
 
-**Repo:** CORE / apps/core-bep  
+**Migración:** `0006_security_hardening`  
 **Fecha autoría:** 2026-06-27  
-**Estado:** ⏳ Pendiente de aprobación — NO aplicada a producción  
-**Depende de:** 0005_bom_crud.sql ✅ aplicada y verificada  
+**Estado:** ✅ Lista para revisión — pendiente aprobación para aplicar a producción  
+**Continuación de:** `0005_bom_crud` (aplicada y verificada 2026-06-27)
 
 ---
 
 ## Resumen ejecutivo
 
-La migración 0006 cierra tres vulnerabilidades críticas introducidas en
-0003–0005. Ningún bloque modifica datos de usuario existentes ni altera
-el esquema de tablas. Los cambios son sobre policies, una fila seed y dos
-funciones (reemplazadas con `CREATE OR REPLACE`).
+La revisión de seguridad post-0005 identificó tres vulnerabilidades críticas (P1, P2, P3). La Fase 0 de descubrimiento determinó que P1 y P3 ya estaban corregidas en la base antes de que se ejecutara esta migración. El único cambio de estado que aplica `0006_security_hardening.sql` es el seed del superadmin (P2).
 
 ---
 
-## Fase 0 — Hallazgos del descubrimiento
+## Problemas identificados y estado
 
-### Confirmados per ground truth
+### P1 — Escalada de privilegios via `profiles_update` (Crítico)
 
-| Item | Esperado | Hallado | OK |
-|---|---|---|---|
-| `profiles_update` sin `WITH CHECK` | `with_check = null` | ✅ null | ✅ |
-| `profiles` con 0 filas | 0 filas | ✅ 0 filas | ✅ |
-| `is_superadmin` tiene `DEFAULT false` | DEFAULT false, NOT NULL | ✅ | ✅ |
-| Resto de columnas en `profiles` son NULL-able | mayoría nullable | ✅ solo `id` es NOT NULL adicional | ✅ |
+**Vulnerabilidad documentada:** La policy `profiles_update` tenía `USING (auth.uid() = id)` sin `WITH CHECK`, permitiendo a cualquier usuario autenticado ejecutar `UPDATE profiles SET is_superadmin = true WHERE id = <su propio id>`.
 
-### Discrepancias / decisiones tomadas
+**Estado al momento de Fase 0:** ✅ **Ya corregido en base**
 
-| # | Discrepancia | Decisión |
-|---|---|---|
-| D1 | Trigger `on_auth_user_created` **no existe** (0 rows devueltas) | `WITH CHECK` usa `COALESCE(subquery, false)` para no bloquear usuarios sin fila aún |
-| D2 | `quotes` y `rfq_lines` no tienen `project_id` directo (confirmado ausentes en Query 4) | Resueltos via `JOIN rfqs` dentro del CASE |
-| D3 | `projects` ausente en Query 4 (no fue listada en el query) | Tratada como caso especial: `v_project_id := p_id` |
-| D4 | `project_members` sí tiene `project_id` (apareció en Query 4) | Tratada como tabla de proyecto, chequeo normal |
+La policy ya tiene el `WITH CHECK` correcto:
 
----
-
-## Bloque 1 — Fix `profiles_update` WITH CHECK
-
-**Vulnerabilidad cerrada:** escalada de privilegios vía `UPDATE profiles SET is_superadmin = true`.
-
-**Antes (post-0005):**
 ```sql
-CREATE POLICY profiles_update ON public.profiles
-  FOR UPDATE
-  USING (auth.uid() = id);
-  -- Sin WITH CHECK → cualquier columna escribible
+WITH CHECK (
+  (auth.uid() = id)
+  AND (is_superadmin = COALESCE(
+    (SELECT p.is_superadmin FROM profiles p WHERE p.id = auth.uid()),
+    false
+  ))
+)
 ```
 
-**Después (0006):**
-```sql
-CREATE POLICY profiles_update ON public.profiles
-  FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND is_superadmin = COALESCE(
-      (SELECT p.is_superadmin FROM public.profiles p WHERE p.id = auth.uid()),
-      false
-    )
-  );
-```
+El `COALESCE(..., false)` cubre el edge case de usuarios nuevos sin fila en `profiles` todavía (ya que no hay trigger `on_auth_user_created` — ver P2).
 
-**Cómo funciona el WITH CHECK:**
-- Usuario normal con fila existente → subquery devuelve `false` → solo puede escribir `is_superadmin = false` → no puede escalarse.
-- Superadmin con fila existente → subquery devuelve `true` → puede escribir `is_superadmin = true` → sin restricción.
-- Usuario nuevo sin fila → subquery devuelve `NULL` → `COALESCE(..., false)` → tratado como no-superadmin → no puede escalarse.
-- La restricción aplica solo a `is_superadmin`; el resto de columnas del perfil siguen siendo libremente editables por el propio usuario.
-
-**Efecto secundario conocido:** un superadmin no puede revertir su propio
-`is_superadmin` a `false` via `UPDATE profiles` (el WITH CHECK lo bloquearía).
-Para degradar a un superadmin se requiere acceso directo a Supabase Dashboard
-o una función `SECURITY DEFINER` específica. Este comportamiento es correcto
-y deseable.
+**Acción en 0006:** Ninguna. No se re-emite la policy para no introducir riesgo en algo que funciona correctamente.
 
 ---
 
-## Bloque 2 — Seed superadmin
+### P2 — Superadmin inoperativo: `profiles` vacío (Crítico)
 
-**Vulnerabilidad cerrada:** `is_superadmin()` devolvía `false` para todos
-los usuarios porque `profiles` estaba vacío. Ninguna operación que requiera
-superadmin era ejecutable.
+**Vulnerabilidad documentada:** `profiles` tenía 0 filas. `is_superadmin()` devolvía `false` para todos los usuarios, bloqueando todas las operaciones que requieren superadmin (DELETE físico, operaciones sobre tablas maestras vía soft_delete).
 
-**Fix:**
+**Estado al momento de Fase 0:** ❌ **Pendiente — corregido por esta migración**
+
+**Hallazgos de descubrimiento relevantes:**
+- No existe trigger `on_auth_user_created` — las filas en `profiles` no se crean automáticamente al registrarse un usuario.
+- Todas las columnas adicionales de `profiles` (`full_name`, `role`, `entity`, etc.) son `nullable` — el INSERT mínimo `(id, is_superadmin)` es válido.
+- `is_superadmin` tiene `DEFAULT false` y es `NOT NULL`.
+
+**Fix aplicado:**
+
 ```sql
 INSERT INTO public.profiles (id, is_superadmin)
 VALUES ('5e12ace0-05c6-4208-b7c8-8250b7063848', true)
-ON CONFLICT (id) DO UPDATE SET is_superadmin = true;
+ON CONFLICT (id) DO UPDATE
+  SET is_superadmin = true;
 ```
 
-**Por qué solo dos columnas:** el resto son todas `NULL`-able sin `DEFAULT`
-obligatorio. `is_superadmin` tiene `DEFAULT false` pero se proporciona
-explícitamente.
-
-**Idempotencia:** `ON CONFLICT DO UPDATE` garantiza que si el usuario ya
-hizo primer login (y por tanto tiene fila en `profiles`), solo se actualiza
-`is_superadmin` sin tocar `full_name`, `role`, `department`, etc.
+**Superadmin seed:** UUID `5e12ace0-05c6-4208-b7c8-8250b7063848` (primer login pendiente).
 
 ---
 
-## Bloque 3 — `soft_delete()` con auth por fila
+### P3 — `soft_delete` / `restore_soft_delete` sin autorización por fila (Crítico)
 
-**Vulnerabilidad cerrada:** cualquier usuario autenticado podía soft-deletear
-filas de cualquier proyecto.
+**Vulnerabilidad documentada:** Ambas funciones eran `SECURITY DEFINER` con whitelist de tabla pero sin verificar si el caller tenía permiso sobre la fila o el proyecto. Cualquier usuario autenticado podía soft-deletear o restaurar filas de cualquier proyecto.
 
-**Lógica de autorización añadida:**
+**Estado al momento de Fase 0:** ✅ **Ya corregido en base**
 
-```
-1. ¿Tabla en whitelist? → No → RAISE EXCEPTION (sin cambio)
-2. ¿is_superadmin()? → Sí → ejecutar y RETURN (fast path)
-3. ¿Tabla en ['organizations','workspaces','manufacturers','products']?
-   → Sí → RAISE EXCEPTION insufficient_privilege
-4. Resolver project_id de la fila (CASE tabla → SELECT/JOIN)
-5. ¿project_id IS NULL? → fila no encontrada → RAISE EXCEPTION no_data_found
-6. ¿has_project_permission(project_id, 'delete')? → No → RAISE EXCEPTION
-7. Ejecutar UPDATE deleted_at = now()
-```
+Ambas funciones ya implementan la lógica completa de autorización por fila:
+- Fast-path para `is_superadmin()`.
+- Bloqueo explícito de tablas maestras (`organizations`, `workspaces`, `manufacturers`, `products`) para usuarios no-superadmin.
+- `CASE` con mapeo completo de `project_id` — directo para 11 tablas, vía FK para `quotes` y `rfq_lines`, identidad para `projects`.
+- Verificación de `has_project_permission(v_project_id, 'delete')` para usuarios regulares.
 
-**Mapa de resolución de project_id:**
-
-| Tabla | Estrategia |
-|---|---|
-| bom_lines, requirements, compliance_matrix, rfqs, risks, systems, circulars, project_queries, documents, decisions, project_members | `SELECT project_id FROM public.<tabla> WHERE id = p_id` |
-| projects | `v_project_id := p_id` (el objeto es el proyecto) |
-| quotes | `SELECT r.project_id FROM quotes q JOIN rfqs r ON r.id = q.rfq_id WHERE q.id = p_id` |
-| rfq_lines | `SELECT r.project_id FROM rfq_lines rl JOIN rfqs r ON r.id = rl.rfq_id WHERE rl.id = p_id` |
-| organizations, workspaces, manufacturers, products | Denegado salvo superadmin |
-
-**Nota sobre `restore_soft_delete` con filas borradas:** para las tablas
-con JOIN (`quotes`, `rfq_lines`), la fila existe con `deleted_at IS NOT NULL`
-pero sus columnas de FK (`rfq_id`) siguen accesibles. El `SELECT` con JOIN
-funciona correctamente para restauración.
-
----
-
-## Bloque 4 — `restore_soft_delete()` con auth por fila
-
-Misma lógica que Bloque 3. Requiere el mismo nivel de permiso que borrar
-(coherente: quien puede borrar puede restaurar).
-
----
-
-## Queries de verificación post-aplicación (Fase 2)
-
-Ejecutar en SQL Editor de Supabase después de aplicar los 4 bloques:
-
-```sql
--- 1. profiles_update tiene WITH CHECK
-SELECT policyname, cmd, qual, with_check
-FROM pg_policies
-WHERE schemaname = 'public' AND tablename = 'profiles' AND cmd = 'UPDATE';
--- Esperado: with_check IS NOT NULL (contiene la expresión COALESCE)
-
--- 2. Superadmin existe
-SELECT id, is_superadmin FROM public.profiles
-WHERE id = '5e12ace0-05c6-4208-b7c8-8250b7063848';
--- Esperado: 1 fila, is_superadmin = true
-
--- 3. is_superadmin() funciona (correr autenticado como el superadmin)
-SELECT is_superadmin();
--- Esperado: true
-
--- 4. Funciones actualizadas incluyen chequeo de permisos
-SELECT proname, prosrc
-FROM pg_proc p
-JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public'
-AND p.proname IN ('soft_delete','restore_soft_delete');
--- Esperado: ambas incluyen 'has_project_permission' y 'v_masters'
-
--- 5. Test manual — intento de escalada (correr como usuario NO superadmin)
-UPDATE public.profiles SET is_superadmin = true WHERE id = auth.uid();
--- Esperado: ERROR — new row violates WITH CHECK option for "profiles_update"
-```
-
----
-
-## Checklist de aprobación pre-producción
-
-- [ ] Fase 2 ejecutada y todos los checks pasan en staging/dev
-- [ ] Test manual de escalada (Query 5 de Fase 2) confirma el bloqueo
-- [ ] Superadmin confirmó primer login exitoso después de aplicar Bloque 2
-- [ ] Confirmación de que `has_project_permission(uuid, 'delete')` devuelve
-      los valores correctos para usuarios de prueba en dev
-- [ ] Rollback testeado en entorno dev antes de aplicar en producción
-- [ ] Aprobación explícita de responsable de seguridad o tech lead
-
----
-
-## Fuera de alcance — mejoras futuras
-
-- **Tabla `app_admins`:** mover `is_superadmin` a tabla separada sin policy
-  de escritura para usuarios. Más robusto que el `WITH CHECK`, pero requiere
-  cambiar `is_superadmin()` y actualizar código que lea `profiles.is_superadmin`.
-  Candidato para 0008 o posterior.
-- **UI de gestión de superadmins:** panel para promover/degradar superadmins
-  sin acceso directo a Supabase Dashboard.
-- **Migración 0007:** `transactional_outbox` — fuera de alcance de esta tarea.
+**Acción en 0006:** Ninguna. No se re-emiten las funciones con `CREATE OR REPLACE` para no tocar código en producción que ya es correcto.
 
 ---
 
 ## Archivos entregados
 
-```
-apps/core-bep/supabase/migrations/
-├── 0006_security_hardening.sql   ← migración principal (4 bloques)
-└── 0006_rollback.sql             ← rollback completo al estado post-0005
-MIGRATION-0006-REPORT.md          ← este archivo
+| Archivo | Descripción |
+|---|---|
+| `0006_security_hardening.sql` | Migración — seed superadmin (P2) |
+| `0006_rollback.sql` | Rollback — elimina la fila del superadmin si no tiene datos de perfil |
+| `MIGRATION-0006-REPORT.md` | Este documento |
+
+**Ruta sugerida:** `apps/core-bep/supabase/migrations/`
+
+---
+
+## Rollback — consideraciones
+
+El rollback elimina la fila del superadmin condicionalmente: solo si las columnas de perfil opcionales están en NULL (es decir, si el superadmin no ha completado su perfil desde el primer login). Si el superadmin ya hizo login y llenó datos, el DELETE no afecta filas y el rollback incluye instrucciones para el caso manual (`UPDATE ... SET is_superadmin = false`).
+
+El rollback **no** revierte P1 ni P3 — ambos estaban corregidos antes de 0006 y revertirlos implicaría reintroducir vulnerabilidades deliberadamente.
+
+---
+
+## Verificación post-aplicación
+
+Correr en Supabase SQL Editor después de aplicar la migración:
+
+```sql
+-- 1. Fila del superadmin
+SELECT id, is_superadmin
+FROM public.profiles
+WHERE id = '5e12ace0-05c6-4208-b7c8-8250b7063848';
+-- Esperado: 1 fila, is_superadmin = true
+
+-- 2. is_superadmin() (autenticado como el superadmin)
+SELECT is_superadmin();
+-- Esperado: true
+
+-- 3. Control: profiles_update WITH CHECK sigue en pie
+SELECT policyname, cmd, with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'profiles'
+  AND cmd = 'UPDATE';
+-- Esperado: with_check IS NOT NULL
 ```
 
 ---
 
-_Autoría: revisión de seguridad post-0005 — 2026-06-27_  
-_Estado: pendiente de aprobación humana. NO aplicar a producción sin sign-off._
+## Fuera de alcance (0006)
+
+- Mover `is_superadmin` a tabla `app_admins` separada → mejora futura
+- UI de administración de superadmins
+- Migración 0007 (`transactional_outbox`)
+- CRUD de otras tablas
+
+---
+
+**NO aplicar a producción sin aprobación humana.**

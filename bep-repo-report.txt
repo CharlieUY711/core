@@ -1,0 +1,119 @@
+
+======================================================================
+CORE NEXUS / BEP — REPORTE DE REPO (solo lectura)
+======================================================================
+Raíz monorepo : C:\CORE
+App detectada : C:\CORE\apps\core-bep
+Archivos (src): 37
+
+======================================================================
+1) MUTACIONES (¿hay CRUD de escritura?)  [heurística]
+======================================================================
+Archivos con mutaciones:
+    2×  src/app/api/documents/process/route.ts
+    1×  src/components/bep/document-uploader.tsx
+    1×  src/components/bep/new-project-form.tsx
+
+======================================================================
+2) ESTADO POR MÓDULO
+======================================================================
+  bom        : page=sí  form/modal=no  mutaciones=0  archivos=2
+  documents  : page=sí  form/modal=no  mutaciones=2  archivos=4
+  compliance : page=sí  form/modal=no  mutaciones=0  archivos=2
+  rfq        : page=sí  form/modal=no  mutaciones=0  archivos=2
+  risks      : page=sí  form/modal=no  mutaciones=0  archivos=2
+  queries    : page=sí  form/modal=no  mutaciones=0  archivos=2
+  knowledge  : page=sí  form/modal=no  mutaciones=0  archivos=2
+  profile    : page=sí  form/modal=no  mutaciones=0  archivos=3
+  projects   : page=sí  form/modal=no  mutaciones=0  archivos=11
+
+======================================================================
+3) SERVER ACTIONS / API ROUTES
+======================================================================
+"use server"   : 0 archivo(s)
+API routes     : 1 archivo(s)
+  src/app/api/documents/process/route.ts
+
+======================================================================
+4) TABLAS REFERENCIADAS EN CÓDIGO (.from(...))
+======================================================================
+    2×  bom_lines
+    1×  compliance_matrix
+    6×  documents
+    1×  organizations
+    1×  project_members
+    1×  project_queries
+   20×  projects
+    1×  requirements
+    1×  rfqs
+    2×  risks
+    1×  workspaces
+
+======================================================================
+5) PACKAGE.JSON
+======================================================================
+name    : core-bep
+  next                         14.2.29
+  react                        ^18.3.0
+  @supabase/supabase-js        ^2.49.0
+  @supabase/ssr                ^0.5.0
+  typescript                   ^5.8.0
+  tailwindcss                  ^3.4.0
+
+======================================================================
+6) MIGRACIONES SUPABASE
+======================================================================
+C:\CORE\apps\core-bep\supabase\migrations  (2 migraciones)
+  0001_initial_schema.sql
+  0002_storage_and_functions.sql
+
+======================================================================
+7) GIT
+======================================================================
+branch       : main
+últimos commits:
+  b555f2a feat(dashboard): desarrollo comercial — aceite de oliva + jamón curado
+  4fc5b42 trigger deploy
+  8cd6894 trigger deploy
+  e245cba feat: ml-sync module migrado a catalog_* + pricing multidimensional
+  870b287 chore(reorg): remover .git.backup huerfanos (objetos git muertos)
+  3123974 fix(reorg): recuperar admin-standalone en tools/tool-dashboard (borrado por error en be3af8f)
+  be3af8f refactor(reorg): completar dashboard (admin-standalone -> tools/tool-dashboard)
+  10b8ff5 fix(core-landing): declarar @types/geojson (dep phantom de CoreGlobe.tsx)
+  b8fd092 refactor(reorg): absorber core-landing al monorepo (era repo git anidado independiente)
+  9fc273b chore(reorg): cuarentena .git.backup huerfano dentro de tool-dashboard
+sin commitear: 74 archivo(s)
+  M .gitignore
+   M .npmrc
+   M apps/core-landing/app/globals.css
+   M apps/core-landing/public/favicon.svg
+   M apps/core-landing/public/logo-white.svg
+   M apps/core-landing/public/logo.svg
+   M apps/core-market/public/favicon.svg
+   M apps/core-market/public/logo-white.svg
+   M apps/core-market/public/logo.svg
+   M apps/core-market/src/app/components/brand/Brand.tsx
+   M apps/core-market/src/app/hooks/useProductos.ts
+   M apps/core-market/src/app/public/LoginModal.tsx
+   M apps/core-market/src/app/public/MarketPage.tsx
+   M apps/core-market/src/app/public/Navbar.tsx
+   M apps/core-market/src/app/public/ProductCard.tsx
+   M apps/core-market/src/app/services/carritoApi.ts
+   M apps/core-market/src/styles/brand.css
+   M apps/core-market/src/styles/core-storefront.css
+   M apps/core-market/src/styles/fonts.css
+   M apps/core-market/src/styles/theme.css
+   D packages/SYYNC/20260617_catalog_prices.sql
+   D packages/SYYNC/20260617_core_catalog_full.sql
+   D packages/SYYNC/20260618_catalog_patch.sql
+   D packages/SYYNC/index.ts
+   D packages/SYYNC/ml-sync-index.ts
+
+======================================================================
+8) .ENV.LOCAL (solo nombres de variables, sin valores)
+======================================================================
+  NEXT_PUBLIC_BEP_SUPABASE_URL
+  NEXT_PUBLIC_BEP_SUPABASE_ANON_KEY
+  BEP_SUPABASE_SERVICE_ROLE_KEY
+  ANTHROPIC_API_KEY
+  OPENAI_API_KEY

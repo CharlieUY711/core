@@ -1,0 +1,6 @@
+{
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand":   "pnpm --filter core-orquesta build",
+  "outputDirectory": "apps/core-orquesta/dist",
+  "regions": ["iad1"]
+}

@@ -1,0 +1,81 @@
+/* ═══════════════════════════════════════════════════════════════════
+   MARKET · Design Tokens — fuente única de verdad
+   Derivado de: Manual de Marca v1.0 · Landing/Dashboard/Mobile specs
+   Junio 2026
+   Importar este archivo (o pegar el bloque :root) en cada app.
+   ─────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Roboto+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Marca madre ───────────────────────────────────────────── */
+  --brand-madre:        #3D5689;   /* azul madre · firma de la casa  */
+  --brand-madre-hover:  #46639B;
+  --brand-navy:         #0D2B55;   /* header / sidebar               */
+  --brand-navy-field:   #314B6E;   /* campos sobre navy              */
+  --madre-tint:         #EBEFF6;
+
+  /* ── Verticales insignia ───────────────────────────────────── */
+  --tech:        #1C6E86;  --tech-tint:        #E6F0F3;
+  --home:        #A85636;  --home-tint:        #F4ECE8;
+  --vestimenta:  #7E3A70;  --vestimenta-tint:  #F2EAF0;
+  --entret:      #C2611F;  --entret-tint:      #F8EEE4;
+  --servicios:   #50617F;
+
+  /* ── Transversales ─────────────────────────────────────────── */
+  --second:        #2E7D57;  --second-tint:  #EAF3EE;  --second-field:  #256647;
+  --gourmet:       #9B3326;  --gourmet-tint: #F5EAE7;  --gourmet-field: #822A20;
+
+  /* ── Neutrales ─────────────────────────────────────────────── */
+  --ink:       #1C1B19;   /* títulos / tinta            */
+  --text:      #34322C;   /* texto principal           */
+  --text-2:    #56544C;   /* texto secundario          */
+  --mute:      #8A8678;   /* texto terciario / labels  */
+  --border:    #E4E1D8;
+  --divider:   #ECEAE2;
+  --canvas:    #F0EFEA;   /* lienzo de pantalla        */
+  --surface:   #F6F4EF;   /* superficie sutil          */
+  --card:      #FFFFFF;
+  --paper:     #D9D6CC;   /* fondo "papel" de specs     */
+
+  /* ── Estados ───────────────────────────────────────────────── */
+  --success:   #2E7D57;
+  --warning:   #C2611F;
+  --alert:     #B23B30;
+
+  /* ── Tipografía ────────────────────────────────────────────── */
+  --font-base:     'Archivo', system-ui, -apple-system, sans-serif;
+  --font-display:  'Archivo Black', 'Archivo', sans-serif;
+  --font-mono:     'Roboto Mono', ui-monospace, monospace;
+  --fw-normal: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+
+  /* ── Radios ────────────────────────────────────────────────── */
+  --r-input:    7px;
+  --r-control:  9px;
+  --r-card:     14px;
+  --r-pill:     100px;
+
+  /* ── Sombras ───────────────────────────────────────────────── */
+  --sh-subtle:  0 1px 3px rgba(0,0,0,.05);
+  --sh-card:    0 8px 24px rgba(0,0,0,.08);
+  --sh-elev:    0 18px 50px rgba(0,0,0,.16);
+  --sh-press:   inset 0 3px 7px rgba(0,0,0,.45);
+
+  /* ── Contrato runtime --c-* (lo que consumen las apps vía Workspace) ── */
+  --c-primary:        #3D5689;
+  --c-primary-hover:  #46639B;
+  --c-on-primary:     #FFFFFF;
+  --c-accent:         #2E7D57;   /* Second como acento transversal */
+  --c-bg:             #F0EFEA;
+  --c-bg-surface:     #F6F4EF;
+  --c-bg-elev:        #FFFFFF;
+  --c-text:           #1C1B19;
+  --c-text-2:         #56544C;
+  --c-text-3:         #8A8678;
+  --c-border:         #E4E1D8;
+  --c-border-strong:  #D9D6CC;
+  --c-success:        #2E7D57;
+  --c-warning:        #C2611F;
+  --c-danger:         #B23B30;
+  --c-info:           #1C6E86;
+}
