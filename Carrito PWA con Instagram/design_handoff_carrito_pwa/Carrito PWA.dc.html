@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</helmet>
+<div style="min-height:100vh; background:oklch(96% 0.006 80); display:flex; align-items:flex-start; justify-content:center; gap:56px; padding:64px 32px; flex-wrap:wrap; font-family:-apple-system,'SF Pro',system-ui,sans-serif; box-sizing:border-box;">
+
+  <sc-if value="{{ showIg }}" hint-placeholder-val="{{ true }}">
+    <div style="width:375px; display:flex; flex-direction:column; gap:14px;">
+      <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:oklch(45% 0.01 70);">Instagram</div>
+      <div style="background:oklch(100% 0 0); border:1px solid oklch(90% 0.01 70); border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display:flex; align-items:center; gap:10px; padding:14px 16px;">
+          <div style="width:34px; height:34px; border-radius:50%; background:oklch(62% 0.16 35); flex-shrink:0;"></div>
+          <div style="font-size:14px; font-weight:600; color:oklch(20% 0.01 70);">coremarket.uy</div>
+        </div>
+        <div style="position:relative; width:100%; aspect-ratio:1/1; background:repeating-linear-gradient(45deg, oklch(93% 0.03 35) 0 14px, oklch(88% 0.03 35) 14px 28px); display:flex; align-items:center; justify-content:center;">
+          <div style="font-family:ui-monospace,monospace; font-size:12px; color:oklch(35% 0.02 35); background:oklch(100% 0 0 / 0.6); padding:4px 10px; border-radius:6px;">foto: remera básica blanca</div>
+          <button onClick="{{ tapComprarIG }}" style="position:absolute; bottom:14px; left:50%; transform:translateX(-50%); background:oklch(20% 0.01 70); color:oklch(98% 0 0); border:none; border-radius:100px; padding:10px 22px; font-size:14px; font-weight:600; cursor:pointer;">Comprar</button>
+        </div>
+        <div style="padding:12px 16px 16px; font-size:14px; line-height:1.5; color:oklch(25% 0.01 70);">
+          <span style="font-weight:600;">coremarket.uy</span> Nueva colección ya disponible. Encontrá esto y más en el link de la bio.
+        </div>
+      </div>
+      <div style="font-size:13px; color:oklch(45% 0.01 70); text-align:center;">Tocá "Comprar" para abrir el carrito &rarr;</div>
+    </div>
+  </sc-if>
+
+  <div style="display:flex; flex-direction:column; gap:14px; align-items:center;">
+    <div style="font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:oklch(45% 0.01 70);">PWA — tu carrito</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402,874">
+
+      <sc-if value="{{ isIgScreen }}" hint-placeholder-val="{{ false }}">
+        <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:64px 40px 0; box-sizing:border-box; text-align:center; background:oklch(98% 0.005 80);">
+          <div style="width:56px; height:56px; border-radius:16px; background:oklch(62% 0.16 35);"></div>
+          <div style="font-size:20px; font-weight:700; color:oklch(20% 0.01 70);">core Market</div>
+          <div style="font-size:14px; color:oklch(45% 0.01 70);">Abrí el link desde Instagram para ver el catálogo.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCatalogScreen }}" hint-placeholder-val="{{ true }}">
+        <div style="height:100%; display:flex; flex-direction:column; background:oklch(98% 0.005 80); box-sizing:border-box;">
+          <div style="padding:64px 20px 12px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="font-size:20px; font-weight:700; color:oklch(20% 0.01 70);">core Market</div>
+            <button onClick="{{ goToCart }}" style="position:relative; border:1px solid oklch(88% 0.01 70); background:oklch(100% 0 0); border-radius:100px; padding:8px 14px; font-size:13px; font-weight:600; color:oklch(25% 0.01 70); cursor:pointer;">
+              Carrito
+              <sc-if value="{{ cartCount }}" hint-placeholder-val="{{ 0 }}">
+                <span style="position:absolute; top:-6px; right:-6px; background:oklch(62% 0.16 35); color:#fff; font-size:11px; font-weight:700; min-width:18px; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; padding:0 4px;">{{ cartCount }}</span>
+              </sc-if>
+            </button>
+          </div>
+          <div style="flex:1; overflow:auto; padding:8px 20px 24px; display:flex; flex-direction:column; gap:14px;">
+            <sc-for list="{{ catalogProducts }}" as="item" hint-placeholder-count="3">
+              <div style="display:flex; gap:14px; background:oklch(100% 0 0); border:1px solid oklch(91% 0.01 70); border-radius:14px; padding:12px; align-items:center;">
+                <div style="width:64px; height:64px; border-radius:10px; flex-shrink:0; background:{{ item.swatchBg }};"></div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+                  <div style="font-size:14px; font-weight:600; color:oklch(20% 0.01 70);">{{ item.nombre }}</div>
+                  <div style="font-size:14px; color:oklch(40% 0.01 70);">{{ item.precioFmt }}</div>
+                </div>
+                <sc-if value="{{ item.inCart }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:8px; border:1px solid oklch(88% 0.01 70); border-radius:100px; padding:4px;">
+                    <button onClick="{{ item.dec }}" style="width:26px; height:26px; border-radius:50%; border:none; background:oklch(94% 0.005 70); font-size:16px; font-weight:700; color:oklch(25% 0.01 70); cursor:pointer;">–</button>
+                    <div style="min-width:16px; text-align:center; font-size:14px; font-weight:600; color:oklch(20% 0.01 70);">{{ item.qty }}</div>
+                    <button onClick="{{ item.inc }}" style="width:26px; height:26px; border-radius:50%; border:none; background:oklch(20% 0.01 70); font-size:16px; font-weight:700; color:#fff; cursor:pointer;">+</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ item.notInCart }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ item.inc }}" style="border:none; background:oklch(20% 0.01 70); color:#fff; font-size:13px; font-weight:600; border-radius:100px; padding:8px 16px; cursor:pointer;">Agregar</button>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCartScreen }}" hint-placeholder-val="{{ false }}">
+        <div style="height:100%; display:flex; flex-direction:column; background:oklch(98% 0.005 80); box-sizing:border-box;">
+          <div style="padding:64px 20px 12px; display:flex; align-items:center; gap:12px;">
+            <button onClick="{{ goToCatalog }}" style="border:none; background:none; font-size:20px; color:oklch(25% 0.01 70); cursor:pointer; padding:0;">&larr;</button>
+            <div style="font-size:18px; font-weight:700; color:oklch(20% 0.01 70);">Tu carrito</div>
+          </div>
+          <div style="flex:1; overflow:auto; padding:8px 20px; display:flex; flex-direction:column; gap:12px;">
+            <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:60px 20px; text-align:center;">
+                <div style="font-size:14px; color:oklch(45% 0.01 70);">Tu carrito está vacío.</div>
+                <button onClick="{{ goToCatalog }}" style="border:none; background:oklch(20% 0.01 70); color:#fff; font-size:13px; font-weight:600; border-radius:100px; padding:10px 18px; cursor:pointer;">Ver catálogo</button>
+              </div>
+            </sc-if>
+            <sc-for list="{{ cartItems }}" as="item" hint-placeholder-count="0">
+              <div style="display:flex; gap:14px; background:oklch(100% 0 0); border:1px solid oklch(91% 0.01 70); border-radius:14px; padding:12px; align-items:center;">
+                <div style="width:56px; height:56px; border-radius:10px; flex-shrink:0; background:{{ item.swatchBg }};"></div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+                  <div style="font-size:14px; font-weight:600; color:oklch(20% 0.01 70);">{{ item.nombre }}</div>
+                  <div style="font-size:13px; color:oklch(40% 0.01 70);">{{ item.precioFmt }} c/u</div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                    <button onClick="{{ item.dec }}" style="width:24px; height:24px; border-radius:50%; border:1px solid oklch(88% 0.01 70); background:#fff; font-size:14px; font-weight:700; color:oklch(25% 0.01 70); cursor:pointer;">–</button>
+                    <div style="min-width:14px; text-align:center; font-size:13px; font-weight:600;">{{ item.qty }}</div>
+                    <button onClick="{{ item.inc }}" style="width:24px; height:24px; border-radius:50%; border:1px solid oklch(88% 0.01 70); background:#fff; font-size:14px; font-weight:700; color:oklch(25% 0.01 70); cursor:pointer;">+</button>
+                  </div>
+                </div>
+                <div style="font-size:14px; font-weight:700; color:oklch(20% 0.01 70); white-space:nowrap;">{{ item.subtotalFmt }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ cartNotEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:14px 20px 28px; border-top:1px solid oklch(91% 0.01 70); background:oklch(100% 0 0); display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:15px;">
+                <span style="color:oklch(40% 0.01 70);">Total</span>
+                <span style="font-weight:700; color:oklch(20% 0.01 70);">{{ cartTotalFmt }}</span>
+              </div>
+              <button onClick="{{ goToCheckout }}" style="border:none; background:oklch(62% 0.16 35); color:#fff; font-size:15px; font-weight:700; border-radius:100px; padding:13px; cursor:pointer;">Continuar</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCheckoutScreen }}" hint-placeholder-val="{{ false }}">
+        <div style="height:100%; display:flex; flex-direction:column; background:oklch(98% 0.005 80); box-sizing:border-box;">
+          <div style="padding:64px 20px 12px; display:flex; align-items:center; gap:12px;">
+            <button onClick="{{ goToCart }}" style="border:none; background:none; font-size:20px; color:oklch(25% 0.01 70); cursor:pointer; padding:0;">&larr;</button>
+            <div style="font-size:18px; font-weight:700; color:oklch(20% 0.01 70);">Datos de contacto</div>
+          </div>
+          <div style="flex:1; overflow:auto; padding:8px 20px 24px; display:flex; flex-direction:column; gap:14px;">
+
+            <div style="display:flex; border:1px solid oklch(88% 0.01 70); border-radius:100px; padding:3px; background:#fff;">
+              <button onClick="{{ selectPersona }}" style="flex:1; border:none; border-radius:100px; padding:9px; font-size:13px; font-weight:600; cursor:pointer; background:{{ personaBg }}; color:{{ personaColor }};">Persona</button>
+              <button onClick="{{ selectEmpresa }}" style="flex:1; border:none; border-radius:100px; padding:9px; font-size:13px; font-weight:600; cursor:pointer; background:{{ empresaBg }}; color:{{ empresaColor }};">Empresa</button>
+            </div>
+
+            <input placeholder="Nombre y apellido" value="{{ form.nombre }}" onChange="{{ onNombre }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+            <input placeholder="Email" value="{{ form.email }}" onChange="{{ onEmail }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+            <input placeholder="Teléfono" value="{{ form.telefono }}" onChange="{{ onTelefono }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+            <input placeholder="Dirección de entrega" value="{{ form.direccion }}" onChange="{{ onDireccion }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+            <div style="display:flex; gap:10px;">
+              <input placeholder="Ciudad" value="{{ form.ciudad }}" onChange="{{ onCiudad }}" style="flex:1; border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none; min-width:0;" />
+              <input placeholder="Código postal" value="{{ form.codigoPostal }}" onChange="{{ onCodigoPostal }}" style="flex:1; border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none; min-width:0;" />
+            </div>
+
+            <sc-if value="{{ isEmpresa }}" hint-placeholder-val="{{ false }}">
+              <input placeholder="Razón social" value="{{ form.razonSocial }}" onChange="{{ onRazonSocial }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+              <input placeholder="RUT (12 dígitos)" value="{{ form.documento }}" onChange="{{ onDocumento }}" style="border:1px solid oklch(88% 0.01 70); border-radius:10px; padding:12px 14px; font-size:14px; background:#fff; outline:none;" />
+              <sc-if value="{{ rutInvalid }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px; color:oklch(55% 0.15 35); margin-top:-8px;">El RUT debe tener 12 dígitos.</div>
+              </sc-if>
+            </sc-if>
+
+          </div>
+          <div style="padding:14px 20px 28px; border-top:1px solid oklch(91% 0.01 70); background:oklch(100% 0 0);">
+            <button onClick="{{ goToPayment }}" disabled="{{ checkoutInvalid }}" style="width:100%; border:none; background:{{ checkoutBtnBg }}; color:#fff; font-size:15px; font-weight:700; border-radius:100px; padding:13px; cursor:pointer; box-sizing:border-box;">Ir a pago</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isPaymentScreen }}" hint-placeholder-val="{{ false }}">
+        <div style="height:100%; display:flex; flex-direction:column; background:oklch(98% 0.005 80); box-sizing:border-box;">
+          <div style="padding:64px 20px 12px; display:flex; align-items:center; gap:12px;">
+            <button onClick="{{ goToCheckout }}" style="border:none; background:none; font-size:20px; color:oklch(25% 0.01 70); cursor:pointer; padding:0;">&larr;</button>
+            <div style="font-size:18px; font-weight:700; color:oklch(20% 0.01 70);">Método de pago</div>
+          </div>
+          <div style="flex:1; overflow:auto; padding:8px 20px 24px; display:flex; flex-direction:column; gap:12px;">
+            <button onClick="{{ selectMP }}" style="display:flex; align-items:center; gap:12px; border:1.5px solid {{ mpBorder }}; background:#fff; border-radius:14px; padding:16px; cursor:pointer; text-align:left;">
+              <div style="width:20px; height:20px; border-radius:50%; border:1.5px solid {{ mpBorder }}; background:{{ mpDot }}; flex-shrink:0;"></div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:14px; font-weight:700; color:oklch(20% 0.01 70);">Mercado Pago</div>
+                <div style="font-size:12px; color:oklch(45% 0.01 70);">Tarjetas, transferencia o efectivo</div>
+              </div>
+            </button>
+            <sc-if value="{{ showPaypal }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ selectPaypal }}" style="display:flex; align-items:center; gap:12px; border:1.5px solid {{ ppBorder }}; background:#fff; border-radius:14px; padding:16px; cursor:pointer; text-align:left;">
+                <div style="width:20px; height:20px; border-radius:50%; border:1.5px solid {{ ppBorder }}; background:{{ ppDot }}; flex-shrink:0;"></div>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  <div style="font-size:14px; font-weight:700; color:oklch(20% 0.01 70);">PayPal</div>
+                  <div style="font-size:12px; color:oklch(45% 0.01 70);">Cuenta PayPal o tarjeta</div>
+                </div>
+              </button>
+            </sc-if>
+            <div style="margin-top:8px; background:#fff; border:1px solid oklch(91% 0.01 70); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:13px; font-weight:600; color:oklch(25% 0.01 70);">Resumen</div>
+              <div style="display:flex; justify-content:space-between; font-size:13px; color:oklch(45% 0.01 70);">
+                <span>{{ cartCount }} artículo(s)</span>
+                <span>{{ cartTotalFmt }}</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:14px 20px 28px; border-top:1px solid oklch(91% 0.01 70); background:oklch(100% 0 0);">
+            <button onClick="{{ confirmOrder }}" disabled="{{ paymentInvalid }}" style="width:100%; border:none; background:{{ payBtnBg }}; color:#fff; font-size:15px; font-weight:700; border-radius:100px; padding:13px; cursor:pointer; box-sizing:border-box;">Confirmar pedido</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isConfirmationScreen }}" hint-placeholder-val="{{ false }}">
+        <div style="height:100%; display:flex; flex-direction:column; background:oklch(98% 0.005 80); box-sizing:border-box; padding:64px 20px 24px; overflow:auto;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px 0 20px;">
+            <div style="width:52px; height:52px; border-radius:50%; background:oklch(58% 0.13 155); display:flex; align-items:center; justify-content:center;">
+              <svg width="24" height="18" viewBox="0 0 24 18"><path d="M2 9L9 16L22 2" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div style="font-size:18px; font-weight:700; color:oklch(20% 0.01 70);">¡Pedido confirmado!</div>
+            <div style="font-size:13px; color:oklch(45% 0.01 70);">Orden {{ order.id }}</div>
+          </div>
+          <div style="background:#fff; border:1px solid oklch(91% 0.01 70); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:10px;">
+            <sc-for list="{{ order.items }}" as="item" hint-placeholder-count="0">
+              <div style="display:flex; justify-content:space-between; font-size:13px; color:oklch(30% 0.01 70);">
+                <span>{{ item.qty }}× {{ item.nombre }}</span>
+                <span>{{ item.subtotalFmt }}</span>
+              </div>
+            </sc-for>
+            <div style="border-top:1px solid oklch(91% 0.01 70); margin-top:2px; padding-top:10px; display:flex; justify-content:space-between; font-size:14px; font-weight:700; color:oklch(20% 0.01 70);">
+              <span>Total</span>
+              <span>{{ order.totalFmt }}</span>
+            </div>
+          </div>
+          <div style="font-size:13px; color:oklch(45% 0.01 70); text-align:center; padding:18px 8px;">Te vamos a escribir a {{ order.email }} con los detalles del envío.</div>
+          <button onClick="{{ resetAll }}" style="margin-top:auto; border:1px solid oklch(88% 0.01 70); background:#fff; color:oklch(25% 0.01 70); font-size:14px; font-weight:600; border-radius:100px; padding:12px; cursor:pointer;">Volver al catálogo</button>
+        </div>
+      </sc-if>
+
+    </x-import>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:950},&quot;showInstagramEntry&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;defaultBuyerType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;persona&quot;,&quot;options&quot;:[&quot;persona&quot;,&quot;empresa&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;paymentProviders&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Mercado Pago + PayPal&quot;,&quot;options&quot;:[&quot;Mercado Pago + PayPal&quot;,&quot;Solo Mercado Pago&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+
+class Component extends DCLogic {
+  products = [
+    { id: '1', slug: 'post123', nombre: 'Remera básica blanca', precio: 890, hue: 35 },
+    { id: '2', slug: 'post124', nombre: 'Buzo canguro gris', precio: 1690, hue: 250 },
+    { id: '3', slug: 'post125', nombre: 'Gorra logo bordado', precio: 650, hue: 150 },
+  ];
+
+  state = {
+    screen: null, // resolved lazily from prop on first render
+    cart: {},
+    buyerType: null,
+    form: { nombre: '', email: '', telefono: '', direccion: '', ciudad: '', codigoPostal: '', razonSocial: '', documento: '' },
+    paymentMethod: null,
+    order: null,
+  };
+
+  formatPrice(n) {
+    return '$U ' + n.toLocaleString('es-UY');
+  }
+
+  swatchBg(hue) {
+    return `repeating-linear-gradient(45deg, oklch(90% 0.03 ${hue}) 0 8px, oklch(84% 0.03 ${hue}) 8px 16px)`;
+  }
+
+  setQty(id, qty) {
+    const cart = { ...this.state.cart };
+    if (qty <= 0) delete cart[id];
+    else cart[id] = qty;
+    this.setState({ cart });
+  }
+
+  goTo(screen) {
+    this.setState({ screen });
+  }
+
+  updateForm(key, value) {
+    this.setState(s => ({ form: { ...s.form, [key]: value } }));
+  }
+
+  renderVals() {
+    const p = this.props || {};
+    const showIg = p.showInstagramEntry ?? true;
+    const defaultBuyer = p.defaultBuyerType || 'persona';
+    const providers = p.paymentProviders || 'Mercado Pago + PayPal';
+    const showPaypal = providers !== 'Solo Mercado Pago';
+
+    const screen = this.state.screen || (showIg ? 'ig' : 'catalog');
+    const buyerType = this.state.buyerType || defaultBuyer;
+    const cart = this.state.cart;
+
+    const catalogProducts = this.products.map(item => {
+      const qty = cart[item.id] || 0;
+      return {
+        ...item,
+        precioFmt: this.formatPrice(item.precio),
+        swatchBg: this.swatchBg(item.hue),
+        qty,
+        inCart: qty > 0,
+        notInCart: qty === 0,
+        inc: () => this.setQty(item.id, qty + 1),
+        dec: () => this.setQty(item.id, Math.max(0, qty - 1)),
+      };
+    });
+
+    const cartItems = this.products
+      .filter(item => (cart[item.id] || 0) > 0)
+      .map(item => {
+        const qty = cart[item.id];
+        return {
+          ...item,
+          qty,
+          precioFmt: this.formatPrice(item.precio),
+          subtotalFmt: this.formatPrice(item.precio * qty),
+          swatchBg: this.swatchBg(item.hue),
+          inc: () => this.setQty(item.id, qty + 1),
+          dec: () => this.setQty(item.id, qty - 1),
+        };
+      });
+
+    const cartCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
+    const cartTotal = cartItems.reduce((sum, i) => sum + i.precio * i.qty, 0);
+
+    const form = this.state.form;
+    const isEmpresa = buyerType === 'empresa';
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+    const rutOk = /^\d{12}$/.test(form.documento);
+    const rutInvalid = isEmpresa && form.documento.length > 0 && !rutOk;
+    const baseValid = form.nombre.trim().length > 0 && emailOk;
+    const empresaValid = !isEmpresa || (form.razonSocial.trim().length > 0 && rutOk);
+    const checkoutValid = baseValid && empresaValid;
+
+    const paymentMethod = this.state.paymentMethod;
+
+    const buildOrder = () => {
+      const id = 'CM-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      return {
+        id,
+        email: form.email,
+        items: cartItems.map(i => ({ nombre: i.nombre, qty: i.qty, subtotalFmt: i.subtotalFmt })),
+        totalFmt: this.formatPrice(cartTotal),
+      };
+    };
+
+    return {
+      showIg,
+      isIgScreen: screen === 'ig',
+      isCatalogScreen: screen === 'catalog',
+      isCartScreen: screen === 'cart',
+      isCheckoutScreen: screen === 'checkout',
+      isPaymentScreen: screen === 'payment',
+      isConfirmationScreen: screen === 'confirmation',
+
+      catalogProducts,
+      cartItems,
+      cartCount,
+      cartEmpty: cartCount === 0,
+      cartNotEmpty: cartCount > 0,
+      cartTotalFmt: this.formatPrice(cartTotal),
+
+      tapComprarIG: () => {
+        this.setQty('1', 1);
+        this.setState({ screen: 'catalog' });
+      },
+      goToCart: () => this.goTo('cart'),
+      goToCatalog: () => this.goTo('catalog'),
+      goToCheckout: () => this.goTo('checkout'),
+      goToPayment: () => {
+        if (checkoutValid) this.goTo('payment');
+      },
+
+      buyerType,
+      isEmpresa,
+      selectPersona: () => this.setState({ buyerType: 'persona' }),
+      selectEmpresa: () => this.setState({ buyerType: 'empresa' }),
+      personaBg: buyerType === 'persona' ? 'oklch(20% 0.01 70)' : 'transparent',
+      personaColor: buyerType === 'persona' ? '#fff' : 'oklch(35% 0.01 70)',
+      empresaBg: buyerType === 'empresa' ? 'oklch(20% 0.01 70)' : 'transparent',
+      empresaColor: buyerType === 'empresa' ? '#fff' : 'oklch(35% 0.01 70)',
+
+      form,
+      onNombre: e => this.updateForm('nombre', e.target.value),
+      onEmail: e => this.updateForm('email', e.target.value),
+      onTelefono: e => this.updateForm('telefono', e.target.value),
+      onDireccion: e => this.updateForm('direccion', e.target.value),
+      onCiudad: e => this.updateForm('ciudad', e.target.value),
+      onCodigoPostal: e => this.updateForm('codigoPostal', e.target.value),
+      onRazonSocial: e => this.updateForm('razonSocial', e.target.value),
+      onDocumento: e => this.updateForm('documento', e.target.value),
+      rutInvalid,
+      checkoutInvalid: !checkoutValid,
+      checkoutBtnBg: checkoutValid ? 'oklch(62% 0.16 35)' : 'oklch(80% 0.01 70)',
+
+      showPaypal,
+      mpBorder: paymentMethod === 'mercadopago' ? 'oklch(62% 0.16 35)' : 'oklch(88% 0.01 70)',
+      mpDot: paymentMethod === 'mercadopago' ? 'oklch(62% 0.16 35)' : 'transparent',
+      ppBorder: paymentMethod === 'paypal' ? 'oklch(62% 0.16 35)' : 'oklch(88% 0.01 70)',
+      ppDot: paymentMethod === 'paypal' ? 'oklch(62% 0.16 35)' : 'transparent',
+      selectMP: () => this.setState({ paymentMethod: 'mercadopago' }),
+      selectPaypal: () => this.setState({ paymentMethod: 'paypal' }),
+      paymentInvalid: !paymentMethod,
+      payBtnBg: paymentMethod ? 'oklch(62% 0.16 35)' : 'oklch(80% 0.01 70)',
+      confirmOrder: () => {
+        if (!paymentMethod) return;
+        const order = buildOrder();
+        this.setState({ order, screen: 'confirmation' });
+      },
+
+      order: this.state.order || { id: '', email: '', items: [], totalFmt: '' },
+
+      resetAll: () => {
+        this.setState({
+          screen: showIg ? 'ig' : 'catalog',
+          cart: {},
+          buyerType: null,
+          form: { nombre: '', email: '', telefono: '', direccion: '', ciudad: '', codigoPostal: '', razonSocial: '', documento: '' },
+          paymentMethod: null,
+          order: null,
+        });
+      },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

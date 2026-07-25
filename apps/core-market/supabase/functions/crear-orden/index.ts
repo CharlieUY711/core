@@ -21,16 +21,41 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: corsHeaders });
 
-    const { items } = await req.json();
+    const body = await req.json();
+    const {
+      items,
+      nombre,
+      email,
+      telefono,
+      direccion,
+      ciudad,
+      codigo_postal,
+      tipo_comprador,
+      documento,
+      razon_social,
+    } = body;
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ error: "items requeridos" }), { status: 400, headers: corsHeaders });
     }
-
     for (const item of items) {
       if (!item.product_id || !item.quantity || item.quantity <= 0) {
         return new Response(JSON.stringify({ error: "item invalido" }), { status: 400, headers: corsHeaders });
       }
     }
+    if (!nombre || !email) {
+      return new Response(JSON.stringify({ error: "nombre y email requeridos" }), { status: 400, headers: corsHeaders });
+    }
+    if (tipo_comprador === "empresa") {
+      if (!razon_social || !documento || !/^\d{12}$/.test(documento)) {
+        return new Response(JSON.stringify({ error: "razon_social y RUT (12 digitos) requeridos para empresa" }), { status: 400, headers: corsHeaders });
+      }
+    }
+
+    // ?origen=instagram en el link de IG llega hasta acá como query param
+    // del propio request, o se puede mandar explícito en el body.
+    const url = new URL(req.url);
+    const source = body.origen || url.searchParams.get("origen") || "web";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -39,11 +64,21 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase.rpc("crear_orden_segura", {
       p_user_id: user.id,
-      p_items: items.map(i => ({
+      p_items: items.map((i: any) => ({
         product_id: i.product_id,
         quantity: i.quantity,
         tipo: i.tipo || "market",
       })),
+      p_nombre: nombre,
+      p_email: email,
+      p_telefono: telefono ?? null,
+      p_direccion: direccion ?? null,
+      p_ciudad: ciudad ?? null,
+      p_codigo_postal: codigo_postal ?? null,
+      p_tipo_comprador: tipo_comprador || "persona",
+      p_documento: documento ?? null,
+      p_razon_social: razon_social ?? null,
+      p_source: source,
     });
 
     if (error) {
@@ -54,6 +89,8 @@ Deno.serve(async (req) => {
         ? "Uno o más productos no están disponibles"
         : error.message?.includes("pausado")
         ? "Uno o más productos están pausados"
+        : error.message?.includes("RUT")
+        ? "El RUT ingresado no es válido"
         : "Error procesando la orden";
       return new Response(JSON.stringify({ error: msg }), { status: 400, headers: corsHeaders });
     }
@@ -71,7 +108,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
-
-
-

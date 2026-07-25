@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORE Infrastructure — Portafolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c0f;--bg-elev:#12151b;--bg-elev-2:#191d24;--bg-elev-3:#20252d;
+  --border:#262b34;--border-soft:#1c2028;
+  --copper:#c17f45;--copper-bright:#e2a56c;
+  --steel:#5b8ba8;--steel-bright:#7fb0cd;
+  --text:#e9e7e1;--text-dim:#9aa1ab;--text-mute:#5f6670;--warn:#c9a24a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;color:var(--text);}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;text-decoration:none;}
+.wrap{max-width:1100px;margin:0 auto;padding:0 32px;}
+.topbar{border-bottom:1px solid var(--border-soft);background:var(--bg-elev);position:sticky;top:0;z-index:20;}
+.topbar-inner{max-width:1100px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.brand{display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed';font-weight:700;font-size:19px;}
+.brand .dot{width:8px;height:8px;background:var(--copper);border-radius:1px;transform:rotate(45deg);}
+.brand-sub{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);margin-left:10px;}
+.langsw{display:flex;gap:6px;}
+.langsw a{font-family:'IBM Plex Mono';font-size:11.5px;letter-spacing:.05em;padding:6px 11px;border:1px solid var(--border);color:var(--text-dim);}
+.langsw a.active{background:var(--copper);border-color:var(--copper);color:#0a0c0f;font-weight:600;}
+.langsw a:hover:not(.active){color:var(--steel-bright);border-color:var(--steel);}
+.back{font-family:'IBM Plex Mono';font-size:12px;color:var(--copper-bright);}
+.back:hover{text-decoration:underline;}
+.hero-sm{padding:56px 0 40px;border-bottom:1px solid var(--border-soft);}
+.eyebrow{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--steel-bright);display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--copper);}
+h1.title{font-size:clamp(32px,5vw,54px);line-height:1.02;}
+.status-pill{display:inline-block;font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--border);color:var(--text-dim);margin-top:18px;}
+.intro-p{color:var(--text-dim);max-width:760px;margin-top:18px;font-size:15.5px;}
+.section{padding:56px 0;border-bottom:1px solid var(--border-soft);}
+.section:last-child{border-bottom:none;}
+.mfr-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:10px;}
+@media(max-width:820px){.mfr-grid{grid-template-columns:1fr;}}
+.mfr-card{border:1px solid var(--border);background:var(--bg-elev);}
+.mfr-band{padding:20px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:repeating-linear-gradient(115deg,var(--bg-elev-3) 0 2px,transparent 2px 22px),linear-gradient(135deg,var(--bg-elev-3),var(--bg-elev-2));}
+.mfr-name{font-family:'Barlow Condensed';font-weight:700;font-size:25px;}
+.mfr-loc{font-family:'IBM Plex Mono';font-size:11px;color:var(--text-dim);text-align:right;}
+.mfr-body{padding:22px;}
+.mfr-desc{color:var(--text-dim);font-size:13.6px;margin-bottom:16px;}
+.mfr-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:16px;}
+.mfr-meta div{border-top:1px solid var(--border-soft);padding-top:8px;}
+.mfr-meta .k{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);}
+.mfr-meta .v{font-size:13px;margin-top:3px;}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.tag{font-family:'IBM Plex Mono';font-size:10.5px;padding:4px 9px;border:1px solid var(--border);color:var(--steel-bright);background:var(--bg-elev-2);}
+.why-box{border-left:2px solid var(--copper);background:rgba(193,127,69,.06);padding:14px 16px;margin-bottom:16px;}
+.why-box .why-label{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--copper-bright);margin-bottom:6px;}
+.why-box p{font-size:13.4px;color:var(--text-dim);}
+.mfr-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border-soft);padding-top:14px;gap:10px;flex-wrap:wrap;}
+.mfr-link{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--copper-bright);}
+.mfr-link:hover{text-decoration:underline;}
+.mfr-badge{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid rgba(201,162,74,.35);padding:4px 8px;}
+.mfr-note{font-family:'IBM Plex Mono';font-size:10.6px;color:var(--text-mute);margin-top:10px;font-style:italic;}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);margin-top:8px;}
+table{width:100%;border-collapse:collapse;min-width:640px;}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border-soft);font-size:12.6px;white-space:nowrap;}
+th{font-family:'IBM Plex Mono';font-size:9.7px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);background:var(--bg-elev-2);font-weight:500;}
+tbody tr:hover{background:var(--bg-elev-2);}
+tbody tr:last-child td{border-bottom:none;}
+td.hl{color:var(--copper-bright);font-family:'IBM Plex Mono';}
+.table-title{font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);margin:34px 0 10px;}
+.core-proprietary{border:1px solid var(--copper);background:linear-gradient(180deg,rgba(193,127,69,.07),transparent);padding:26px;margin-top:10px;}
+.core-proprietary h3{color:var(--copper-bright);font-size:22px;margin-bottom:10px;}
+.core-proprietary p{color:var(--text-dim);font-size:14px;max-width:760px;}
+.roadmap-mini{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.roadmap-mini span{font-family:'IBM Plex Mono';font-size:11px;border:1px solid var(--border);padding:6px 10px;color:var(--text-dim);}
+.dl-row{margin-top:26px;display:flex;gap:14px;flex-wrap:wrap;}
+.btn{font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:12px 22px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:9px;cursor:pointer;}
+.btn-primary{background:var(--copper);border-color:var(--copper);color:#0a0c0f;font-weight:600;}
+.btn-primary:hover{background:var(--copper-bright);}
+.btn-ghost:hover{border-color:var(--steel);color:var(--steel-bright);}
+.grid-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-soft);border:1px solid var(--border-soft);margin-top:10px;}
+@media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:620px){.grid-cards{grid-template-columns:1fr;}}
+.divcard{background:var(--bg-elev);padding:26px 22px;display:flex;flex-direction:column;gap:10px;}
+.divcard .dn{font-family:'IBM Plex Mono';color:var(--copper);font-size:12px;letter-spacing:.08em;}
+.divcard h3{font-size:23px;}
+.divcard p{color:var(--text-dim);font-size:13px;flex:1;}
+.divcard .go{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--steel-bright);margin-top:6px;}
+.divcard:hover .go{text-decoration:underline;}
+.footer{padding:40px 0;}
+.footer .mono{color:var(--text-mute);font-size:10.8px;}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index-es.html"><span class="dot"></span>CORE<span class="brand-sub">Portafolio</span></a>
+  <div class="langsw"><a class="" href="index-en.html">EN</a><a class="active" href="index-es.html">ES</a><a class="" href="index-pt.html">PT</a></div>
+</div></div>
+
+<div class="hero-sm wrap">
+  <div class="eyebrow">CORE Infrastructure</div>
+  <h1 class="title">Portafolio</h1>
+  <p class="intro-p">Todos los datos de fabricantes provienen de información pública de las empresas. No implica acuerdos comerciales existentes.</p>
+</div>
+<div class="section wrap">
+  <div class="grid-cards">
+        <a class="divcard" href="pages/racks-es.html">
+          <div class="dn">División 01</div>
+          <h3>CORE Rack Systems</h3>
+          <p>Racks de servidor, red, colocación y bastidor abierto — la base física de cada sala de datos. Esta división combina un fabricante checo de gran escala…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/containment-es.html">
+          <div class="dn">División 02</div>
+          <h3>CORE Containment Systems</h3>
+          <p>A diferencia de las otras ocho divisiones, la contención no se abastece de un fabricante externo único: está pensada para convertirse en una línea de …</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/fiber-systems-es.html">
+          <div class="dn">División 03</div>
+          <h3>CORE Fiber Systems</h3>
+          <p>Distribuidores ópticos (ODF), sistemas MPO, fibra pre-terminada, paneles y bandejas — la capa óptica de alta densidad para salas hyperscale y de coloc…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/structured-cabling-es.html">
+          <div class="dn">División 04</div>
+          <h3>CORE Cableado Estructurado</h3>
+          <p>Cableado estructurado de cobre y fibra para el centro de datos y el campus — sistemas Categoría 6A/8, paneles de parcheo, patch cords y sistemas de ca…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/intelligent-power-es.html">
+          <div class="dn">División 05</div>
+          <h3>CORE Energía Inteligente</h3>
+          <p>PDUs de rack — básicas, medidas y conmutadas — más monitoreo ambiental y de energía, provistas por dos fabricantes construidos específicamente en torn…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/cable-management-es.html">
+          <div class="dn">División 06</div>
+          <h3>CORE Gestión de Cables</h3>
+          <p>Bandeja portacables, bandeja tipo canasta, sistemas de escalerilla y soportes para aplicaciones tanto de centro de datos como industriales pesadas.</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/fiber-raceway-es.html">
+          <div class="dn">División 07</div>
+          <h3>CORE Canalización de Fibra</h3>
+          <p>Canalización plástica, ducto de fibra, bajadas verticales y sistemas de trunking de gabinete que enrutan y protegen el cable óptico dentro del white s…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/cooling-es.html">
+          <div class="dn">División 08</div>
+          <h3>CORE Refrigeración</h3>
+          <p>Refrigeración de precisión e in-row, intercambiadores de calor de puerta trasera y, cada vez más, refrigeración líquida — la capa térmica dimensionada…</p>
+          <div class="go">Portafolio →</div>
+        </a>
+        <a class="divcard" href="pages/edge-infrastructure-es.html">
+          <div class="dn">División 09</div>
+          <h3>CORE Infraestructura Edge</h3>
+          <p>Gabinetes de exterior y telecom, micro centros de datos y recintos con clasificación IP/IK para despliegues de edge computing fuera de la sala de dato…</p>
+          <div class="go">Portafolio →</div>
+        </a></div>
+</div>
+
+<div class="footer wrap"><div class="mono">© CORE INFRASTRUCTURE — Todos los datos de fabricantes provienen de información pública de las empresas. No implica acuerdos comerciales existentes.</div></div>
+</body>
+</html>

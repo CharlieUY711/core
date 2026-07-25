@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORE Infrastructure — CORE Refrigeração</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c0f;--bg-elev:#12151b;--bg-elev-2:#191d24;--bg-elev-3:#20252d;
+  --border:#262b34;--border-soft:#1c2028;
+  --copper:#c17f45;--copper-bright:#e2a56c;
+  --steel:#5b8ba8;--steel-bright:#7fb0cd;
+  --text:#e9e7e1;--text-dim:#9aa1ab;--text-mute:#5f6670;--warn:#c9a24a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.01em;color:var(--text);}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;text-decoration:none;}
+.wrap{max-width:1100px;margin:0 auto;padding:0 32px;}
+.topbar{border-bottom:1px solid var(--border-soft);background:var(--bg-elev);position:sticky;top:0;z-index:20;}
+.topbar-inner{max-width:1100px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.brand{display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed';font-weight:700;font-size:19px;}
+.brand .dot{width:8px;height:8px;background:var(--copper);border-radius:1px;transform:rotate(45deg);}
+.brand-sub{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);margin-left:10px;}
+.langsw{display:flex;gap:6px;}
+.langsw a{font-family:'IBM Plex Mono';font-size:11.5px;letter-spacing:.05em;padding:6px 11px;border:1px solid var(--border);color:var(--text-dim);}
+.langsw a.active{background:var(--copper);border-color:var(--copper);color:#0a0c0f;font-weight:600;}
+.langsw a:hover:not(.active){color:var(--steel-bright);border-color:var(--steel);}
+.back{font-family:'IBM Plex Mono';font-size:12px;color:var(--copper-bright);}
+.back:hover{text-decoration:underline;}
+.hero-sm{padding:56px 0 40px;border-bottom:1px solid var(--border-soft);}
+.eyebrow{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--steel-bright);display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--copper);}
+h1.title{font-size:clamp(32px,5vw,54px);line-height:1.02;}
+.status-pill{display:inline-block;font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--border);color:var(--text-dim);margin-top:18px;}
+.intro-p{color:var(--text-dim);max-width:760px;margin-top:18px;font-size:15.5px;}
+.section{padding:56px 0;border-bottom:1px solid var(--border-soft);}
+.section:last-child{border-bottom:none;}
+.mfr-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:10px;}
+@media(max-width:820px){.mfr-grid{grid-template-columns:1fr;}}
+.mfr-card{border:1px solid var(--border);background:var(--bg-elev);}
+.mfr-band{padding:20px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:repeating-linear-gradient(115deg,var(--bg-elev-3) 0 2px,transparent 2px 22px),linear-gradient(135deg,var(--bg-elev-3),var(--bg-elev-2));}
+.mfr-name{font-family:'Barlow Condensed';font-weight:700;font-size:25px;}
+.mfr-loc{font-family:'IBM Plex Mono';font-size:11px;color:var(--text-dim);text-align:right;}
+.mfr-body{padding:22px;}
+.mfr-desc{color:var(--text-dim);font-size:13.6px;margin-bottom:16px;}
+.mfr-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:16px;}
+.mfr-meta div{border-top:1px solid var(--border-soft);padding-top:8px;}
+.mfr-meta .k{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);}
+.mfr-meta .v{font-size:13px;margin-top:3px;}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.tag{font-family:'IBM Plex Mono';font-size:10.5px;padding:4px 9px;border:1px solid var(--border);color:var(--steel-bright);background:var(--bg-elev-2);}
+.why-box{border-left:2px solid var(--copper);background:rgba(193,127,69,.06);padding:14px 16px;margin-bottom:16px;}
+.why-box .why-label{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--copper-bright);margin-bottom:6px;}
+.why-box p{font-size:13.4px;color:var(--text-dim);}
+.mfr-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border-soft);padding-top:14px;gap:10px;flex-wrap:wrap;}
+.mfr-link{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--copper-bright);}
+.mfr-link:hover{text-decoration:underline;}
+.mfr-badge{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid rgba(201,162,74,.35);padding:4px 8px;}
+.mfr-note{font-family:'IBM Plex Mono';font-size:10.6px;color:var(--text-mute);margin-top:10px;font-style:italic;}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);margin-top:8px;}
+table{width:100%;border-collapse:collapse;min-width:640px;}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border-soft);font-size:12.6px;white-space:nowrap;}
+th{font-family:'IBM Plex Mono';font-size:9.7px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);background:var(--bg-elev-2);font-weight:500;}
+tbody tr:hover{background:var(--bg-elev-2);}
+tbody tr:last-child td{border-bottom:none;}
+td.hl{color:var(--copper-bright);font-family:'IBM Plex Mono';}
+.table-title{font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);margin:34px 0 10px;}
+.core-proprietary{border:1px solid var(--copper);background:linear-gradient(180deg,rgba(193,127,69,.07),transparent);padding:26px;margin-top:10px;}
+.core-proprietary h3{color:var(--copper-bright);font-size:22px;margin-bottom:10px;}
+.core-proprietary p{color:var(--text-dim);font-size:14px;max-width:760px;}
+.roadmap-mini{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.roadmap-mini span{font-family:'IBM Plex Mono';font-size:11px;border:1px solid var(--border);padding:6px 10px;color:var(--text-dim);}
+.dl-row{margin-top:26px;display:flex;gap:14px;flex-wrap:wrap;}
+.btn{font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:12px 22px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:9px;cursor:pointer;}
+.btn-primary{background:var(--copper);border-color:var(--copper);color:#0a0c0f;font-weight:600;}
+.btn-primary:hover{background:var(--copper-bright);}
+.btn-ghost:hover{border-color:var(--steel);color:var(--steel-bright);}
+.grid-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-soft);border:1px solid var(--border-soft);margin-top:10px;}
+@media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:620px){.grid-cards{grid-template-columns:1fr;}}
+.divcard{background:var(--bg-elev);padding:26px 22px;display:flex;flex-direction:column;gap:10px;}
+.divcard .dn{font-family:'IBM Plex Mono';color:var(--copper);font-size:12px;letter-spacing:.08em;}
+.divcard h3{font-size:23px;}
+.divcard p{color:var(--text-dim);font-size:13px;flex:1;}
+.divcard .go{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--steel-bright);margin-top:6px;}
+.divcard:hover .go{text-decoration:underline;}
+.footer{padding:40px 0;}
+.footer .mono{color:var(--text-mute);font-size:10.8px;}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index-pt.html"><span class="dot"></span>CORE<span class="brand-sub">Portfólio</span></a>
+  <div class="langsw"><a class="" href="cooling-en.html">EN</a><a class="" href="cooling-es.html">ES</a><a class="active" href="cooling-pt.html">PT</a></div>
+</div></div>
+
+<div class="hero-sm wrap">
+  <div class="eyebrow">Divisão 08</div>
+  <h1 class="title">CORE Refrigeração</h1>
+  <div class="status-pill">Fabricante Alvo — Ainda Não Contratado</div>
+  <p class="intro-p">Refrigeração de precisão e in-row, trocadores de calor de porta traseira e, cada vez mais, refrigeração líquida — a camada térmica dimensionada para racks de alta densidade e classe IA.</p>
+</div>
+<div class="section wrap">
+  <div class="mfr-grid">
+    <div class="mfr-card">
+      <div class="mfr-band"><div class="mfr-name">STULZ</div><div class="mfr-loc">🇩🇪<br>Hamburgo, Alemanha</div></div>
+      <div class="mfr-body">
+        <p class="mfr-desc">Fundada em 1947 e ainda de propriedade familiar, a STULZ cresceu até se tornar uma das principais fornecedoras mundiais de climatização de precisão, com cerca de 2.700+ funcionários em 11 plantas de produção e 21 subsidiárias, presente em mais de 150 países. Sua linha de chillers CyberCool e uma nova planta de produção de refrigeração líquida em Hamburgo têm como alvo data centers de alta densidade e voltados para IA.</p>
+        <div class="mfr-meta"><div><div class="k">Fundação</div><div class="v">1947</div></div><div><div class="k">Funcionários</div><div class="v">~2,700+ (Group)</div></div><div><div class="k">Plantas</div><div class="v">11, plus 21 subsidiaries</div></div><div><div class="k">Propriedade</div><div class="v">Family-owned</div></div></div>
+        <div class="tag-row"><span class="tag">CyberCool Chillers</span><span class="tag">CRAC / Precision Cooling</span><span class="tag">Liquid Cooling (CMU)</span><span class="tag">Direct / Indirect Free Cooling</span></div>
+        <div class="why-box"><div class="why-label">Por que escolhemos este parceiro</div><p>O investimento dedicado da STULZ em refrigeração líquida e sua escala global a tornam a âncora clara para a divisão térmica da CORE, especialmente à medida que as implantações regionais avançam para racks de maior densidade e prontos para IA.</p></div>
+        <div class="mfr-foot">
+          <a class="mfr-link" href="https://www.stulz.com" target="_blank" rel="noopener">stulz.com ↗</a>
+          <span class="mfr-badge">Objetivo Estratégico CORE</span>
+        </div>
+        
+      </div>
+    </div>
+    <div class="mfr-card">
+      <div class="mfr-band"><div class="mfr-name">CONTEG</div><div class="mfr-loc">🇨🇿<br>Pelhřimov, República Tcheca</div></div>
+      <div class="mfr-body">
+        <p class="mfr-desc">As linhas CoolTeg e CoolSpot da CONTEG estendem sua fabricação de racks (ver Divisão 01) para unidades de refrigeração de precisão e in-row, posicionadas como parte de um pacote completo de rack mais refrigeração, e não como uma especialista térmica independente.</p>
+        <div class="mfr-meta"><div><div class="k">Linhas de Produto</div><div class="v">CoolTeg, CoolSpot</div></div><div><div class="k">Posicionamento</div><div class="v">Integrated rack + cooling</div></div><div><div class="k">Certificações</div><div class="v">ISO 9001, ISO 14001 (Group)</div></div><div><div class="k">HQ</div><div class="v">Pelhřimov, Czech Republic</div></div></div>
+        <div class="tag-row"><span class="tag">In-row Cooling</span><span class="tag">Rack-integrated Units</span><span class="tag">Monitoring (RAMOS)</span></div>
+        <div class="why-box"><div class="why-label">Por que escolhemos este parceiro</div><p>Como a CONTEG já é a fornecedora âncora de racks na Divisão 01, sua linha de refrigeração permite à CORE oferecer um pacote de rack mais refrigeração de um único fornecedor para implantações menores ou sensíveis a orçamento, ao lado da linha especializada da STULZ.</p></div>
+        <div class="mfr-foot">
+          <a class="mfr-link" href="https://www.conteg.com" target="_blank" rel="noopener">conteg.com ↗</a>
+          <span class="mfr-badge">Objetivo Estratégico CORE</span>
+        </div>
+        
+      </div>
+    </div></div>
+    <div class="table-title">Comparação de Fabricantes</div>
+    <div class="table-wrap"><table><thead><tr><th>Fabricante</th><th>País</th><th>Fundação</th><th>Funcionários</th><th>Foco DC</th><th>Presença LATAM</th><th>Oportunidade CORE</th></tr></thead><tbody><tr><td class='hl'>STULZ</td><td>Germany</td><td>1947</td><td>~2,700+</td><td>Refrigeração de precisão e líquida dedicada</td><td>Rede global de subsidiárias</td><td>Linha de refrigeração de alta densidade / pronta para IA</td></tr><tr><td class='hl'>CONTEG</td><td>Czech Republic</td><td>1998</td><td>500–700+</td><td>Refrigeração como acessório integrado ao rack</td><td>Limitada / indireta</td><td>Pacote combinado de rack e refrigeração</td></tr></tbody></table></div>
+  
+    <div class="dl-row">
+      <a class="btn btn-primary" href="../../pdfs/cooling-pt.pdf" download>⬇ Baixar PDF da divisão</a>
+      <a class="btn btn-ghost back" href="../index-pt.html">Voltar ao portfólio completo</a>
+    </div>
+</div>
+
+<div class="footer wrap"><div class="mono">© CORE INFRASTRUCTURE — Todos os dados dos fabricantes vêm de informações públicas das empresas. Nenhum acordo comercial existente está implícito.</div></div>
+</body>
+</html>
