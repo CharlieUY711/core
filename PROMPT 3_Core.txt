@@ -1,0 +1,160 @@
+Trabajá exclusivamente sobre **CORE como marca madre / grupo**.
+
+## Objetivo
+
+Resolver la definición oficial de **CORE** y del uso de CORE como marca de grupo para:
+
+* Web
+* Redes sociales
+* Documentos
+* Presentaciones
+* Material corporativo
+
+### Punto crítico
+
+La auditoría anterior detectó **dos sistemas CORE contradictorios**.
+
+NO elijas uno por criterio propio.
+
+Primero identificá, documentá y separá claramente:
+
+1. CORE como marca.
+2. CORE como grupo.
+3. Los assets existentes de cada sistema.
+4. Qué material está realmente aprobado/en uso.
+5. Qué elementos son duplicados o contradictorios.
+
+La decisión final de qué sistema gobierna debe quedar explícita si todavía requiere decisión de negocio.
+
+## Qué tenés que hacer
+
+### 1. Auditar los assets existentes
+
+Buscar y catalogar:
+
+* logos CORE
+* wordmarks
+* símbolo D3-C
+* CoreOrbit
+* versiones blancas
+* versiones oscuras
+* SVG
+* PNG
+* favicons
+* assets de redes
+* documentación de marca
+* tokens de color
+* tipografías
+* assets actualmente utilizados en producción
+
+No redibujar ningún elemento que ya exista.
+
+### 2. Logo
+
+Determinar cuáles son los logos CORE existentes y su procedencia.
+
+Preparar las variantes necesarias del sistema que resulte aprobado:
+
+* logo principal
+* positivo
+* negativo
+* monocromático
+* símbolo/isotipo
+* horizontal
+* compacto
+* favicon
+
+**Si existen dos sistemas incompatibles, conservar ambos claramente identificados hasta que exista una decisión de gobierno.**
+
+No mezclar elementos de ambos sistemas.
+
+### 3. CORE como grupo
+
+Definir el uso de CORE como **marca madre / grupo**.
+
+Debe quedar preparado para respaldar:
+
+> FACILIA by CORE
+> COMITA by CORE
+> [futuras marcas] by CORE
+
+No convertir CORE en una marca comercial de una vertical específica.
+
+### 4. Colores
+
+Documentar las paletas CORE existentes y su procedencia.
+
+No inventar colores.
+
+No fusionar las dos paletas si pertenecen a sistemas diferentes.
+
+El documento debe mostrar claramente:
+
+* sistema A
+* sistema B
+* diferencias
+* assets asociados
+* estado de cada sistema
+
+### 5. FAVICOM / paquete maestro
+
+Preparar los assets del sistema CORE que pueda utilizarse profesionalmente en:
+
+* Web
+* LinkedIn
+* Instagram
+* Facebook
+* WhatsApp
+* YouTube
+* X
+* favicon
+* perfiles/avatar
+* documentos
+* presentaciones
+
+Formatos:
+
+* SVG
+* PNG
+* versiones claras/oscuras
+* versiones vectoriales maestras cuando sea posible
+
+### 6. Entregable
+
+Crear una **CORE Brand Definition** breve y precisa que contenga:
+
+* CORE como marca
+* CORE como grupo
+* logo(s)
+* variantes
+* paleta(s)
+* assets existentes
+* assets preparados
+* conflictos detectados
+* decisión requerida, si corresponde
+
+## Restricciones
+
+NO tocar:
+
+* Charlie
+* ODDY
+* OnDemand
+* FACILIA
+* COMITA
+
+No rediseñar CORE.
+
+No modificar el D3-C.
+
+No modificar CoreOrbit.
+
+No eliminar ninguno de los dos sistemas sin una decisión explícita.
+
+No mezclar sistemas incompatibles.
+
+No crear un nuevo Design System.
+
+**Este trabajo es exclusivamente CORE: logo + marca de grupo + colores + FAVICOM + assets para Web/RRSS.**
+
+Al finalizar, presentar un informe corto de **qué existía → qué se conservó → qué se preparó → qué sigue pendiente de decisión**.

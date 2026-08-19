@@ -1,13 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { CoreGlobeStatic } from "../components/CoreGlobe";
-
-const CoreGlobe = dynamic(
-  () => import("../components/CoreGlobe").then((m) => m.CoreGlobe),
-  { ssr: false, loading: () => <CoreGlobeStatic className="w-full" /> }
-);
+import Image from "next/image";
+import { colors } from "@charlieuy711/design";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -61,23 +56,20 @@ function Nav() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3 bg-[#0a1f3d]/90 backdrop-blur border-b border-[#1e3354]" : "py-5 bg-transparent"}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3 bg-[var(--core-bg-deep)]/90 backdrop-blur border-b border-[var(--core-border)]" : "py-5 bg-transparent"}`}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#1b5ac4] to-[#0f3875] flex items-center justify-center">
-            <span className="text-white text-xs font-bold">C</span>
-          </div>
-          <span className="font-bold text-white tracking-tight text-lg">CORE</span>
-          <span className="hidden sm:block text-[#8fa3bf] text-xs font-mono border border-[#1e3354] rounded px-1.5 py-0.5">v1.0</span>
+          <Image src="/core-logo-white.svg" alt="CORE" width={120} height={32} className="h-7 w-auto" priority />
+          <span className="hidden sm:block text-[var(--core-text-secondary)] text-xs font-mono border border-[var(--core-border)] rounded px-1.5 py-0.5">v1.0</span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-sm text-[#8fa3bf]">
+        <div className="hidden md:flex items-center gap-8 text-sm text-[var(--core-text-secondary)]">
           {["Connect","Move","Grow","Market","Intelligence"].map(i => (
             <a key={i} href={`#${i.toLowerCase()}`} className="hover:text-white transition-colors">{i}</a>
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <a href="#contact" className="hidden sm:block text-sm text-[#8fa3bf] hover:text-white transition-colors">Contacto</a>
-          <a href="#solutions" className="px-4 py-2 rounded-lg bg-[#1b5ac4] hover:bg-[#3b82f6] text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25">Explorar →</a>
+          <a href="#contact" className="hidden sm:block text-sm text-[var(--core-text-secondary)] hover:text-white transition-colors">Contacto</a>
+          <a href="#solutions" className="px-4 py-2 rounded-lg bg-[var(--core-blue)] hover:bg-[var(--core-blue-hover)] text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25">Explorar →</a>
         </div>
       </div>
     </nav>
@@ -88,26 +80,26 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-24 pb-16">
-      <div className="absolute inset-0" style={{background:"radial-gradient(ellipse 80% 60% at 50% -10%, rgba(27,90,196,0.35) 0%, transparent 70%), #0A1F3D"}} />
-      <div className="absolute inset-0 opacity-30" style={{backgroundImage:"radial-gradient(circle, rgba(59,130,246,0.15) 1px, transparent 1px)",backgroundSize:"28px 28px"}} />
+      <div className="absolute inset-0" style={{background:`radial-gradient(ellipse 80% 60% at 50% -10%, rgba(27,90,196,0.35) 0%, transparent 70%), ${colors.bgDeep}`}} />
+      <div className="absolute inset-0 opacity-30" style={{backgroundImage:`radial-gradient(circle, ${colors.bluePale} 1px, transparent 1px)`,backgroundSize:"28px 28px"}} />
       <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#c9993a] animate-pulse" />
-            <span className="text-[#8fa3bf] font-mono text-xs tracking-[0.15em] uppercase">Global Supply Chain Platform</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--core-gold)] animate-pulse" />
+            <span className="text-[var(--core-text-secondary)] font-mono text-xs tracking-[var(--core-tracking-mono)] uppercase">Global Supply Chain Platform</span>
           </div>
           <h1 className="font-bold leading-[1.04] tracking-tight mb-6">
-            <span className="block text-5xl sm:text-6xl lg:text-7xl" style={{background:"linear-gradient(135deg,#fff 30%,#f5c870 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Global Supply.</span>
-            <span className="block text-5xl sm:text-6xl lg:text-7xl" style={{background:"linear-gradient(135deg,#7db8f7 0%,#fff 60%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Regional Growth.</span>
+            <span className="block text-5xl sm:text-6xl lg:text-7xl" style={{background:`linear-gradient(135deg,${colors.textPrimary} 30%,${colors.goldLight} 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Global Supply.</span>
+            <span className="block text-5xl sm:text-6xl lg:text-7xl" style={{background:`linear-gradient(135deg,${colors.blueLight} 0%,${colors.textPrimary} 60%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Regional Growth.</span>
           </h1>
-          <p className="text-[#8fa3bf] text-lg md:text-xl leading-relaxed max-w-xl mb-10 font-light">
+          <p className="text-[var(--core-text-secondary)] text-lg md:text-xl leading-relaxed max-w-xl mb-10 font-light">
             CORE conecta cadenas de suministro globales con oportunidades regionales. Una plataforma integrada para operar en toda <span className="text-white">Latinoamérica</span>.
           </p>
           <div className="flex flex-wrap gap-4 mb-12">
-            <a href="#solutions" className="group flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#1b5ac4] hover:bg-[#3b82f6] text-white font-medium text-sm transition-all hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5">
+            <a href="#solutions" className="group flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[var(--core-blue)] hover:bg-[var(--core-blue-hover)] text-white font-medium text-sm transition-all hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5">
               Explorar soluciones <span className="text-blue-300 group-hover:translate-x-1 transition-transform">→</span>
             </a>
-            <a href="#contact" className="flex items-center gap-2 px-6 py-3.5 rounded-xl border border-[#1e3354] hover:border-blue-500/40 text-[#8fa3bf] hover:text-white text-sm font-medium transition-all hover:bg-[rgba(15,56,117,0.18)] hover:-translate-y-0.5">
+            <a href="#contact" className="flex items-center gap-2 px-6 py-3.5 rounded-xl border border-[var(--core-border)] hover:border-blue-500/40 text-[var(--core-text-secondary)] hover:text-white text-sm font-medium transition-all hover:bg-[rgba(15,56,117,0.18)] hover:-translate-y-0.5">
               Hablar con un especialista
             </a>
           </div>
@@ -115,14 +107,21 @@ function Hero() {
             {[{n:"5",l:"países activos"},{n:"100M",l:"envíos / año"},{n:"50K",l:"empresas target"}].map(({n,l}) => (
               <div key={l} className="flex items-baseline gap-2">
                 <span className="font-bold text-xl text-white">{n}</span>
-                <span className="text-[#8fa3bf] text-xs font-mono">{l}</span>
+                <span className="text-[var(--core-text-secondary)] text-xs font-mono">{l}</span>
               </div>
             ))}
           </div>
         </div>
         {/* Globe */}
         <div className="relative flex items-center justify-center">
-          <CoreGlobe className="w-full max-w-[520px]" autoRotate={false} highlightCountry="uy" />
+          <Image
+            src="/Globe.png"
+            alt="CORE — red global de operaciones"
+            width={1408}
+            height={768}
+            className="w-full max-w-[520px] h-auto"
+            priority
+          />
         </div>
       </div>
     </section>
@@ -140,38 +139,38 @@ function PersonalizationBar() {
     tick(); const id = setInterval(tick,1000); return () => clearInterval(id);
   },[]);
   return (
-    <div className="relative border-y border-[#1e3354] bg-[#1e2d42]/60 backdrop-blur-sm overflow-hidden">
+    <div className="relative border-y border-[var(--core-border)] bg-[var(--core-bg-dark)]/60 backdrop-blur-sm overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center gap-6 md:gap-10">
         <div className="flex items-center gap-2">
           <span className="text-xs">📍</span>
-          <span className="text-[#8fa3bf] font-mono text-xs">Estás en:</span>
+          <span className="text-[var(--core-text-secondary)] font-mono text-xs">Estás en:</span>
           <select value={country} onChange={e=>setCountry(e.target.value)} className="bg-transparent text-white font-mono text-xs border-b border-blue-500/30 focus:outline-none cursor-pointer">
-            {COUNTRIES.map(c=><option key={c} value={c} className="bg-[#0a1f3d] text-white">{c}</option>)}
+            {COUNTRIES.map(c=><option key={c} value={c} className="bg-[var(--core-bg-deep)] text-white">{c}</option>)}
           </select>
         </div>
-        <div className="h-4 w-px bg-[#1e3354] hidden sm:block" />
+        <div className="h-4 w-px bg-[var(--core-border)] hidden sm:block" />
         <div className="flex items-center gap-2">
           <span className="text-xs">🕐</span>
-          <span className="text-[#8fa3bf] font-mono text-xs">Hora local:</span>
+          <span className="text-[var(--core-text-secondary)] font-mono text-xs">Hora local:</span>
           <span className="text-white font-mono text-xs tabular-nums">{time}</span>
         </div>
-        <div className="h-4 w-px bg-[#1e3354] hidden sm:block" />
+        <div className="h-4 w-px bg-[var(--core-border)] hidden sm:block" />
         <div className="flex items-center gap-2">
           <span className="text-xs">🌐</span>
-          <span className="text-[#8fa3bf] font-mono text-xs">Idioma:</span>
+          <span className="text-[var(--core-text-secondary)] font-mono text-xs">Idioma:</span>
           <div className="flex gap-1">
             {LANGS.map(l=>(
-              <button key={l} onClick={()=>setLang(l)} className={`font-mono text-xs px-1.5 py-0.5 rounded transition-all ${lang===l?"bg-[#1b5ac4] text-white":"text-[#8fa3bf] hover:text-white"}`}>{l}</button>
+              <button key={l} onClick={()=>setLang(l)} className={`font-mono text-xs px-1.5 py-0.5 rounded transition-all ${lang===l?"bg-[var(--core-blue)] text-white":"text-[var(--core-text-secondary)] hover:text-white"}`}>{l}</button>
             ))}
           </div>
         </div>
-        <div className="h-4 w-px bg-[#1e3354] hidden sm:block" />
+        <div className="h-4 w-px bg-[var(--core-border)] hidden sm:block" />
         <div className="flex items-center gap-2">
           <span className="text-xs">💱</span>
-          <span className="text-[#8fa3bf] font-mono text-xs">Moneda:</span>
+          <span className="text-[var(--core-text-secondary)] font-mono text-xs">Moneda:</span>
           <div className="flex gap-1">
             {CURRENCIES.map(c=>(
-              <button key={c} onClick={()=>setCurrency(c)} className={`font-mono text-xs px-1.5 py-0.5 rounded transition-all ${currency===c?"bg-[#1b5ac4] text-white":"text-[#8fa3bf] hover:text-white"}`}>{c}</button>
+              <button key={c} onClick={()=>setCurrency(c)} className={`font-mono text-xs px-1.5 py-0.5 rounded transition-all ${currency===c?"bg-[var(--core-blue)] text-white":"text-[var(--core-text-secondary)] hover:text-white"}`}>{c}</button>
             ))}
           </div>
         </div>
@@ -187,28 +186,28 @@ function ValueSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
-            <p className="font-mono text-xs text-[#8fa3bf] tracking-[0.15em] uppercase mb-4">Propuesta de valor</p>
+            <p className="font-mono text-xs text-[var(--core-text-secondary)] tracking-[var(--core-tracking-mono)] uppercase mb-4">Propuesta de valor</p>
             <h2 className="font-bold text-3xl md:text-5xl text-white leading-tight mb-6">
-              Uruguay como <span style={{background:"linear-gradient(135deg,#7db8f7 0%,#fff 60%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>plataforma de acceso</span> al Cono Sur.
+              Uruguay como <span style={{background:`linear-gradient(135deg,${colors.blueLight} 0%,${colors.textPrimary} 60%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>plataforma de acceso</span> al Cono Sur.
             </h2>
-            <p className="text-[#8fa3bf] text-lg leading-relaxed max-w-lg font-light">
+            <p className="text-[var(--core-text-secondary)] text-lg leading-relaxed max-w-lg font-light">
               Integramos logística, representación comercial y mercados digitales para que tu negocio llegue <span className="text-white">más lejos, más rápido</span> y con más eficiencia.
             </p>
             <div className="mt-8 flex flex-col gap-3">
               {["Un solo ecosistema para toda la operación regional","Multi-país, multi-moneda, multi-idioma por diseño","Infraestructura en zonas francas del Cono Sur"].map(t=>(
                 <div key={t} className="flex items-center gap-3">
-                  <span className="text-[#c9993a] text-lg w-5 shrink-0">◆</span>
-                  <span className="text-[#8fa3bf] text-sm">{t}</span>
+                  <span className="text-[var(--core-gold)] text-lg w-5 shrink-0">◆</span>
+                  <span className="text-[var(--core-text-secondary)] text-sm">{t}</span>
                 </div>
               ))}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {STATS.map(s=>(
-              <div key={s.label} className="rounded-2xl p-6 flex flex-col gap-2 border border-[#1e3354] bg-[rgba(15,56,117,0.12)] hover:bg-[rgba(27,90,196,0.22)] hover:border-blue-500/30 hover:-translate-y-1 transition-all duration-300">
-                <span className="font-bold text-5xl md:text-6xl leading-none" style={{background:"linear-gradient(135deg,#fff 30%,#f5c870 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{s.value}</span>
+              <div key={s.label} className="rounded-2xl p-6 flex flex-col gap-2 border border-[var(--core-border)] bg-[var(--core-bg-card)] hover:bg-[var(--core-bg-card-hover)] hover:border-blue-500/30 hover:-translate-y-1 transition-all duration-300">
+                <span className="font-bold text-5xl md:text-6xl leading-none" style={{background:`linear-gradient(135deg,${colors.textPrimary} 30%,${colors.goldLight} 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{s.value}</span>
                 <p className="text-white font-medium text-sm mt-1">{s.label}</p>
-                <p className="text-[#8fa3bf] font-mono text-xs">{s.sub}</p>
+                <p className="text-[var(--core-text-secondary)] font-mono text-xs">{s.sub}</p>
               </div>
             ))}
           </div>
@@ -225,15 +224,15 @@ function ModulesSection() {
     <section id="solutions" className="relative py-24 overflow-hidden">
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="flex flex-col items-center text-center mb-16">
-          <p className="font-mono text-xs text-[#8fa3bf] tracking-[0.15em] uppercase mb-3">Módulos</p>
+          <p className="font-mono text-xs text-[var(--core-text-secondary)] tracking-[var(--core-tracking-mono)] uppercase mb-3">Módulos</p>
           <h2 className="font-bold text-3xl md:text-5xl text-white leading-tight max-w-2xl">
-            Un ecosistema. <span style={{background:"linear-gradient(135deg,#fff 30%,#f5c870 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Cuatro verticales.</span>
+            Un ecosistema. <span style={{background:`linear-gradient(135deg,${colors.textPrimary} 30%,${colors.goldLight} 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Cuatro verticales.</span>
           </h2>
         </div>
         <div className="grid md:grid-cols-2 gap-5">
           {MODULES.map(mod=>(
             <div key={mod.id} id={mod.id}
-              className={`group relative rounded-2xl p-7 cursor-pointer transition-all duration-300 overflow-hidden border ${active===mod.id?"border-blue-500/40 bg-[#1e2d42]":"border-[#1e3354] bg-[rgba(15,56,117,0.12)] hover:bg-[rgba(27,90,196,0.22)] hover:border-blue-500/20 hover:-translate-y-1"}`}
+              className={`group relative rounded-2xl p-7 cursor-pointer transition-all duration-300 overflow-hidden border ${active===mod.id?"border-blue-500/40 bg-[var(--core-bg-dark)]":"border-[var(--core-border)] bg-[var(--core-bg-card)] hover:bg-[var(--core-bg-card-hover)] hover:border-blue-500/20 hover:-translate-y-1"}`}
               onMouseEnter={()=>setActive(mod.id)} onMouseLeave={()=>setActive(null)}>
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -242,7 +241,7 @@ function ModulesSection() {
                 </div>
                 <span className="text-3xl opacity-30 group-hover:opacity-60 transition-opacity" style={{color:mod.accent}}>{mod.icon}</span>
               </div>
-              <p className="text-[#8fa3bf] text-sm leading-relaxed mb-5 font-light">{mod.desc}</p>
+              <p className="text-[var(--core-text-secondary)] text-sm leading-relaxed mb-5 font-light">{mod.desc}</p>
               <div className="flex flex-wrap gap-2">
                 {mod.pills.map(p=>(
                   <span key={p} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono border" style={{borderColor:`${mod.accent}40`,color:mod.accent,background:`${mod.accent}10`}}>{p}</span>
@@ -263,36 +262,36 @@ function ModulesSection() {
 // ─── Map ──────────────────────────────────────────────────────────────────────
 function MapSection() {
   const [activeLayer,setActiveLayer] = useState(0);
-  const layerMap = ["all","origins","cono","direct","expansion"] as const;
   return (
     <section id="map" className="relative py-28 overflow-hidden">
       <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent mb-28" />
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="flex flex-col items-center text-center mb-16">
-          <p className="font-mono text-xs text-[#8fa3bf] tracking-[0.15em] uppercase mb-3">Red operativa</p>
+          <p className="font-mono text-xs text-[var(--core-text-secondary)] tracking-[var(--core-tracking-mono)] uppercase mb-3">Red operativa</p>
           <h2 className="font-bold text-3xl md:text-5xl text-white leading-tight">
-            Global Map <span style={{background:"linear-gradient(135deg,#7db8f7 0%,#fff 60%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Experience</span>
+            Global Map <span style={{background:`linear-gradient(135deg,${colors.blueLight} 0%,${colors.textPrimary} 60%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Experience</span>
           </h2>
         </div>
         <div className="grid lg:grid-cols-5 gap-8 items-center">
           <div className="lg:col-span-2 flex flex-col gap-3">
             {MAP_LAYERS.map((layer,i)=>(
               <button key={layer.title} onClick={()=>setActiveLayer(i)}
-                className={`text-left rounded-xl p-4 border transition-all duration-300 ${activeLayer===i?"border-blue-500/40 bg-[#1e2d42]":"border-[#1e3354] bg-[rgba(15,56,117,0.12)] hover:border-blue-500/20"}`}>
+                className={`text-left rounded-xl p-4 border transition-all duration-300 ${activeLayer===i?"border-blue-500/40 bg-[var(--core-bg-dark)]":"border-[var(--core-border)] bg-[var(--core-bg-card)] hover:border-blue-500/20"}`}>
                 <div className="flex items-center gap-3 mb-1">
                   <span style={{color:layer.color}} className="text-lg">{layer.icon}</span>
                   <span className="text-white font-medium text-sm">{layer.title}</span>
                 </div>
-                <p className="text-[#8fa3bf] text-xs leading-relaxed pl-8">{layer.desc}</p>
+                <p className="text-[var(--core-text-secondary)] text-xs leading-relaxed pl-8">{layer.desc}</p>
               </button>
             ))}
           </div>
           <div className="lg:col-span-3">
-            <CoreGlobe
-              className="w-full rounded-2xl"
-              activeLayer={layerMap[activeLayer]}
-              autoRotate
-              highlightCountry="uy"
+            <Image
+              src="/Globe.png"
+              alt="CORE — red global de operaciones"
+              width={1408}
+              height={768}
+              className="w-full h-auto rounded-2xl"
             />
           </div>
         </div>
@@ -309,30 +308,30 @@ function IntelligenceSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
-            <p className="font-mono text-xs text-[#8fa3bf] tracking-[0.15em] uppercase mb-3">CORE Intelligence</p>
+            <p className="font-mono text-xs text-[var(--core-text-secondary)] tracking-[var(--core-tracking-mono)] uppercase mb-3">CORE Intelligence</p>
             <h2 className="font-bold text-3xl md:text-5xl text-white leading-tight mb-6">
-              Datos para <span style={{background:"linear-gradient(135deg,#7db8f7 0%,#fff 60%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>decidir mejor.</span>
+              Datos para <span style={{background:`linear-gradient(135deg,${colors.blueLight} 0%,${colors.textPrimary} 60%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>decidir mejor.</span>
             </h2>
-            <p className="text-[#8fa3bf] text-lg leading-relaxed mb-10 font-light max-w-lg">
+            <p className="text-[var(--core-text-secondary)] text-lg leading-relaxed mb-10 font-light max-w-lg">
               CORE Intelligence convierte operaciones en inteligencia competitiva. Demanda, performance, predicciones e insights accionables para cada mercado.
             </p>
             <div className="flex flex-col gap-5">
               {INTELLIGENCE.map(({icon,label,desc})=>(
                 <div key={label} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 mt-0.5" style={{background:"rgba(27,90,196,0.2)",color:"#7db8f7"}}>{icon}</div>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 mt-0.5" style={{background:"rgba(27,90,196,0.2)",color:colors.blueLight}}>{icon}</div>
                   <div>
                     <p className="text-white font-medium text-sm">{label}</p>
-                    <p className="text-[#8fa3bf] text-xs mt-0.5 leading-relaxed">{desc}</p>
+                    <p className="text-[var(--core-text-secondary)] text-xs mt-0.5 leading-relaxed">{desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-2xl p-6 border border-[#1e3354] bg-[rgba(15,56,117,0.12)]">
+          <div className="rounded-2xl p-6 border border-[var(--core-border)] bg-[var(--core-bg-card)]">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <p className="text-white font-medium text-sm">Performance regional</p>
-                <p className="text-[#8fa3bf] font-mono text-xs mt-0.5">Últimos 12 meses</p>
+                <p className="text-[var(--core-text-secondary)] font-mono text-xs mt-0.5">Últimos 12 meses</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -341,22 +340,22 @@ function IntelligenceSection() {
             </div>
             <div className="flex items-end gap-1 h-24 mb-5">
               {SPARK.map((v,i)=>(
-                <div key={i} className="flex-1 rounded-sm" style={{height:`${(v/max)*100}%`,background:i===SPARK.length-1?"linear-gradient(to top,#c9993a,#f5c870)":"linear-gradient(to top,#1b5ac4,#3b82f6)",opacity:0.5+(i/SPARK.length)*0.5}} />
+                <div key={i} className="flex-1 rounded-sm" style={{height:`${(v/max)*100}%`,background:i===SPARK.length-1?`linear-gradient(to top,${colors.gold},${colors.goldLight})`:`linear-gradient(to top,${colors.blue},${colors.blueHover})`,opacity:0.5+(i/SPARK.length)*0.5}} />
               ))}
             </div>
             <div className="grid grid-cols-3 gap-3">
               {[{label:"Envíos",value:"12.4K",delta:"+18%"},{label:"Transacciones",value:"4.8K",delta:"+22%"},{label:"Inventario",value:"98%",delta:"+3%"}].map(({label,value,delta})=>(
-                <div key={label} className="rounded-xl p-3 bg-[#0a1f3d]/60 border border-[#1e3354]">
-                  <p className="text-[#8fa3bf] font-mono text-xs mb-1">{label}</p>
+                <div key={label} className="rounded-xl p-3 bg-[var(--core-bg-deep)]/60 border border-[var(--core-border)]">
+                  <p className="text-[var(--core-text-secondary)] font-mono text-xs mb-1">{label}</p>
                   <p className="text-white font-bold text-lg">{value}</p>
                   <p className="text-green-400 font-mono text-xs">{delta}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-xl p-3 border border-[#c9993a]/20 bg-[#c9993a]/5">
+            <div className="mt-4 rounded-xl p-3 border border-[var(--core-gold)]/20 bg-[var(--core-gold)]/5">
               <div className="flex items-center gap-2">
-                <span className="text-[#c9993a] text-xs">◆</span>
-                <p className="text-[#c9993a] text-xs font-mono">Insight: demanda en Brasil +24% próximo trimestre</p>
+                <span className="text-[var(--core-gold)] text-xs">◆</span>
+                <p className="text-[var(--core-gold)] text-xs font-mono">Insight: demanda en Brasil +24% próximo trimestre</p>
               </div>
             </div>
           </div>
@@ -374,20 +373,20 @@ function SocialSection() {
       <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent mb-24" />
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="flex flex-col items-center text-center mb-14">
-          <p className="font-mono text-xs text-[#8fa3bf] tracking-[0.15em] uppercase mb-3">Comunidad</p>
+          <p className="font-mono text-xs text-[var(--core-text-secondary)] tracking-[var(--core-tracking-mono)] uppercase mb-3">Comunidad</p>
           <h2 className="font-bold text-3xl md:text-4xl text-white">Seguinos en redes</h2>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 max-w-xl mx-auto mb-16">
           {[{net:"LinkedIn",handle:"linkedin.com/company/core-latam",icon:"in",color:"#0A66C2",desc:"Noticias, expansión y casos de uso.",freq:"3–4 posts / semana"},{net:"Instagram",handle:"@core_latam",icon:"◉",color:"#C13584",desc:"Visual storytelling e infografías.",freq:"4–5 posts / semana"}].map(({net,handle,icon,color,desc,freq})=>(
-            <a key={net} href="#" className="rounded-2xl p-6 flex flex-col gap-3 border border-[#1e3354] bg-[rgba(15,56,117,0.12)] hover:bg-[rgba(27,90,196,0.22)] hover:border-blue-500/20 hover:-translate-y-1 transition-all duration-300">
+            <a key={net} href="#" className="rounded-2xl p-6 flex flex-col gap-3 border border-[var(--core-border)] bg-[var(--core-bg-card)] hover:bg-[var(--core-bg-card-hover)] hover:border-blue-500/20 hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{background:color}}>{icon}</div>
                 <div>
                   <p className="text-white font-medium text-sm">{net}</p>
-                  <p className="text-[#8fa3bf] font-mono text-xs">{handle}</p>
+                  <p className="text-[var(--core-text-secondary)] font-mono text-xs">{handle}</p>
                 </div>
               </div>
-              <p className="text-[#8fa3bf] text-xs leading-relaxed">{desc}</p>
+              <p className="text-[var(--core-text-secondary)] text-xs leading-relaxed">{desc}</p>
               <p className="text-xs font-mono mt-auto" style={{color}}>{freq}</p>
             </a>
           ))}
@@ -395,13 +394,13 @@ function SocialSection() {
         <div className="overflow-hidden relative">
           <div className="flex gap-4 whitespace-nowrap" style={{animation:"marquee 28s linear infinite"}}>
             {[...tags,...tags].map((tag,i)=>(
-              <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#1e3354] text-[#8fa3bf] font-mono text-xs shrink-0">
-                <span className="text-[#c9993a] text-xs">◆</span>{tag}
+              <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--core-border)] text-[var(--core-text-secondary)] font-mono text-xs shrink-0">
+                <span className="text-[var(--core-gold)] text-xs">◆</span>{tag}
               </span>
             ))}
           </div>
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0a1f3d] to-transparent pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0a1f3d] to-transparent pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[var(--core-bg-deep)] to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[var(--core-bg-deep)] to-transparent pointer-events-none" />
         </div>
       </div>
     </section>
@@ -411,25 +410,22 @@ function SocialSection() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="relative border-t border-[#1e3354] bg-[#1e2d42]/40 overflow-hidden">
+    <footer className="relative border-t border-[var(--core-border)] bg-[var(--core-bg-dark)]/40 overflow-hidden">
       <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-8">
         <div className="grid md:grid-cols-6 gap-10 mb-14">
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#1b5ac4] to-[#0f3875] flex items-center justify-center">
-                <span className="text-white text-xs font-bold">C</span>
-              </div>
-              <span className="font-bold text-white tracking-tight">CORE</span>
+            <div className="mb-4">
+              <Image src="/core-logo-white.svg" alt="CORE" width={120} height={32} className="h-7 w-auto" />
             </div>
-            <p className="text-[#8fa3bf] text-xs leading-relaxed font-light max-w-[160px]">Growth & Operations Platform for Latin America.</p>
-            <p className="text-[#4a6080] font-mono text-xs mt-4">v1.0 — Mayo 2026</p>
+            <p className="text-[var(--core-text-secondary)] text-xs leading-relaxed font-light max-w-[160px]">Growth & Operations Platform for Latin America.</p>
+            <p className="text-[var(--core-text-muted)] font-mono text-xs mt-4">v1.0 — Mayo 2026</p>
           </div>
           {FOOTER_COLS.map(col=>(
             <div key={col.title} className="md:col-span-1">
               <p className="text-white font-medium text-sm mb-4">{col.title}</p>
               <ul className="flex flex-col gap-2.5">
                 {col.links.map(link=>(
-                  <li key={link}><a href="#" className="text-[#8fa3bf] hover:text-white text-xs transition-colors">{link}</a></li>
+                  <li key={link}><a href="#" className="text-[var(--core-text-secondary)] hover:text-white text-xs transition-colors">{link}</a></li>
                 ))}
               </ul>
             </div>
@@ -438,12 +434,12 @@ function Footer() {
         <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent mb-8" />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <p className="text-[#8fa3bf] font-mono text-xs">© 2026 CORE. Todos los derechos reservados.</p>
-            <span className="text-[#1e3354] hidden sm:block">|</span>
-            <p className="text-[#8fa3bf] font-mono text-xs italic">Global Supply. Regional Growth.</p>
+            <p className="text-[var(--core-text-secondary)] font-mono text-xs">© 2026 CORE. Todos los derechos reservados.</p>
+            <span className="text-[var(--core-border)] hidden sm:block">|</span>
+            <p className="text-[var(--core-text-secondary)] font-mono text-xs italic">Global Supply. Regional Growth.</p>
           </div>
           <div className="flex items-center gap-3">
-            {LANGS.map(l=><button key={l} className="text-[#8fa3bf] hover:text-white font-mono text-xs transition-colors">{l}</button>)}
+            {LANGS.map(l=><button key={l} className="text-[var(--core-text-secondary)] hover:text-white font-mono text-xs transition-colors">{l}</button>)}
           </div>
         </div>
       </div>
@@ -454,7 +450,7 @@ function Footer() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CoreLandingPage() {
   return (
-    <div className="min-h-screen bg-[#0A1F3D]">
+    <div className="min-h-screen bg-[var(--core-bg-deep)]">
       <style>{`@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}`}</style>
       <Nav />
       <main>

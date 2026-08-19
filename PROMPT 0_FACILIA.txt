@@ -1,0 +1,249 @@
+Trabajá exclusivamente sobre la marca **FACILIA**.
+
+## OBJETIVO
+
+Cerrar definitivamente la definición operativa de FACILIA para uso en:
+
+* Web
+* Redes sociales
+* Documentos
+* Presentaciones
+* Material comercial
+* FAVICOM / archivos maestros de marca
+
+La identidad visual de FACILIA **ya existe y está respaldada por evidencia**.
+
+**No rediseñar FACILIA.**
+
+---
+
+# 1. LOGO
+
+Auditar los assets existentes y localizar el **logo real y aprobado de FACILIA**.
+
+Utilizar el asset existente.
+
+No redibujar ni reinterpretar el logo.
+
+Preparar las variantes necesarias:
+
+* logo principal
+* versión positiva
+* versión negativa
+* versión monocromática, si corresponde
+* versiones para fondos claros
+* versiones para fondos oscuros
+* versión horizontal, si existe
+* versión compacta, únicamente si ya existe o resulta técnicamente necesaria
+
+---
+
+# 2. ARQUITECTURA DE MARCA
+
+La definición anterior:
+
+> **FACILIA by ODDY**
+
+queda reemplazada.
+
+La definición oficial pasa a ser:
+
+> **FACILIA by CORE**
+
+Este es un cambio de arquitectura de marca, **no un rediseño de FACILIA**.
+
+Mantener:
+
+* logo FACILIA
+* personalidad
+* proporciones
+* colores
+* tipografías aprobadas
+* recursos gráficos existentes
+
+Modificar únicamente la relación de respaldo:
+
+**FACILIA → by CORE**
+
+---
+
+# 3. CORE
+
+Para este trabajo se da por **definida y aprobada la identidad de CORE**.
+
+No investigar, redefinir ni modificar:
+
+* logo CORE
+* D3-C
+* colores CORE
+* tipografías CORE
+* sistema visual CORE
+
+Utilizar CORE únicamente como **marca de respaldo** en:
+
+> **FACILIA by CORE**
+
+La implementación debe respetar la definición oficial de CORE existente.
+
+---
+
+# 4. COLORES FACILIA
+
+Utilizar exclusivamente la paleta de FACILIA ya respaldada por el **Manual de Marca v1.0** y verificada contra la implementación existente.
+
+La paleta conocida es:
+
+* Navy `#0B2A61`
+* Orange `#D97400`
+* Blue `#0169F5`
+
+No cambiar estos valores.
+
+Documentar:
+
+* nombre del color
+* HEX
+* RGB
+* CMYK, si puede obtenerse de una fuente fiable
+* uso recomendado
+* fondo / texto / acento
+
+No agregar colores nuevos.
+
+---
+
+# 5. TIPOGRAFÍA
+
+Mantener las tipografías ya aprobadas de FACILIA:
+
+* **Poppins** — display / títulos / identidad
+* **Liberation Sans** — cuerpo
+
+No sustituirlas.
+
+No reinterpretar la identidad tipográfica.
+
+---
+
+# 6. LOCKUP FACILIA BY CORE
+
+Preparar correctamente la relación:
+
+> **FACILIA**
+> **by CORE**
+
+El `by CORE` debe funcionar como endorsement y no competir visualmente con la marca principal.
+
+No modificar el logo de FACILIA para conseguirlo.
+
+Utilizar la definición oficial de CORE para la parte CORE.
+
+Documentar:
+
+* composición
+* proporción
+* alineación
+* tamaño relativo
+* área de seguridad
+* versiones para fondos claros/oscuros
+
+Si ya existe una composición aprobada de `FACILIA by CORE`, reutilizarla.
+
+---
+
+# 7. FAVICOM
+
+Preparar el paquete completo de archivos de marca para uso profesional.
+
+### Maestros
+
+* SVG
+* archivos vectoriales existentes
+* versiones oficiales de logo
+
+### Web
+
+* SVG
+* PNG
+* favicon
+* versiones claras/oscuras
+* tamaños necesarios para navegación y footer
+
+### Redes sociales
+
+Preparar formatos necesarios para:
+
+* Instagram
+* Facebook
+* LinkedIn
+* WhatsApp
+* YouTube
+* X
+
+### Documentos
+
+Preparar versiones apropiadas para:
+
+* PDF
+* documentos
+* presentaciones
+* presupuestos
+* cotizaciones
+* propuestas
+
+No generar variantes decorativas innecesarias.
+
+---
+
+# 8. DEFINICIÓN FINAL
+
+Crear una ficha:
+
+**FACILIA — Brand Definition**
+
+que contenga únicamente:
+
+1. Nombre
+2. Arquitectura: **FACILIA by CORE**
+3. Logo
+4. Variantes
+5. Lockup by CORE
+6. Colores
+7. Tipografías
+8. Reglas mínimas de uso
+9. Lista de assets FAVICOM
+10. Ubicación de los archivos maestros
+
+---
+
+# RESTRICCIONES
+
+NO tocar:
+
+* CORE
+* Charlie
+* ODDY
+* OnDemand
+* COMITA
+* GROUP FORMAT SYSTEM
+* DOCUMENT SYSTEM
+
+No rediseñar.
+
+No inventar colores.
+
+No inventar tipografías.
+
+No reemplazar assets aprobados.
+
+No modificar código productivo salvo que sea estrictamente necesario para incorporar el nuevo lockup.
+
+Si existe una contradicción, documentarla y detenerse.
+
+## CRITERIO DE CIERRE
+
+FACILIA queda oficialmente definida como:
+
+> **FACILIA by CORE**
+
+con su identidad existente intacta, sus colores y tipografías aprobados, y un paquete FAVICOM completo y utilizable.

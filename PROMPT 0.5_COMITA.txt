@@ -1,0 +1,246 @@
+Trabajá exclusivamente sobre la marca **COMITA**.
+
+## OBJETIVO
+
+Cerrar la definición visual básica de **COMITA by CORE** para uso en:
+
+* Web
+* Redes sociales
+* Documentos
+* Presentaciones
+* Material comercial
+* FAVICOM / archivos maestros de marca
+
+**COMITA es el nombre definitivo y congelado.**
+
+La forma **COMITIA está prohibida** y no debe aparecer en ningún archivo, documento, asset, código o definición generada durante este trabajo.
+
+---
+
+# 1. LOGO
+
+Auditar todos los proyectos, repositorios, documentos y assets disponibles buscando cualquier referencia existente a:
+
+* COMITA
+* COMITA by CORE
+* logo COMITA
+* wordmark COMITA
+
+Primero reutilizar cualquier asset existente que pueda considerarse aprobado.
+
+**No inventar un logo nuevo si existe uno aprobado.**
+
+Si no existe un logo formalmente aprobado, definir únicamente el **wordmark/lockup mínimo necesario** para establecer:
+
+> **COMITA by CORE**
+
+No crear un sistema gráfico complejo.
+
+---
+
+# 2. ARQUITECTURA DE MARCA
+
+La arquitectura queda definida como:
+
+> **COMITA by CORE**
+
+COMITA es una **marca de negocio propia dentro del ecosistema CORE**, análoga arquitectónicamente a:
+
+> **FACILIA by CORE**
+
+Esto significa:
+
+* COMITA tiene identidad propia.
+* CORE funciona como marca madre / endorsement.
+* `by CORE` no reemplaza el nombre COMITA.
+* COMITA no es una marca de CORE.
+* COMITA no es una marca de ODDY.
+
+---
+
+# 3. CORE
+
+Para este trabajo se da por **definida y aprobada la identidad de CORE**.
+
+No investigar, redefinir ni modificar:
+
+* logo CORE
+* D3-C
+* colores CORE
+* tipografías CORE
+* sistema visual CORE
+
+Utilizar CORE únicamente como endorsement:
+
+> **COMITA by CORE**
+
+La parte `CORE` debe utilizar la definición oficial existente.
+
+---
+
+# 4. COLORES COMITA
+
+Auditar primero si existe una paleta formalmente aprobada de COMITA.
+
+Si existe:
+
+* reutilizarla
+* documentarla
+* verificar sus valores
+* preparar sus variantes
+
+Si **no existe una paleta formal aprobada**, crear una propuesta mínima de paleta para COMITA, claramente identificada como:
+
+> **PROPUESTA — PENDIENTE DE APROBACIÓN**
+
+No presentar una paleta nueva como si fuera histórica o aprobada.
+
+La paleta debe ser compatible con:
+
+> **COMITA by CORE**
+
+pero no copiar automáticamente los colores de FACILIA.
+
+---
+
+# 5. TIPOGRAFÍA
+
+No crear una tipografía específica para COMITA.
+
+Utilizar la definición común del **GROUP FORMAT SYSTEM**, salvo que durante la auditoría aparezca una tipografía de COMITA formalmente aprobada.
+
+Si existe una tipografía propia documentada, registrarla como excepción.
+
+---
+
+# 6. LOCKUP
+
+Preparar:
+
+> **COMITA by CORE**
+
+como lockup oficial.
+
+El sistema debe dejar clara la jerarquía:
+
+**COMITA = marca principal**
+
+**by CORE = endorsement**
+
+Preparar:
+
+* versión principal
+* versión positiva
+* versión negativa
+* versión para fondos claros
+* versión para fondos oscuros
+* versión horizontal, si corresponde
+* versión compacta, sólo si resulta necesaria
+
+No crear variantes innecesarias.
+
+---
+
+# 7. FAVICOM
+
+Preparar el paquete completo de archivos necesarios para:
+
+### Web
+
+* SVG
+* PNG
+* favicon
+* versiones claras/oscuras
+* tamaños necesarios
+
+### Redes sociales
+
+* Instagram
+* Facebook
+* LinkedIn
+* WhatsApp
+* YouTube
+* X
+
+### Documentos
+
+* PDF
+* presentaciones
+* presupuestos
+* cotizaciones
+* propuestas
+
+### Maestros
+
+* SVG
+* archivos vectoriales disponibles
+* versiones oficiales
+* versiones monocromáticas
+
+Organizar los archivos de forma que quede claro:
+
+**COMITA**
+
+y
+
+**COMITA by CORE**
+
+No mezclar archivos con otras marcas.
+
+---
+
+# 8. DEFINICIÓN FINAL
+
+Crear una ficha:
+
+**COMITA — Brand Definition**
+
+que contenga:
+
+1. Nombre oficial: **COMITA**
+2. Arquitectura: **COMITA by CORE**
+3. Logo
+4. Lockup
+5. Variantes
+6. Colores
+7. Tipografía heredada del sistema común
+8. Reglas mínimas de uso
+9. Estado de aprobación de cada elemento
+10. Lista de assets FAVICOM
+11. Ubicación de los archivos maestros
+
+---
+
+# RESTRICCIONES
+
+NO tocar:
+
+* CORE
+* Charlie
+* ODDY
+* OnDemand
+* FACILIA
+* GROUP FORMAT SYSTEM
+* DOCUMENT SYSTEM
+
+No utilizar jamás:
+
+> COMITIA
+
+No inventar antecedentes.
+
+No presentar propuestas como elementos aprobados.
+
+No crear un nuevo Design System.
+
+No modificar código productivo salvo que sea estrictamente necesario para incorporar assets o referencias de COMITA.
+
+Si falta una definición, **marcarla como pendiente** en lugar de asumirla.
+
+## CRITERIO DE CIERRE
+
+COMITA debe quedar establecida como:
+
+> **COMITA by CORE**
+
+con un logo/lockup utilizable, una definición clara de color —aprobada o explícitamente propuesta— y un paquete FAVICOM completo para Web, RRSS y documentos.

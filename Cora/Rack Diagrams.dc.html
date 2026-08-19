@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <style>
+    body { margin: 0; background: oklch(0.94 0.002 250); font-family: Helvetica, Arial, sans-serif; }
+  </style>
+</helmet>
+
+<div style="display:flex; flex-direction:column; gap:48px; align-items:center; padding:48px;">
+
+  <!-- ============ IMAGE 1 : LAYOUT FRONTAL RACK 45U ============ -->
+  <div data-screen-label="01 Layout frontal rack 45U" style="width:1600px; height:1200px; background:#ffffff; border:1px solid oklch(0.88 0.003 250); position:relative; box-sizing:border-box; padding:56px 72px;">
+    <div style="font-size:28px; font-weight:700; color:#111318; letter-spacing:0.3px;">Layout frontal — Rack 45U</div>
+    <div style="font-size:15px; color:#6b7280; margin-top:4px;">Numeración U01–U45 · Patcheras FO/CAT6A · PDUs verticales</div>
+
+    <div style="display:flex; justify-content:center; margin-top:36px;">
+      <div style="display:flex; align-items:stretch; gap:0;">
+
+        <!-- PDU-A vertical strip -->
+        <div style="width:46px; background:#1c1f26; border-radius:4px 0 0 4px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:14px 0; box-sizing:border-box;">
+          <div style="writing-mode:vertical-rl; color:#ffffff; font-size:13px; font-weight:700; letter-spacing:1px;">PDU-A</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <sc-for list="{{ pduLeds }}" as="led" hint-placeholder-count="6">
+              <div style="width:8px; height:8px; border-radius:50%; background:{{ led.color }};"></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Left number rail -->
+        <div style="display:flex; flex-direction:column; border:1px solid #cfd3d8; border-left:none;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="width:34px; height:20px; font-size:10px; color:#374151; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #e5e7eb; font-family:monospace;">{{ row.label }}</div>
+          </sc-for>
+        </div>
+
+        <!-- Main equipment column -->
+        <div style="width:520px; border:2px solid #111318; border-left:none; border-right:none; display:flex; flex-direction:column;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="height:20px; box-sizing:border-box; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; overflow:hidden; background:{{ row.bg }};">
+              <sc-if value="{{ row.chipLabel }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:9.5px; font-weight:700; color:{{ row.chipText }}; letter-spacing:0.5px; font-family:monospace; white-space:nowrap;">{{ row.chipLabel }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- Right number rail -->
+        <div style="display:flex; flex-direction:column; border:1px solid #cfd3d8; border-right:none;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="width:34px; height:20px; font-size:10px; color:#374151; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #e5e7eb; font-family:monospace;">{{ row.label }}</div>
+          </sc-for>
+        </div>
+
+        <!-- PDU-B vertical strip -->
+        <div style="width:46px; background:#1c1f26; border-radius:0 4px 4px 0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:14px 0; box-sizing:border-box;">
+          <div style="writing-mode:vertical-rl; color:#ffffff; font-size:13px; font-weight:700; letter-spacing:1px;">PDU-B</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <sc-for list="{{ pduLeds }}" as="led" hint-placeholder-count="6">
+              <div style="width:8px; height:8px; border-radius:50%; background:{{ led.color }};"></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- legend row -->
+    <div style="display:flex; gap:28px; justify-content:center; margin-top:28px; font-size:12px; color:#374151;">
+      <div style="display:flex; align-items:center; gap:6px;"><div style="width:14px; height:14px; background:#7dd3d8; border:1px solid #111318;"></div>FO OM4 MPO-24 (FO-01, FO-02)</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div style="width:14px; height:14px; background:#1c1f26;"></div>Cat6A (CP-01, CP-02)</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div style="width:14px; height:14px; background:#f3f4f6; border:1px solid #9ca3af;"></div>Blanking panel</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div style="width:14px; height:14px; background:#1c1f26; border-radius:2px;"></div>PDU vertical</div>
+    </div>
+
+    <div style="position:absolute; bottom:28px; right:56px; display:flex; align-items:center; gap:22px;">
+      <img src="assets/oddy-logo-final.png" style="height:26px; object-fit:contain;" alt="ODDY">
+      <img src="assets/sonda-logo.png" style="height:24px; object-fit:contain;" alt="SONDA">
+      <img src="assets/antel-logo.png" style="height:24px; object-fit:contain;" alt="ANTEL">
+    </div>
+  </div>
+
+  <!-- ============ IMAGE 2 : LAYOUT TECNICO CON U-POSITIONS ============ -->
+  <div data-screen-label="02 Layout técnico U-positions" style="width:1600px; height:1200px; background:#ffffff; border:1px solid oklch(0.88 0.003 250); position:relative; box-sizing:border-box; padding:56px 72px;">
+    <div style="font-size:28px; font-weight:700; color:#111318;">Layout técnico — Posiciones U</div>
+    <div style="font-size:15px; color:#6b7280; margin-top:4px;">Vista frontal y lateral · Distribución por unidad U45–U01</div>
+
+    <div style="display:flex; gap:80px; justify-content:center; margin-top:32px;">
+
+      <!-- Front view -->
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div style="font-size:13px; font-weight:700; color:#111318; margin-bottom:10px; letter-spacing:0.5px;">VISTA FRONTAL</div>
+        <div style="display:flex;">
+          <div style="display:flex; flex-direction:column;">
+            <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+              <div style="width:26px; height:14px; font-size:8px; color:#6b7280; display:flex; align-items:center; justify-content:center; font-family:monospace;">{{ row.label }}</div>
+            </sc-for>
+          </div>
+          <div style="width:340px; border:1.5px solid #111318; display:flex; flex-direction:column;">
+            <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+              <div style="height:14px; box-sizing:border-box; border-bottom:0.5px solid #d1d5db; background:{{ row.bg }};"></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side view -->
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div style="font-size:13px; font-weight:700; color:#111318; margin-bottom:10px; letter-spacing:0.5px;">VISTA LATERAL</div>
+        <div style="width:150px; height:630px; border:1.5px solid #111318; position:relative; background:#fafafa;">
+          <div style="position:absolute; top:0; left:0; right:0; height:36px; background:#7dd3d8; border-bottom:1px solid #111318; display:flex; align-items:center; justify-content:center; font-size:9px; font-family:monospace;">FO</div>
+          <div style="position:absolute; top:36px; left:0; right:0; height:36px; background:#1c1f26; border-bottom:1px solid #111318; display:flex; align-items:center; justify-content:center; font-size:9px; font-family:monospace; color:#fff;">CP</div>
+          <div style="position:absolute; top:72px; left:0; right:0; bottom:36px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; font-size:9px; color:#9ca3af; font-family:monospace;">EQUIPO CLIENTE</div>
+          <div style="position:absolute; bottom:0; left:0; right:0; height:36px; background:#e5e7eb; border-top:1px solid #111318; display:flex; align-items:center; justify-content:center; font-size:9px; font-family:monospace;">BASE</div>
+          <div style="position:absolute; left:-26px; top:50%; transform:rotate(-90deg) translateX(50%); font-size:10px; color:#6b7280; font-family:monospace; white-space:nowrap;">PROFUNDIDAD 1200mm</div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex; flex-direction:column; gap:16px; padding-top:36px; min-width:280px;">
+        <div style="font-size:13px; font-weight:700; color:#111318; letter-spacing:0.5px; margin-bottom:4px;">LEYENDA</div>
+        <sc-for list="{{ legendItems }}" as="item" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:22px; height:22px; background:{{ item.color }}; border:1px solid #111318; border-radius:{{ item.radius }}; flex-shrink:0;"></div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:#111318;">{{ item.name }}</div>
+              <div style="font-size:11px; color:#6b7280;">{{ item.desc }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="position:absolute; bottom:28px; right:56px; display:flex; align-items:center; gap:22px;">
+      <img src="assets/oddy-logo-final.png" style="height:26px; object-fit:contain;" alt="ODDY">
+      <img src="assets/sonda-logo.png" style="height:24px; object-fit:contain;" alt="SONDA">
+      <img src="assets/antel-logo.png" style="height:24px; object-fit:contain;" alt="ANTEL">
+    </div>
+  </div>
+
+  <!-- ============ IMAGE 3 : MOCKUP ETIQUETADO ============ -->
+  <div data-screen-label="03 Mockup etiquetado" style="width:1600px; height:900px; background:#ffffff; border:1px solid oklch(0.88 0.003 250); position:relative; box-sizing:border-box; padding:56px 72px;">
+    <div style="font-size:28px; font-weight:700; color:#111318;">Mockup de etiquetado</div>
+    <div style="font-size:15px; color:#6b7280; margin-top:4px;">Detalle de etiquetas · Tipografía Calibri 10 · Fondo blanco</div>
+
+    <div style="display:flex; gap:40px; justify-content:center; margin-top:56px; flex-wrap:wrap;">
+      <sc-for list="{{ labelSamples }}" as="sample" hint-placeholder-count="4">
+        <div style="width:300px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.06); padding:28px 20px; display:flex; flex-direction:column; align-items:center; gap:16px;">
+          <div style="width:110px; height:70px; background:{{ sample.swatch }}; border:1px solid #111318; border-radius:3px; display:flex; align-items:center; justify-content:center;">
+            <div style="width:70px; height:26px; background:#ffffff; border-radius:2px; display:flex; align-items:center; justify-content:center; font-family:'Calibri', sans-serif; font-size:10px; color:#111318; font-weight:600;">{{ sample.code }}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-family:'Calibri', sans-serif; font-size:13px; font-weight:700; color:#111318;">{{ sample.code }}</div>
+            <div style="font-family:'Calibri', sans-serif; font-size:10.5px; color:#6b7280; margin-top:2px;">{{ sample.desc }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="position:absolute; bottom:28px; right:56px; display:flex; align-items:center; gap:22px;">
+      <img src="assets/oddy-logo-final.png" style="height:26px; object-fit:contain;" alt="ODDY">
+      <img src="assets/sonda-logo.png" style="height:24px; object-fit:contain;" alt="SONDA">
+      <img src="assets/antel-logo.png" style="height:24px; object-fit:contain;" alt="ANTEL">
+    </div>
+  </div>
+
+  <!-- ============ IMAGE 4 (orig #6) : RACK COMPLETO TERMINADO ============ -->
+  <div data-screen-label="04 Rack completo terminado" style="width:1600px; height:1200px; background:#ffffff; border:1px solid oklch(0.88 0.003 250); position:relative; box-sizing:border-box; padding:56px 72px;">
+    <div style="font-size:28px; font-weight:700; color:#111318;">Rack terminado — Listo para entrega</div>
+    <div style="font-size:15px; color:#6b7280; margin-top:4px;">Etiquetado completo · QA aprobado</div>
+
+    <div style="display:flex; justify-content:center; align-items:center; gap:56px; margin-top:32px;">
+      <div style="display:flex;">
+        <div style="display:flex; flex-direction:column; border:1px solid #cfd3d8;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="width:32px; height:19px; font-size:9.5px; color:#374151; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #e5e7eb; font-family:monospace;">{{ row.label }}</div>
+          </sc-for>
+        </div>
+        <div style="width:480px; border:2px solid #111318; display:flex; flex-direction:column;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="height:19px; box-sizing:border-box; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; overflow:hidden; background:{{ row.bg }};">
+              <sc-if value="{{ row.chipLabel }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:9px; font-weight:700; color:{{ row.chipText }}; font-family:monospace; white-space:nowrap;">{{ row.chipLabel }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; flex-direction:column; border:1px solid #cfd3d8;">
+          <sc-for list="{{ rackRows }}" as="row" hint-placeholder-count="45">
+            <div style="width:32px; height:19px; font-size:9.5px; color:#374151; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #e5e7eb; font-family:monospace;">{{ row.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- QA card -->
+      <div style="display:flex; flex-direction:column; gap:18px; min-width:260px;">
+        <div style="background:#f0fdf4; border:1.5px solid #16a34a; border-radius:8px; padding:20px; text-align:center;">
+          <div style="font-size:12px; letter-spacing:1px; color:#16a34a; font-weight:700;">QA</div>
+          <div style="font-size:22px; font-weight:800; color:#15803d; margin-top:4px;">APROBADO</div>
+          <div style="font-size:11px; color:#4b5563; margin-top:6px; font-family:monospace;">LOTE-2026-0713</div>
+        </div>
+        <div style="border:1px solid #e5e7eb; border-radius:8px; padding:18px; font-size:12px; color:#374151; line-height:1.7;">
+          <div>✓ Numeración U01–U45</div>
+          <div>✓ Patcheras FO-01 / FO-02</div>
+          <div>✓ Patcheras CP-01 / CP-02</div>
+          <div>✓ PDU-A / PDU-B energizadas</div>
+          <div>✓ Cableado sin exposición</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:absolute; bottom:28px; right:56px; display:flex; align-items:center; gap:22px;">
+      <img src="assets/oddy-logo-final.png" style="height:26px; object-fit:contain;" alt="ODDY">
+      <img src="assets/sonda-logo.png" style="height:24px; object-fit:contain;" alt="SONDA">
+      <img src="assets/antel-logo.png" style="height:24px; object-fit:contain;" alt="ANTEL">
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1200}}">
+class Component extends DCLogic {
+  buildRows() {
+    const rows = [];
+    for (let u = 45; u >= 1; u--) {
+      const label = 'U' + String(u).padStart(2, '0');
+      let bg = '#f3f4f6', chipLabel = '', chipText = '#111318';
+      if (u === 45 || u === 44) { bg = '#7dd3d8'; chipLabel = u === 45 ? 'FO-01' : 'FO-02'; chipText = '#0b3b3e'; }
+      else if (u === 43) { bg = '#e5e7eb'; }
+      else if (u === 42 || u === 41) { bg = '#1c1f26'; chipLabel = u === 42 ? 'CP-01' : 'CP-02'; chipText = '#ffffff'; }
+      else if (u === 40) { bg = '#e5e7eb'; }
+      else if (u === 20) { bg = '#e5e7eb'; }
+      else if (u <= 39 && u >= 5) { bg = '#f3f4f6'; }
+      else { bg = '#e5e7eb'; }
+      rows.push({ label, bg, chipLabel, chipText });
+    }
+    return rows;
+  }
+
+  renderVals() {
+    return {
+      rackRows: this.buildRows(),
+      pduLeds: [
+        { color: '#22c55e' }, { color: '#22c55e' }, { color: '#22c55e' },
+        { color: '#facc15' }, { color: '#22c55e' }, { color: '#22c55e' }
+      ],
+      legendItems: [
+        { name: 'Patchera FO OM4 MPO-24', desc: 'FO-01, FO-02 — aqua', color: '#7dd3d8', radius: '3px' },
+        { name: 'Patchera Cat6A', desc: 'CP-01, CP-02 — negro', color: '#1c1f26', radius: '3px' },
+        { name: 'Blanking panel', desc: 'Espacio no utilizado', color: '#f3f4f6', radius: '3px' },
+        { name: 'Cable manager', desc: 'Organizador horizontal', color: '#e5e7eb', radius: '3px' },
+        { name: 'PDU vertical', desc: 'PDU-A / PDU-B', color: '#1c1f26', radius: '6px' }
+      ],
+      labelSamples: [
+        { code: 'FO-01', desc: 'Patchera FO OM4 MPO-24', swatch: '#7dd3d8' },
+        { code: 'CP-01', desc: 'Patchera Cat6A', swatch: '#1c1f26' },
+        { code: 'PDU-A', desc: 'PDU vertical izquierda', swatch: '#1c1f26' },
+        { code: 'PDU-B', desc: 'PDU vertical derecha', swatch: '#1c1f26' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

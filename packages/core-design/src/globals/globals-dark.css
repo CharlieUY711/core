@@ -13,7 +13,7 @@
   --c-primary:        #1b5ac4;
   --c-primary-hover:  #3b82f6;
   --c-primary-light:  #7db8f7;
-  --c-primary-pale:   rgba(27,90,196,0.15);
+  --c-primary-pale:   rgba(59,130,246,0.15);
 
   --c-accent:         #c9993a;
   --c-accent-light:   #f5c870;
@@ -28,12 +28,12 @@
 
   /* Fondos */
   --c-bg:             #0A1F3D;
-  --c-bg-card:        #17A8E0;
-  --c-bg-card-hover:  #1A7FC1;
+  --c-bg-card:        rgba(15,56,117,0.12);
+  --c-bg-card-hover:  rgba(27,90,196,0.22);
   --c-bg-surface:     #1e2d42;
 
   /* Bordes */
-  --c-border:         #1A7FC1;
+  --c-border:         #1e3354;
   --c-border-hover:   rgba(59,130,246,0.4);
 
   /* Texto */

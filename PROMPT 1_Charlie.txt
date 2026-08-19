@@ -1,0 +1,119 @@
+Trabajá exclusivamente sobre la marca **CHARLIE**.
+
+## Objetivo
+
+Cerrar la definición visual básica de CHARLIE para que pueda utilizarse correctamente en:
+
+* Web
+* Redes sociales
+* Documentos
+* Presentaciones
+* Material corporativo
+
+### Definición aprobada
+
+**Nombre:** Charlie
+
+**Logo:** la palabra **Charlie** como logotipo.
+
+**Paleta:**
+
+* Naranja
+* Negro
+* Blanco
+
+El naranja es el color distintivo de Charlie.
+
+## Qué tenés que hacer
+
+### 1. Auditar primero
+
+Buscá en todos los archivos y repositorios disponibles cualquier logo, wordmark, asset, referencia visual o definición existente de Charlie.
+
+**No inventes una nueva marca si ya existe un asset aprobado.**
+
+Si encontrás assets existentes, determiná cuáles son utilizables y cuáles deben descartarse.
+
+### 2. Definir el logo
+
+Dejar definido el logotipo oficial **Charlie**.
+
+Preparar, si corresponde:
+
+* versión principal
+* versión positiva
+* versión negativa
+* versión monocromática
+* isotipo, únicamente si realmente existe/aplica
+* versiones para fondos claros y oscuros
+
+No agregar elementos gráficos que no formen parte de la marca.
+
+### 3. Definir colores
+
+Establecer formalmente:
+
+* Charlie Orange
+* Black
+* White
+
+Si los valores exactos ya existen en algún asset o documento aprobado, reutilizarlos.
+
+Si no existen valores exactos, **no inventarlos silenciosamente**. Marcá la decisión pendiente.
+
+### 4. FAVICOM / paquete maestro
+
+Preparar todos los archivos necesarios para uso profesional de la marca:
+
+* SVG
+* PNG
+* versiones para fondo claro
+* versiones para fondo oscuro
+* archivos vectoriales maestros si el entorno disponible los permite
+* favicon
+* avatar/perfil para redes
+* formatos horizontales y cuadrados cuando sean necesarios
+
+Preparar además los tamaños/relaciones necesarios para:
+
+* Web
+* LinkedIn
+* Instagram
+* Facebook
+* WhatsApp
+* YouTube
+* X
+* favicon / browser
+
+No generar variantes innecesarias.
+
+### 5. Entregable
+
+Crear una **Brand Definition — Charlie** muy breve que contenga únicamente:
+
+* Logo oficial
+* Variantes permitidas
+* Paleta
+* Uso básico
+* Lista de assets generados
+
+## Restricciones
+
+NO tocar:
+
+* CORE
+* ODDY
+* OnDemand
+* FACILIA
+* COMITA
+* sistema tipográfico general
+* sistema UI general
+* sistema documental
+
+No rediseñar el ecosistema.
+
+No crear un nuevo Design System.
+
+**Este trabajo es exclusivamente CHARLIE: logo + colores + assets maestros y derivados para Web/RRSS.**
+
+Al finalizar, informar exactamente qué encontraste, qué reutilizaste, qué generaste y qué quedó pendiente.

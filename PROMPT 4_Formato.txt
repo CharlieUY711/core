@@ -1,0 +1,464 @@
+Trabajá exclusivamente en la **consolidación del sistema de formato común del grupo**.
+
+## OBJETIVO
+
+Crear una única definición transversal de formato para todas las marcas del grupo:
+
+* Charlie
+* CORE
+* ODDY
+* OnDemand by ODDY
+* FACILIA by CORE
+* COMITA by CORE
+* y futuras marcas que se incorporen al grupo.
+
+**No crear un diseño nuevo.**
+
+El objetivo es **auditar, extraer, ordenar y consolidar todo lo que ya existe** en los proyectos, sistemas y documentos actuales.
+
+La regla principal es:
+
+> **Reutilizar antes que rediseñar.**
+>
+> **Consolidar antes que modificar.**
+
+---
+
+# 1. AUDITORÍA PREVIA
+
+Antes de escribir cualquier definición, buscar en todos los proyectos disponibles:
+
+* Design Systems
+* tokens
+* CSS
+* Tailwind
+* componentes
+* Brand Guidelines
+* documentos
+* PDFs
+* plantillas
+* landings
+* formularios
+* dashboards
+* presentaciones
+* documentos corporativos
+* tarjetas
+* fichas
+* propuestas
+* presupuestos
+* cotizaciones
+* contratos
+* firmas
+* etc.
+
+Identificar las reglas que ya están siendo utilizadas.
+
+No asumir que algo es correcto simplemente porque aparece en un proyecto.
+
+Clasificar cada hallazgo como:
+
+* **existente y consistente**
+* **existente y repetido**
+* **existente pero contradictorio**
+* **específico de una marca**
+* **candidato a regla común**
+* **pendiente de decisión**
+
+---
+
+# 2. SISTEMA ÚNICO DE FORMATO
+
+Crear una única definición denominada:
+
+**GROUP FORMAT SYSTEM**
+
+Esta definición debe establecer las reglas comunes que no pertenecen a una marca específica.
+
+## Tipografía
+
+Definir:
+
+* familia tipográfica común
+* familias auxiliares si existen
+* pesos
+* tamaños
+* jerarquías
+* interlineados
+* tracking
+* títulos
+* subtítulos
+* cuerpo
+* captions
+* labels
+* datos técnicos
+* números
+* tablas
+
+**No modificar una tipografía de marca ya formalmente aprobada sólo para lograr uniformidad.**
+
+Cuando una marca tenga una excepción formal, documentarla como excepción.
+
+---
+
+# 3. ESCALA Y ESPACIADO
+
+Consolidar una única escala para:
+
+* spacing
+* padding
+* margin
+* gaps
+* alturas
+* anchos
+* containers
+* columnas
+* grid
+* alineaciones
+* breakpoints
+
+Evitar valores arbitrarios repetidos.
+
+Si ya existe una escala coherente, conservarla.
+
+---
+
+# 4. GEOMETRÍA
+
+Definir una única lógica común para:
+
+* radios de esquina
+* botones
+* inputs
+* cards
+* tablas
+* badges
+* modales
+* contenedores
+* bordes
+* grosor de líneas
+* separadores
+* sombras
+
+La geometría debe ser común independientemente de la marca.
+
+Los colores pueden cambiar por marca.
+
+La geometría no.
+
+---
+
+# 5. COMPONENTES
+
+Consolidar las reglas comunes para:
+
+* Buttons
+* Links
+* Inputs
+* Selects
+* Textareas
+* Checkboxes
+* Radios
+* Switches
+* Cards
+* Tables
+* Badges
+* Alerts
+* Modals
+* Dropdowns
+* Navigation
+* Tabs
+* Pagination
+* Tooltips
+* Forms
+* Headers
+* Footers
+
+Para cada componente establecer, cuando exista evidencia:
+
+* tamaño
+* altura
+* padding
+* radio
+* tipografía
+* peso
+* icono
+* estados
+* interacción
+
+No diseñar componentes nuevos simplemente para completar una lista.
+
+---
+
+# 6. ICONOGRAFÍA
+
+Determinar qué sistema de iconos ya se utiliza.
+
+Definir:
+
+* familia
+* tamaños
+* stroke/fill
+* alineación
+* relación con texto
+* tamaños por contexto
+
+Si existen sistemas diferentes, documentar el conflicto.
+
+No reemplazar iconos existentes sin una decisión explícita.
+
+---
+
+# 7. IMÁGENES Y RECURSOS VISUALES
+
+Definir reglas comunes para:
+
+* proporciones
+* crops
+* radios
+* tratamiento de imágenes
+* fondos
+* overlays
+* iconos
+* ilustraciones
+* fotografías
+
+Los colores de marca y elementos gráficos propios quedan fuera de este sistema.
+
+---
+
+# 8. WEB Y DIGITAL
+
+Consolidar las reglas comunes para:
+
+* Desktop
+* Tablet
+* Mobile
+* responsive
+* navegación
+* containers
+* headers
+* footers
+* formularios
+* CTAs
+* estados
+* accesibilidad
+* focus
+* hover
+* disabled
+* loading
+* error
+* success
+
+No crear una nueva arquitectura web.
+
+---
+
+# 9. DOCUMENT SYSTEM
+
+Además del entorno digital, consolidar el formato común utilizado en documentos físicos y digitales.
+
+Definir una única lógica para:
+
+* documentos corporativos
+* propuestas
+* presupuestos
+* cotizaciones
+* contratos
+* informes
+* fichas
+* formularios
+* hojas membretadas
+* PDFs
+* presentaciones
+* tarjetas personales
+* credenciales
+* firmas
+* portadas
+* encabezados
+* pies de página
+* numeración
+* tablas
+
+Establecer:
+
+* tamaños de página
+* márgenes
+* jerarquía
+* tipografía
+* tamaños
+* espaciado
+* encabezados
+* pies
+* tablas
+* numeración
+* posición de logos
+* reglas de alineación
+
+**No crear una plantilla específica para cada marca.**
+
+Primero crear el formato común.
+
+Luego cada marca podrá aplicar:
+
+> Logo + colores + identidad propia.
+
+---
+
+# 10. PIEZAS CORPORATIVAS
+
+Consolidar también las reglas comunes para:
+
+* tarjeta personal
+* tarjeta digital
+* firma de email
+* credencial
+* ficha de persona
+* ficha de empresa
+* ficha de cliente
+* ficha de proveedor
+* documentos comerciales
+* presentaciones
+* presupuestos
+* propuestas
+
+La estructura debe ser común.
+
+La identidad de marca será la capa superior.
+
+---
+
+# 11. BRAND LAYER
+
+El sistema debe quedar explícitamente separado en dos capas:
+
+### GROUP FORMAT SYSTEM
+
+Define:
+
+* tipografía común
+* tamaños
+* spacing
+* geometría
+* componentes
+* documentos
+* formatos
+* interacción
+* estructura
+
+### BRAND DEFINITION
+
+Define:
+
+* logo
+* colores
+* recursos gráficos
+* personalidad
+* excepciones justificadas
+
+Por ejemplo:
+
+**FACILIA by CORE**
+
+utiliza el mismo formato general del grupo, pero incorpora:
+
+* logo FACILIA
+* colores FACILIA
+* identidad FACILIA
+
+Lo mismo para:
+
+**COMITA by CORE**
+
+**OnDemand by ODDY**
+
+etc.
+
+---
+
+# 12. REGLA FUNDAMENTAL
+
+No modificar nada sólo para "uniformar".
+
+Si encontrás una contradicción real, documentarla.
+
+Si encontrás una definición que ya funciona y puede convertirse en estándar común, conservarla.
+
+Si una definición pertenece claramente a una marca, dejarla en la marca.
+
+Si una definición es común, llevarla al GROUP FORMAT SYSTEM.
+
+---
+
+# 13. NO HACER
+
+No:
+
+* rediseñar CORE
+* rediseñar Charlie
+* rediseñar ODDY
+* rediseñar OnDemand
+* rediseñar FACILIA
+* rediseñar COMITA
+* cambiar logos
+* cambiar paletas
+* inventar tipografías
+* inventar componentes
+* crear un nuevo lenguaje visual
+* reemplazar assets aprobados
+* modificar código productivo salvo que sea estrictamente necesario para consolidar la fuente de verdad
+
+Este trabajo es de **arquitectura, auditoría y consolidación**.
+
+---
+
+# 14. ENTREGABLE
+
+Crear un documento:
+
+**GROUP FORMAT SYSTEM**
+
+que funcione como única fuente de verdad para las reglas comunes del grupo.
+
+Debe contener:
+
+1. Principios
+2. Tipografía
+3. Escala
+4. Spacing
+5. Grid
+6. Geometría
+7. Componentes
+8. Iconografía
+9. Imágenes
+10. Web/Digital
+11. Documentos
+12. Piezas corporativas
+13. Responsive
+14. Accesibilidad
+15. Excepciones
+16. Elementos que siguen pendientes de decisión
+
+Al final incluir una tabla:
+
+| Elemento   | Definición común | Fuente existente | Estado |
+| ---------- | ---------------- | ---------------- | ------ |
+| Tipografía |                  |                  |        |
+| Spacing    |                  |                  |        |
+| Radios     |                  |                  |        |
+| Botones    |                  |                  |        |
+| Cards      |                  |                  |        |
+| Documentos |                  |                  |        |
+| Tarjetas   |                  |                  |        |
+| etc.       |                  |                  |        |
+
+## CRITERIO DE CIERRE
+
+El trabajo está terminado cuando podamos decir:
+
+> **Existe una única definición de formato común para todo el grupo.**
+>
+> Las marcas no vuelven a definir tamaños, espacios, botones, radios, documentos o componentes desde cero.
+>
+> Cada marca aporta únicamente su identidad.
+
+**No implementar cambios de código ni publicar cambios sin autorización posterior.**

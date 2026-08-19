@@ -1,0 +1,613 @@
+Trabajá exclusivamente en la consolidación del **DOCUMENT SYSTEM** común para todo el grupo.
+
+## OBJETIVO
+
+Crear una única definición documental transversal para:
+
+* Charlie
+* CORE
+* ODDY
+* OnDemand by ODDY
+* FACILIA by CORE
+* COMITA by CORE
+* futuras marcas del grupo
+
+**No diseñar documentos nuevos desde cero.**
+
+El objetivo es auditar, recuperar y reorganizar todo lo que ya existe para convertirlo en un **sistema documental único, coherente y reutilizable**.
+
+La regla fundamental es:
+
+> **Un solo formato documental común.**
+>
+> **La marca cambia el logo y la identidad; el formato permanece.**
+
+---
+
+# 1. AUDITORÍA
+
+Buscar primero todos los documentos, plantillas y componentes existentes relacionados con:
+
+* PDFs
+* documentos corporativos
+* presupuestos
+* cotizaciones
+* propuestas comerciales
+* contratos
+* informes
+* fichas
+* formularios
+* hojas membretadas
+* órdenes
+* comprobantes
+* tarjetas personales
+* credenciales
+* fichas de personas
+* fichas de empresas
+* fichas de clientes
+* fichas de proveedores
+* presentaciones
+* firmas
+* portadas
+* anexos
+* tablas
+* documentos generados automáticamente
+
+También revisar:
+
+* componentes de generación PDF
+* plantillas HTML
+* CSS
+* assets
+* logos
+* headers
+* footers
+* estilos
+* tokens
+* repositorios
+* documentación existente
+
+**No asumir que una plantilla es oficial sólo porque existe.**
+
+Clasificar cada elemento como:
+
+* aprobado/existente
+* reutilizable
+* duplicado
+* específico de una marca
+* contradictorio
+* obsoleto
+* pendiente de decisión
+
+---
+
+# 2. FORMATO DOCUMENTAL COMÚN
+
+Definir una única estructura base para todos los documentos.
+
+## Formatos de página
+
+Establecer, según la evidencia existente:
+
+* A4
+* Carta, si realmente se utiliza
+* otros formatos sólo si son necesarios
+
+Definir:
+
+* orientación
+* márgenes
+* área útil
+* encabezado
+* pie
+* numeración
+* zonas de identificación
+
+No crear formatos adicionales innecesariamente.
+
+---
+
+# 3. TIPOGRAFÍA
+
+Utilizar la definición del **GROUP FORMAT SYSTEM**.
+
+Definir cómo se aplica en documentos:
+
+* título
+* subtítulo
+* cuerpo
+* label
+* dato
+* tabla
+* nota
+* pie
+* número
+* firma
+
+Si una marca posee una tipografía formalmente aprobada que constituye una excepción, documentarla.
+
+No inventar una tipografía documental independiente por marca.
+
+---
+
+# 4. ESTRUCTURA
+
+Definir una estructura común para:
+
+* portada
+* encabezado
+* cuerpo
+* secciones
+* subsecciones
+* tablas
+* anexos
+* firmas
+* pie de página
+
+Establecer reglas para:
+
+* títulos
+* numeración
+* separación entre secciones
+* alineación
+* columnas
+* tablas
+* notas
+* referencias
+* anexos
+
+---
+
+# 5. IDENTIFICACIÓN DE MARCA
+
+La marca debe ser una **capa independiente** del documento.
+
+Definir dónde aparece:
+
+* logo
+* nombre legal
+* nombre comercial
+* unidad/servicio
+* datos de contacto
+* web
+* email
+* teléfono
+* dirección, cuando corresponda
+
+La estructura debe ser igual para todas las marcas.
+
+Ejemplo:
+
+> LOGO
+> Nombre del documento
+> Información del emisor
+> Contenido
+> Firma
+> Footer
+
+El logo y los colores cambian según la marca.
+
+La estructura no.
+
+---
+
+# 6. DOCUMENTOS COMERCIALES
+
+Consolidar una estructura común para:
+
+### Presupuestos
+
+* identificación
+* cliente
+* fecha
+* vigencia
+* descripción
+* cantidades
+* precios
+* impuestos
+* totales
+* condiciones
+* aceptación
+
+### Cotizaciones
+
+Mantener la misma lógica estructural.
+
+### Propuestas
+
+Definir:
+
+* portada
+* resumen
+* alcance
+* solución
+* condiciones
+* inversión
+* vigencia
+* aceptación
+
+### Contratos
+
+Definir estructura visual común sin alterar el contenido jurídico.
+
+### Informes
+
+Definir:
+
+* portada
+* período
+* responsable
+* resumen
+* contenido
+* conclusiones
+* anexos
+
+---
+
+# 7. FICHAS
+
+Crear una estructura común reutilizable para:
+
+* persona
+* empleado/colaborador
+* cliente
+* proveedor
+* empresa
+* organización
+* ubicación
+* activo
+* servicio
+
+La ficha debe tener:
+
+* identificación
+* información principal
+* datos secundarios
+* estado
+* relaciones
+* metadata
+* fecha de actualización
+
+No crear un diseño diferente para cada tipo de ficha.
+
+La estructura puede tener módulos que se muestran u ocultan según el tipo.
+
+---
+
+# 8. TARJETAS Y CREDENCIALES
+
+Definir un único formato común para:
+
+### Tarjeta personal
+
+* logo
+* nombre
+* cargo
+* empresa/marca
+* teléfono
+* email
+* web
+* QR, si corresponde
+
+### Credencial
+
+* fotografía, si corresponde
+* nombre
+* cargo
+* identificación
+* empresa
+* marca
+* QR/barcode si corresponde
+* vigencia
+
+La estructura es común.
+
+La marca aporta únicamente su identidad.
+
+---
+
+# 9. PRESENTACIONES
+
+Consolidar la estructura común para presentaciones:
+
+* portada
+* título de sección
+* contenido
+* tablas
+* gráficos
+* imágenes
+* cierre
+* contacto
+
+Definir:
+
+* formato
+* márgenes
+* tamaños
+* jerarquía
+* ubicación de logo
+* footer
+* numeración
+
+---
+
+# 10. FIRMAS
+
+Definir una única estructura para:
+
+* firma documental
+* firma de email
+* firma comercial
+* identificación del responsable
+
+No crear una firma diferente para cada marca.
+
+La marca se incorpora como variable.
+
+---
+
+# 11. TABLAS
+
+Definir una única lógica para tablas:
+
+* encabezado
+* cuerpo
+* totales
+* alineación
+* números
+* moneda
+* fechas
+* bordes
+* espaciado
+* saltos de página
+
+Esto debe aplicarse a:
+
+* presupuestos
+* cotizaciones
+* informes
+* fichas
+* propuestas
+* documentos administrativos
+
+---
+
+# 12. PDFs
+
+Definir una única lógica para PDFs generados:
+
+* portada
+* encabezado
+* footer
+* numeración
+* saltos de página
+* tablas
+* imágenes
+* firmas
+* metadata
+
+Los PDFs generados por diferentes aplicaciones deben intentar respetar el mismo formato documental.
+
+---
+
+# 13. VARIABLES DE MARCA
+
+El sistema debe permitir cambiar únicamente las variables de marca:
+
+```text
+brand.name
+brand.logo
+brand.colors
+brand.website
+brand.contact
+brand.legalName
+```
+
+El resto del documento debe permanecer dentro del DOCUMENT SYSTEM.
+
+Ejemplo:
+
+**FACILIA by CORE**
+
+y
+
+**COMITA by CORE**
+
+deben utilizar la misma estructura documental.
+
+Sólo cambia su identidad de marca.
+
+---
+
+# 14. VARIABLES DE CONTENIDO
+
+Separar también:
+
+**Formato**
+
+de:
+
+**Contenido**
+
+El sistema debe permitir reutilizar una plantilla para distintos documentos sin modificar el diseño.
+
+Ejemplo:
+
+> `QuoteTemplate`
+>
+> * datos del cliente
+> * productos/servicios
+> * precios
+> * condiciones
+> * marca
+
+No crear una plantilla independiente para cada cotización.
+
+---
+
+# 15. ARCHIVOS MAESTROS
+
+Preparar una estructura organizada de assets y plantillas.
+
+Por ejemplo:
+
+```text
+DOCUMENT-SYSTEM/
+  templates/
+  components/
+  pdf/
+  presentations/
+  cards/
+  credentials/
+  forms/
+  assets/
+  brands/
+```
+
+La estructura final puede adaptarse al repositorio existente.
+
+**No reorganizar archivos productivos sin autorización.**
+
+---
+
+# 16. BRAND LAYER
+
+Separar explícitamente:
+
+### DOCUMENT SYSTEM
+
+Define:
+
+* formato
+* tamaño
+* márgenes
+* tipografía
+* jerarquía
+* spacing
+* tablas
+* headers
+* footers
+* firmas
+* estructura
+
+### BRAND DEFINITION
+
+Define:
+
+* logo
+* colores
+* nombre
+* identidad
+* recursos gráficos
+
+Así:
+
+**DOCUMENT SYSTEM + FACILIA**
+
+produce documentos FACILIA.
+
+**DOCUMENT SYSTEM + COMITA**
+
+produce documentos COMITA.
+
+**DOCUMENT SYSTEM + CORE**
+
+produce documentos CORE.
+
+---
+
+# 17. REGLA FUNDAMENTAL
+
+No crear un "estilo FACILIA para presupuestos", un "estilo COMITA para propuestas", etc.
+
+Debe existir:
+
+> **UN DOCUMENT SYSTEM**
+
+y las marcas deben ser variables.
+
+---
+
+# 18. NO HACER
+
+No:
+
+* rediseñar documentos existentes porque "podrían verse mejor"
+* inventar nuevos formatos
+* crear diferentes sistemas por marca
+* modificar contenido jurídico
+* modificar logos aprobados
+* modificar paletas aprobadas
+* crear nuevas tipografías
+* generar assets ficticios
+* modificar código productivo
+* eliminar plantillas existentes sin autorización
+
+Si hay contradicciones, **documentarlas primero**.
+
+---
+
+# 19. ENTREGABLE
+
+Crear un documento:
+
+# DOCUMENT SYSTEM
+
+Debe contener como mínimo:
+
+1. Principios
+2. Formatos de página
+3. Márgenes
+4. Tipografía
+5. Jerarquía
+6. Espaciado
+7. Encabezados
+8. Pies
+9. Numeración
+10. Tablas
+11. Imágenes
+12. Firmas
+13. Presupuestos
+14. Cotizaciones
+15. Propuestas
+16. Contratos
+17. Informes
+18. Fichas
+19. Tarjetas
+20. Credenciales
+21. Presentaciones
+22. PDFs
+23. Variables de marca
+24. Variables de contenido
+25. Templates existentes
+26. Excepciones
+27. Pendientes de decisión
+
+Al final incluir una matriz:
+
+| Elemento     | Definición | Fuente existente | Reutilizable | Estado |
+| ------------ | ---------- | ---------------- | ------------ | ------ |
+| A4           |            |                  |              |        |
+| Márgenes     |            |                  |              |        |
+| Tipografía   |            |                  |              |        |
+| Header       |            |                  |              |        |
+| Footer       |            |                  |              |        |
+| Tabla        |            |                  |              |        |
+| Presupuesto  |            |                  |              |        |
+| Cotización   |            |                  |              |        |
+| Ficha        |            |                  |              |        |
+| Tarjeta      |            |                  |              |        |
+| Credencial   |            |                  |              |        |
+| Presentación |            |                  |              |        |
+
+## CRITERIO DE CIERRE
+
+El trabajo está terminado cuando podamos decir:
+
+> **Existe un único sistema documental para todo el grupo.**
+>
+> Las marcas no crean sus propios formatos de documentos.
+>
+> Los documentos utilizan una estructura común y cada marca aporta únicamente su identidad.
+
+**Auditar y consolidar primero. No implementar cambios ni modificar código productivo sin autorización posterior.**

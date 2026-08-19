@@ -1,22 +1,53 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Roboto+Mono:wght@400;500&display=swap');
 
 /* Los tokens del ecosistema (--c-*) se inyectan en <html> en runtime y mandan.
-   Los fallbacks Market quedan si no hay estilo cargado. */
+   Los fallbacks quedan si no hay estilo cargado (ver lib/core-theme.ts:
+   "si falla, la app usa los defaults de @core/design").
+   Valores: @charlieuy711/design tokens.ts, confirmados contra el uso real
+   en page.tsx. --c-bg-elev y --c-border-strong no tienen fuente CORE
+   confirmada — se mantienen sin definir aquí (unresolved). */
 :root {
-  /* Contrato runtime --c-* · defaults Market (Manual de Marca v1.0) */
-  --c-primary: #3D5689; --c-primary-hover: #46639B; --c-on-primary: #FFFFFF;
-  --c-accent: #2E7D57;
-  --c-bg: #F0EFEA; --c-bg-surface: #F6F4EF; --c-bg-elev: #FFFFFF;
-  --c-text: #1C1B19; --c-text-2: #56544C; --c-text-3: #8A8678;
-  --c-border: #E4E1D8; --c-border-strong: #D9D6CC;
-  --c-success: #2E7D57; --c-warning: #C2611F; --c-danger: #B23B30;
+  /* Contrato runtime --c-* · defaults CORE (@charlieuy711/design tokens.ts) */
+  --c-primary: #1b5ac4; --c-primary-hover: #3b82f6; --c-on-primary: #FFFFFF;
+  --c-accent: #c9993a;
+  --c-bg: #0A1F3D; --c-bg-surface: #1e2d42; --c-bg-elev: #FFFFFF; /* unresolved: no CORE source found */
+  --c-text: #ffffff; --c-text-2: #8fa3bf; --c-text-3: #4a6080;
+  --c-border: #1e3354; --c-border-strong: #D9D6CC; /* unresolved: no CORE source found */
+  --c-success: #4ade80; --c-warning: #f5c870; --c-danger: #ef4444;
 
-  --font-base: 'Archivo', system-ui, -apple-system, sans-serif;
-  --font-display: 'Archivo Black', 'Archivo', sans-serif;
+  /* Geist es la fuente autoritativa de CORE (@charlieuy711/design
+     typography.family) y ya la carga layout.tsx vía next/font, que expone
+     --font-geist-sans. Archivo/Archivo Black eran contaminación de Market
+     (ver el font-family del asset Market en public/logo.svg) y quedaban
+     aplicados al body pese a que tokens.ts declara Geist. */
+  --font-base: var(--font-geist-sans), 'Geist', 'Inter', system-ui, sans-serif;
+  --font-display: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
 
   --background: var(--c-bg, #F0EFEA);
   --foreground: var(--c-text, #1C1B19);
+
+  /* Static CORE tokens (--core-*).
+     Source: @charlieuy711/design tokens.ts (colors, typography.letterSpacing),
+     copied verbatim, not derived from the live runtime theming system
+     (getCoreStyle, backing the --c- prefixed variables above). That system
+     fetches from a remote Workspace API that isn't configured anywhere in
+     this repo (no NEXT_PUBLIC_WORKSPACE_URL or NEXT_PUBLIC_CORE_APP_ID
+     found), so its production values can't be verified here; these
+     --core- prefixed vars exist so page.tsx's Tailwind arbitrary-value
+     classes have a token to reference without depending on that
+     unverifiable runtime source. Intentionally a separate namespace to
+     avoid any collision with the runtime-injected variables. */
+  --core-bg-deep: #0A1F3D;
+  --core-bg-dark: #1e2d42;
+  --core-bg-card: rgba(15,56,117,0.12);
+  --core-bg-card-hover: rgba(27,90,196,0.22);
+  --core-border: #1e3354;
+  --core-blue: #1b5ac4;
+  --core-blue-hover: #3b82f6;
+  --core-gold: #c9993a;
+  --core-text-secondary: #8fa3bf;
+  --core-text-muted: #4a6080;
+  --core-tracking-mono: 0.15em;
 }
 
 @theme inline {
@@ -40,5 +71,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-base, 'Archivo', system-ui, sans-serif);
+  font-family: var(--font-base, 'Geist', 'Inter', system-ui, sans-serif);
 }
