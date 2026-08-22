@@ -82,6 +82,28 @@ const CHANNEL = "mercadolibre";
 // ---------------------------------------------------------------------------
 // Handler principal
 // ---------------------------------------------------------------------------
+
+/**
+ * Lee un claim de la raiz del JWT. El custom access token hook emite `store_id`
+ * ahi, no dentro de user_metadata: `supabase.auth.getUser()` devuelve el user,
+ * y los claims de raiz no forman parte de ese objeto. Sin esto la funcion
+ * respondia "Cannot determine storeId" pese a que el claim viajaba.
+ */
+function claimDeJwt(authHeader: string | null, clave: string): string | null {
+  try {
+    if (!authHeader) return null;
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const parte = token.split(".")[1];
+    if (!parte) return null;
+    const json = atob(parte.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json);
+    const v = payload?.[clave];
+    return typeof v === "string" && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -120,8 +142,11 @@ serve(async (req: Request) => {
     return json({ error: "variantId is required" }, 400);
   }
 
-  // storeId: del JWT claim primero, body como fallback (service-role)
-  const jwtClaim = user.user_metadata?.store_id ?? null;
+  // storeId: claim de raiz del JWT primero, luego user_metadata por
+  // compatibilidad, y el body como ultimo recurso (service-role).
+  const jwtClaim = claimDeJwt(authHeader, "store_id")
+    ?? (user.user_metadata?.store_id as string | undefined)
+    ?? null;
   const storeId: string = jwtClaim ?? body.storeId ?? "";
   if (!storeId) return json({ error: "Cannot determine storeId" }, 400);
 
