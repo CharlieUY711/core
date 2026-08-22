@@ -543,15 +543,61 @@ serve(async (req: Request) => {
     error:       success ? null : resumenMl(mlBody),
   });
 
+  /**
+   * Convierte un rechazo por atributos en campos editables.
+   *
+   * Mercado Libre reclama atributos que su propia lista de categoria no marca
+   * como obligatorios -los pide recien al publicar, con mensajes como
+   * `missing_catalog_required: El campo "Memoria interna" es obligatorio`-.
+   * Ahi solo da el nombre visible, no el id que hace falta para guardarlo, asi
+   * que se resuelve contra los atributos de la categoria.
+   *
+   * Sin esto el rechazo llega como un texto que nombra campos que la pantalla
+   * no puede ofrecer, y no queda nada que hacer mas que leerlo.
+   */
+  const problemasDelRechazo = async (b: any): Promise<Problema[]> => {
+    const causas = aplanarCausas(b?.cause ?? b?.causes);
+    const texto  = [b?.message, ...causas].filter(Boolean).join(" | ");
+    if (!/attribute|required/i.test(texto)) return [];
+
+    const req = categoriaId ? await requisitosDeCategoria(categoriaId) : null;
+    const todos: any[] = req?.todos ?? [];
+    const encontrados = new Map<string, Problema>();
+
+    const agregar = (attr: any, mensaje: string) => {
+      if (!attr || encontrados.has(attr.id)) return;
+      encontrados.set(attr.id, {
+        campo: `attr:${attr.id}`, etiqueta: attr.nombre, mensaje,
+        opciones: attr.opciones, tipo: attr.tipo, valor: null,
+      });
+    };
+
+    for (const causa of causas.length ? causas : [texto]) {
+      // Por nombre entre comillas: El campo "Memoria interna" es obligatorio
+      for (const m of causa.matchAll(/["“']([^"”']{2,60})["”']/g)) {
+        const nombre = m[1].trim().toLowerCase();
+        agregar(todos.find((a) => a.nombre.toLowerCase() === nombre), causa);
+      }
+      // Por id entre corchetes: The attributes [GTIN] are required
+      for (const m of causa.matchAll(/\[([A-Z0-9_,\s]{2,80})\]/g)) {
+        for (const id of m[1].split(",").map((x) => x.trim()).filter(Boolean)) {
+          agregar(todos.find((a) => a.id === id), causa);
+        }
+      }
+    }
+    return [...encontrados.values()];
+  };
+
   if (!success) {
     // `resumen` es exactamente el mismo texto que quedo en last_error. Que
     // viaje en la respuesta es lo que garantiza que el aviso del momento y lo
     // que despues muestra la tabla digan lo mismo: una sola fuente.
     return json({
-      error:   "ML API error",
-      status:  mlResponse.status,
-      resumen: resumenMl(mlBody),
-      detail:  mlBody,
+      error:    "ML API error",
+      status:   mlResponse.status,
+      resumen:  resumenMl(mlBody),
+      problemas: await problemasDelRechazo(mlBody),
+      detail:   mlBody,
     }, mlResponse.status >= 500 ? 502 : 422);
   }
 
@@ -628,8 +674,13 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
       // completarlo necesita elegir un valor valido, no adivinar el que la
       // categoria acepta. Se acotan para no inflar la respuesta con listas de
       // cientos de entradas que nadie va a leer.
+      // Mercado Libre marca la obligatoriedad de tres formas distintas y las
+      // tres rechazan la publicacion: `required` siempre, `catalog_required`
+      // para publicar en el catalogo, y `conditional_required` segun otros
+      // datos -por ejemplo GTIN-. Mirar solo la primera dejaba pasar
+      // publicaciones que despues rebotaban.
       requeridos:    (Array.isArray(attrs) ? attrs : [])
-        .filter((a: any) => a?.tags?.required)
+        .filter((a: any) => a?.tags?.required || a?.tags?.catalog_required || a?.tags?.conditional_required)
         .map((a: any) => ({
           id:       String(a.id),
           nombre:   String(a.name ?? a.id),
@@ -638,6 +689,14 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
           // Si la categoria define un tipo, sirve para elegir el control.
           tipo:     String(a.value_type ?? "string"),
         })),
+      // Todos los atributos, no solo los obligatorios: hacen falta para
+      // resolver por nombre los que Mercado Libre reclama recien al publicar.
+      todos: (Array.isArray(attrs) ? attrs : []).map((a: any) => ({
+        id:       String(a.id),
+        nombre:   String(a.name ?? a.id),
+        opciones: (a.values ?? []).map((v: any) => String(v?.name ?? "")).filter(Boolean).slice(0, 80),
+        tipo:     String(a.value_type ?? "string"),
+      })),
     };
     cacheCategoria.set(categoriaId, info);
     return info;

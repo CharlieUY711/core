@@ -938,18 +938,27 @@ export default function AdminPublicaciones() {
           borderTop:`2px solid ${color}33`}}>
           {/* Izquierda: que falta + form */}
           <div style={{padding:"1rem 1.25rem",borderRight:"1px solid #EAECF0"}}>
-            {!isNew&&a&&problemas[a.id]!==undefined&&(
+            {!isNew&&a&&problemas[a.id]!==undefined&&(()=>{
+              // Verde solo si de verdad esta todo bien. Con el canal en error y
+              // sin faltantes no es "listo": es que no sabemos que mas pedir, y
+              // decirlo en verde al lado de un chip rojo no cierra.
+              const enError=(a.canales??[]).some((x:any)=>
+                  x.channel===canalConProblema[a.id]&&x.status==="error");
+              const tono=problemas[a.id].length?ROJO_SYNC:enError?"#B45309":VERDE_SYNC;
+              const tonoFondo=problemas[a.id].length?"rgba(239,68,68,.06)"
+                        :enError?"rgba(245,158,11,.10)":"rgba(22,163,74,.06)";
+              return (
               <div style={{
-                border:`1.5px solid ${problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}`,
-                background:problemas[a.id].length?"rgba(239,68,68,.06)":"rgba(22,163,74,.06)",
+                border:`1.5px solid ${tono}`, background:tonoFondo,
                 borderRadius:9, padding:"0.7rem 0.85rem", marginBottom:"0.9rem",
               }}>
-                <div style={{fontSize:"0.82rem",fontWeight:800,
-                  color:problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}}>
+                <div style={{fontSize:"0.82rem",fontWeight:800,color:tono}}>
                   {(()=>{
                     const n=problemas[a.id].length;
                     const donde=nombreCanal[canalConProblema[a.id]]??canalConProblema[a.id]??"este canal";
-                    if(n===0)return "No falta nada para publicar en "+donde;
+                    if(n===0)return enError
+                      ? donde+" rechazó la publicación y no pudimos deducir qué campo corregir"
+                      : "No falta nada para publicar en "+donde;
                     if(origenProblema[a.id]==="rechazo")
                       return donde+" rechazó "+(n===1?"este dato":"estos "+n+" datos");
                     return n===1
@@ -1069,7 +1078,8 @@ export default function AdminPublicaciones() {
                   );
                 })()}
               </div>
-            )}
+              );
+            })()}
 
             {/* Canales del articulo: activar o dar de baja sin salir de aca */}
             {!isNew&&a&&(
@@ -1129,15 +1139,6 @@ export default function AdminPublicaciones() {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",height:"100%"}}>
 
-      {toast&&(
-        <div style={{position:"fixed",bottom:"1.5rem",right:"1.5rem",zIndex:9999,
-          padding:"0.75rem 1.25rem",borderRadius:10,fontWeight:600,fontSize:"0.875rem",
-          background:toast.ok?"#f0fdf4":"#fef2f2",color:toast.ok?"#166534":"#dc2626",
-          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
-          boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
-          {toast.text}
-        </div>
-      )}
 
       {/* STATS tira compacta */}
       <div style={{display:"flex",gap:"0.5rem"}}>
@@ -1258,6 +1259,26 @@ export default function AdminPublicaciones() {
             </div>
           )}
         </div>
+
+        {/* Aviso en linea, en el flujo de la pagina y pegado a la barra.
+            El cartel flotante abajo a la derecha se elimino: aparecia lejos de
+            donde estaba pasando la cosa y, cuando el detalle ya mostraba el
+            problema, terminaba diciendo lo mismo en dos lugares. */}
+        {toast&&(
+          <div style={{
+            display:"flex",alignItems:"center",gap:8,flexShrink:0,
+            padding:"0.6rem 1rem",fontSize:"0.8rem",fontWeight:600,
+            background:toast.ok?"#f0fdf4":"#fef2f2",
+            color:toast.ok?"#166534":"#dc2626",
+            borderBottom:`1px solid ${toast.ok?"#bbf7d0":"#fecaca"}`,
+          }}>
+            <span>{toast.ok?"✓":"✕"}</span>
+            <span style={{flex:1}}>{toast.text}</span>
+            <button onClick={()=>setToast(null)} aria-label="Cerrar"
+              style={{border:"none",background:"none",cursor:"pointer",
+                color:"inherit",opacity:.7,fontSize:"1rem",lineHeight:1}}>×</button>
+          </div>
+        )}
 
         {/* El alta reemplaza la tabla, sin cambiar de pantalla ni perder filtros */}
         {showWizard?(
