@@ -77,6 +77,32 @@ interface MediaRow {
 // Constantes
 // ---------------------------------------------------------------------------
 const ML_API = "https://api.mercadolibre.com";
+const ML_SITE = Deno.env.get("ML_SITE_ID") ?? "MLU";
+
+/**
+ * Predictor de categoria de Mercado Libre.
+ *
+ * Mercado Libre exige category_id y rechaza la publicacion sin el
+ * ("body.required_fields"). La categoria manual del listing manda siempre;
+ * esto es el respaldo para cuando el articulo todavia no tiene una.
+ *
+ * Usa domain_discovery, el endpoint que ML expone justamente para esto: sugiere
+ * la categoria a partir del titulo. La sugerencia se persiste en channel_attrs
+ * para que quede visible y editable, y para no volver a adivinar en cada
+ * intento: si la persona la corrige, su valor gana desde entonces.
+ */
+async function predecirCategoria(titulo: string, token: string): Promise<string | null> {
+  try {
+    const url = `${ML_API}/sites/${ML_SITE}/domain_discovery/search?limit=1&q=${encodeURIComponent(titulo)}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!resp.ok) return null;
+    const datos = await resp.json();
+    const primero = Array.isArray(datos) ? datos[0] : null;
+    return primero?.category_id ?? null;
+  } catch {
+    return null;
+  }
+}
 const CHANNEL = "mercadolibre";
 
 // ---------------------------------------------------------------------------
@@ -254,7 +280,15 @@ serve(async (req: Request) => {
   // -- 8. Construir payload ML ----------------------------------------------
   // channel_attrs lleva todo lo específico de ML sin tocar el schema:
   // category_id, listing_type_id, shipping config, etc.
-  const attrs = existingListing?.channel_attrs ?? {};
+  const attrs = (existingListing?.channel_attrs ?? {}) as Record<string, unknown>;
+
+  // Categoria: la asignada manualmente manda; si no hay, se predice.
+  let categoriaId = (attrs["category_id"] as string | undefined) ?? null;
+  let categoriaPredicha = false;
+  if (!categoriaId) {
+    categoriaId = await predecirCategoria(v.item_title, mlToken);
+    categoriaPredicha = categoriaId !== null;
+  }
 
   const mlPayload: Record<string, unknown> = {
     title:          v.item_title,
@@ -265,7 +299,7 @@ serve(async (req: Request) => {
     buying_mode:    attrs["buying_mode"]    ?? "buy_it_now",
     listing_type_id: attrs["listing_type_id"] ?? "gold_special",
     condition:      attrs["condition"]      ?? "new",
-    ...(attrs["category_id"] ? { category_id: attrs["category_id"] } : {}),
+    ...(categoriaId ? { category_id: categoriaId } : {}),
     ...(pictures.length > 0  ? { pictures }                          : {}),
     ...(v.weight_g           ? { shipping: buildShipping(v, attrs) } : {}),
   };
@@ -280,7 +314,9 @@ serve(async (req: Request) => {
     channel:     CHANNEL,
     status:      "syncing",
     external_id: existingListing?.external_id ?? null,
-    channel_attrs: existingListing?.channel_attrs ?? {},
+    channel_attrs: categoriaPredicha && categoriaId
+      ? { ...attrs, category_id: categoriaId, category_id_origen: "prediccion_ml" }
+      : (existingListing?.channel_attrs ?? {}),
   });
 
   if (listingUpsert.error) {

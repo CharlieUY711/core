@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { traducirErrorMl, resumirErrorMl } from "../utils/mlErrores";
 import { supabase } from "../../../utils/supabase/client";
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string;
@@ -347,7 +348,7 @@ export default function AdminML() {
     try {
       const data = await callPublicar(variantId);
       if (data.ok) notify(`Publicado ✓ (${data.action})`);
-      else notify(detalleMl(data), "err");
+      else { const t = traducirErrorMl(data); notify(t.accion ? `${t.motivo} — ${t.accion}` : t.motivo, "err"); }
       // Se recarga tambien al fallar: la funcion ya dejo status='error' y
       // last_error en el listing, y sin recargar la tabla seguia mostrando
       // PENDING con la columna de error vacia.
@@ -389,33 +390,13 @@ export default function AdminML() {
       for (const l of pendientes) {
         const data = await callPublicar(l.variant_id);
         if (data?.ok) ok++;
-        else fallos.push(`${l.sku}: ${detalleMl(data)}`);
+        else fallos.push(`${l.sku}: ${resumirErrorMl(data)}`);
       }
       if (fallos.length === 0) notify(`Publicados: ${ok}`);
       else notify(`Publicados: ${ok} · Fallaron ${fallos.length} — ${fallos[0]}`, ok > 0 ? "warn" : "err");
       await load();
     } catch (err: any) { notify(err.message || "Error", "err"); }
     finally { setSaving(null); }
-  };
-
-  /**
-   * Mercado Libre devuelve { message, error, status, cause: [...] }. Mostrar
-   * solo "ML API error" no le sirve a nadie: el motivo accionable esta en
-   * `message` y en `cause`.
-   */
-  const detalleMl = (data: any): string => {
-    const d = data?.detail ?? data;
-    if (!d) return data?.error ?? "Error desconocido";
-    const partes: string[] = [];
-    if (d.message) partes.push(String(d.message));
-    const causas = Array.isArray(d.cause) ? d.cause : [];
-    for (const c of causas.slice(0, 2)) {
-      const txt = c?.message ?? c?.code ?? (typeof c === "string" ? c : null);
-      if (txt) partes.push(String(txt));
-    }
-    if (partes.length === 0 && typeof d === "string") partes.push(d);
-    const msg = partes.join(" · ");
-    return msg || data?.error || "Error desconocido";
   };
 
   // Reintentar listing con error: resetear a pending
@@ -691,7 +672,19 @@ export default function AdminML() {
                   <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>{l.sku}</td>
                   <td style={{ padding: "10px 16px" }}><ListingStatusBadge status={l.listing_status} /></td>
                   <td style={{ padding: "10px 16px", fontSize: 11, color: T.danger, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {l.last_error ?? "—"}
+                    {l.last_error
+                      ? (() => { const t = traducirErrorMl(l.last_error);
+                          return (
+                            <span title={t.crudo}>
+                              {t.motivo}
+                              {t.accion && (
+                                <span style={{ display: "block", fontSize: 11, color: T.textMuted }}>
+                                  → {t.accion}
+                                </span>
+                              )}
+                            </span>
+                          ); })()
+                      : "—"}
                   </td>
                   <td style={{ padding: "10px 16px" }}>
                     <Btn label="▶ Publicar" variant="primary" size="xs"
