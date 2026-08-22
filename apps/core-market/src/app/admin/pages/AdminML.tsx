@@ -1,16 +1,22 @@
 /**
  * src/app/admin/pages/AdminML.tsx
  *
- * Módulo ML & MercadoPago — sobre catalog_* (catalog_items, catalog_variants,
- * catalog_listings, catalog_sync_log).
+ * Conexión con Mercado Libre y Mercado Pago: conectar cuentas, renovar tokens,
+ * desconectar, y ver el estado de las credenciales.
  *
- * Tablas eliminadas: admin_products, admin_ml_errors, ml_sync_queue,
- *   productos_market, product_prices.
- * Tablas nuevas: v_catalog_variants_full, catalog_listings, catalog_sync_log.
+ * ALCANCE, A PROPÓSITO
+ * Este módulo NO muestra artículos. Las publicaciones, la cola y los errores
+ * de sincronización viven en la pantalla de Publicaciones, que es donde están
+ * los artículos y donde se pueden corregir. Tener las dos vistas del mismo
+ * estado garantizaba que dijeran cosas distintas, y obligaba a saltar de una a
+ * otra para entender un solo problema.
+ *
+ * La publicación en sí la resuelve el motor del canal
+ * (src/app/admin/utils/canalesSync.ts), al que esta pantalla no llama: acá
+ * sólo se administra la cuenta que ese motor después usa.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { traducirErrorMl, resumirErrorMl, camposAEditar } from "../utils/mlErrores";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../utils/supabase/client";
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string;
@@ -61,33 +67,7 @@ interface Credential {
   isExpired: boolean; expiringSoon: boolean;
 }
 
-// Variante publicada en ML — join de v_catalog_variants_full + catalog_listings
-interface MLListing {
-  // de catalog_listings
-  listing_id:    string;
-  external_id:   string | null;
-  listing_status: string;
-  channel_attrs: Record<string, unknown>;
-  synced_at:     string | null;
-  last_error:    string | null;
-  // de v_catalog_variants_full
-  variant_id:    string;
-  sku:           string;
-  item_title:    string;
-  total_available: number;
-}
 
-// Error de sync — de catalog_sync_log
-interface SyncError {
-  id:          string;
-  listing_id:  string;
-  action:      string;
-  error_code:  string | null;
-  created_at:  string;
-  // join
-  external_id: string | null;
-  item_title:  string;
-}
 
 // Pago — de tabla orders
 interface MPPayment {
@@ -121,62 +101,19 @@ async function callOAuth(
   return res.json();
 }
 
-async function callMlSync(body: Record<string, unknown>) {
-  const res = await fetch(`${FUNCTIONS_URL}/ml-sync`, {
-    method: "POST",
-    headers: { Authorization: await getAuthHeader(), "Content-Type": "application/json" },
-    body:   JSON.stringify(body),
-  });
-  return res.json();
-}
 
-/**
- * Pregunta que falta sin publicar nada.
- *
- * La verificacion vive en publicar-en-ml, del lado del servidor, porque es la
- * que efectivamente impide que salga una publicacion incompleta. La UI usa la
- * misma para mostrar exactamente lo mismo que va a bloquear: si estuviera
- * duplicada aca, tarde o temprano diria otra cosa.
- */
-async function callVerificar(variantId: string): Promise<Array<{ campo: string; etiqueta: string; mensaje: string }>> {
-  try {
-    const res = await fetch(`${FUNCTIONS_URL}/publicar-en-ml`, {
-      method: "POST",
-      headers: { Authorization: await getAuthHeader(), "Content-Type": "application/json" },
-      body:   JSON.stringify({ variantId, soloVerificar: true }),
-    });
-    const d = await res.json();
-    return Array.isArray(d?.problemas) ? d.problemas : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-async function callPublicar(variantId: string) {
-  const res = await fetch(`${FUNCTIONS_URL}/publicar-en-ml`, {
-    method: "POST",
-    headers: { Authorization: await getAuthHeader(), "Content-Type": "application/json" },
-    body:   JSON.stringify({ variantId }),
-  });
-  return res.json();
-}
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-type TabId = "ml-publicados" | "ml-pendientes" | "ml-errores" | "mp-pagos";
+type TabId = "mp-pagos";
 
 export default function AdminML() {
-  const [tab,           setTab]           = useState<TabId>("ml-publicados");
-  const [listings,      setListings]      = useState<MLListing[]>([]);
-  const [pendientes,    setPendientes]    = useState<MLListing[]>([]);
-  const [syncErrors,    setSyncErrors]    = useState<SyncError[]>([]);
+  const [tab,           setTab]           = useState<TabId>("mp-pagos");
   const [creds,         setCreds]         = useState<Credential[]>([]);
   const [mpPayments,    setMpPayments]    = useState<MPPayment[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [credsLoading,  setCredsLoading]  = useState(true);
-  const [saving,        setSaving]        = useState<string | null>(null);
   // Fila cuya vista previa se esta mostrando; null = modal cerrado.
-  const [preview,       setPreview]       = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg,           setMsg]           = useState<{ text: string; type: "ok" | "err" | "warn" } | null>(null);
 
@@ -187,116 +124,23 @@ export default function AdminML() {
 
   // ── Cargar datos ────────────────────────────────────────────────────────────
 
+  /**
+   * Este modulo se ocupa de la conexion, no de los articulos.
+   *
+   * Las publicaciones, la cola y los errores de sync se ven y se resuelven en
+   * la pantalla de Publicaciones, que es donde estan los articulos y donde se
+   * pueden corregir. Tener las dos vistas garantizaba que dijeran cosas
+   * distintas sobre el mismo estado.
+   */
   const load = useCallback(async () => {
     setLoading(true);
-
-    const [activeRes, pendingRes, errorsRes, paymentsRes] = await Promise.all([
-
-      // Publicados activos en ML
-      supabase
-        .from("catalog_listings")
-        .select(`
-          id, external_id, status, channel_attrs, synced_at, last_error,
-          variant_id,
-          catalog_variants!inner (
-            sku,
-            catalog_items!inner ( title )
-          )
-        `)
-        .eq("channel", "mercadolibre")
-        .in("status", ["active", "syncing", "paused"])
-        .order("synced_at", { ascending: false })
-        .limit(100),
-
-      // Pendientes / error (cola)
-      supabase
-        .from("catalog_listings")
-        .select(`
-          id, external_id, status, channel_attrs, synced_at, last_error,
-          variant_id,
-          catalog_variants!inner (
-            sku,
-            catalog_items!inner ( title )
-          )
-        `)
-        .eq("channel", "mercadolibre")
-        .in("status", ["pending", "error"])
-        .order("updated_at", { ascending: false })
-        .limit(50),
-
-      // Últimos errores en sync_log
-      supabase
-        .from("catalog_sync_log")
-        .select(`
-          id, listing_id, action, error_code, created_at,
-          catalog_listings!inner (
-            external_id,
-            catalog_variants!inner (
-              catalog_items!inner ( title )
-            )
-          )
-        `)
-        .eq("result", "error")
-        .order("created_at", { ascending: false })
-        .limit(50),
-
-      // Pagos — columnas reales de la tabla orders
-      supabase
-        .from("orders")
-        .select("id, total, currency, status, ml_order_id, created_at")
-        .not("ml_order_id", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
-
-    // Mapear listings activos
-    setListings(
-      (activeRes.data ?? []).map((r: any) => ({
-        listing_id:      r.id,
-        external_id:     r.external_id,
-        listing_status:  r.status,
-        channel_attrs:   r.channel_attrs ?? {},
-        synced_at:       r.synced_at,
-        last_error:      r.last_error,
-        variant_id:      r.variant_id,
-        sku:             r.catalog_variants?.sku ?? "—",
-        item_title:      r.catalog_variants?.catalog_items?.title ?? "—",
-        total_available: 0, // se puede agregar join a catalog_inventory si se necesita en tabla
-      }))
-    );
-
-    // Mapear pendientes
-    setPendientes(
-      (pendingRes.data ?? []).map((r: any) => ({
-        listing_id:      r.id,
-        external_id:     r.external_id,
-        listing_status:  r.status,
-        channel_attrs:   r.channel_attrs ?? {},
-        synced_at:       r.synced_at,
-        last_error:      r.last_error,
-        variant_id:      r.variant_id,
-        sku:             r.catalog_variants?.sku ?? "—",
-        item_title:      r.catalog_variants?.catalog_items?.title ?? "—",
-        total_available: 0,
-      }))
-    );
-
-    // Mapear errores
-    setSyncErrors(
-      (errorsRes.data ?? []).map((r: any) => ({
-        id:          r.id,
-        listing_id:  r.listing_id,
-        action:      r.action,
-        error_code:  r.error_code,
-        created_at:  r.created_at,
-        external_id: r.catalog_listings?.external_id ?? null,
-        item_title:  r.catalog_listings?.catalog_variants?.catalog_items?.title ?? "—",
-      }))
-    );
-
-    // Mapear pagos
-    setMpPayments(paymentsRes.data ?? []);
-
+    const { data } = await supabase
+      .from("orders")
+      .select("id, total, currency, status, ml_order_id, created_at")
+      .not("ml_order_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setMpPayments((data ?? []) as MPPayment[]);
     setLoading(false);
   }, []);
 
@@ -352,98 +196,14 @@ export default function AdminML() {
 
   // ── Acciones de Sync ML ─────────────────────────────────────────────────────
 
-  // Sync completo — llama ml-sync con statuses pending+error
-  const handleSyncAll = async () => {
-    setSaving("all");
-    try {
-      const data = await callMlSync({ statuses: ["pending", "error", "active"], limit: 100 });
-      if (data.ok) {
-        const conError = (data.results ?? []).filter((r: any) => r?.result === "error").length;
-        notify(`Procesados: ${data.processed} · Errores: ${conError}`, conError > 0 ? "warn" : "ok");
-        await load();
-      } else notify(data.error ?? "Error", "err");
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
 
-  // Republicar una variante específica
-  const handlePublicar = async (variantId: string) => {
-    setSaving(variantId);
-    try {
-      const data = await callPublicar(variantId);
-      if (data.ok) notify(`Publicado ✓ (${data.action})`);
-      else { const t = traducirErrorMl(data); notify(t.accion ? `${t.motivo} — ${t.accion}` : t.motivo, "err"); }
-      // Se recarga tambien al fallar: la funcion ya dejo status='error' y
-      // last_error en el listing, y sin recargar la tabla seguia mostrando
-      // PENDING con la columna de error vacia.
-      await load();
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
 
-  // Pausar / activar listing directo en catalog_listings
-  const handleSetStatus = async (listingId: string, status: "paused" | "active") => {
-    setSaving(`status_${listingId}`);
-    try {
-      const { error } = await supabase
-        .from("catalog_listings")
-        .update({ status })
-        .eq("id", listingId);
-      if (error) throw error;
-      notify(`Estado → "${status}" ✓`);
-      await load();
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
 
-  /**
-   * Publica todo lo que esta en cola.
-   *
-   * Antes este boton llamaba a ml-sync, que filtra por
-   * `.not("external_id","is",null)`: solo actualiza publicaciones que YA
-   * existen en Mercado Libre. Los items en cola nunca se publicaron, asi que
-   * no tienen external_id y ml-sync los saltaba, devolviendo "Procesados: 0"
-   * sin error. La primera publicacion la hace publicar-en-ml.
-   */
-  const handleProcesarCola = async () => {
-    if (pendientes.length === 0) { notify("No hay nada en cola"); return; }
-    setSaving("all");
-    let ok = 0;
-    const fallos: string[] = [];
-    try {
-      for (const l of pendientes) {
-        const data = await callPublicar(l.variant_id);
-        if (data?.ok) ok++;
-        else fallos.push(`${l.sku}: ${resumirErrorMl(data)}`);
-      }
-      if (fallos.length === 0) notify(`Publicados: ${ok}`);
-      else notify(`Publicados: ${ok} · Fallaron ${fallos.length} — ${fallos[0]}`, ok > 0 ? "warn" : "err");
-      await load();
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
 
-  // Reintentar listing con error: resetear a pending
-  const handleRetry = async (listingId: string) => {
-    setSaving(listingId);
-    try {
-      const { error } = await supabase
-        .from("catalog_listings")
-        .update({ status: "pending", last_error: null })
-        .eq("id", listingId);
-      if (error) throw error;
-      notify("Reintento encolado ✓");
-      await load();
-    } catch (err: any) { notify(err.message || "Error", "err"); }
-    finally { setSaving(null); }
-  };
 
   // ── Tabs ────────────────────────────────────────────────────────────────────
 
   const TABS: { id: TabId; label: string; section: "ml" | "mp" }[] = [
-    { id: "ml-publicados",  label: `Publicados (${listings.length})`,            section: "ml" },
-    { id: "ml-pendientes",  label: `Cola (${pendientes.length})`,                section: "ml" },
-    { id: "ml-errores",     label: `Errores (${syncErrors.length})`,             section: "ml" },
     { id: "mp-pagos",       label: `Pagos ML (${mpPayments.length})`,            section: "mp" },
   ];
 
@@ -454,11 +214,6 @@ export default function AdminML() {
 
   return (
     <div style={{ fontFamily: T.fontBase, display: "flex", flexDirection: "column", gap: 0 }}>
-
-      {preview && (
-        <ModalPreview fila={preview} onClose={() => setPreview(null)}
-          onPublicar={handlePublicar} />
-      )}
 
       {/* Header */}
       <div style={{
@@ -482,8 +237,6 @@ export default function AdminML() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn label={saving === "all" ? "Sincronizando…" : "↺ Sync Todo"}
-              variant="primary" disabled={saving === "all"} onClick={handleSyncAll} />
             <Btn label="Actualizar" variant="ghost" disabled={false}
               onClick={() => { load(); loadCreds(); }} />
           </div>
@@ -503,14 +256,13 @@ export default function AdminML() {
 
         {/* KPIs */}
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+          display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
           borderBottom: `1px solid ${T.borderLight}`,
         }}>
           {[
-            { label: "Cuentas conectadas", value: creds.length,         accent: T.success },
-            { label: "Publicados en ML",   value: listings.length,      accent: T.accent  },
-            { label: "Errores de sync",    value: syncErrors.length,    accent: T.danger  },
-            { label: "Cola pendiente",     value: pendientes.length,    accent: T.primary },
+            { label: "Cuentas conectadas", value: creds.length, accent: T.success },
+            { label: "Mercado Libre",      value: mlCreds.length, accent: T.accent },
+            { label: "Mercado Pago",       value: mpCreds.length, accent: T.primary },
           ].map((k, i) => (
             <div key={k.label} style={{
               padding: "16px 24px",
@@ -571,7 +323,7 @@ export default function AdminML() {
                 {TABS.filter(t => t.section === "ml").map(t => (
                   <TabBtn key={t.id} label={t.label} active={tab === t.id}
                     onClick={() => setTab(t.id)}
-                    hasAlert={t.id === "ml-errores" && syncErrors.length > 0} />
+                    hasAlert={false} />
                 ))}
               </div>
             </div>
@@ -625,147 +377,6 @@ export default function AdminML() {
           </div>
         </div>
       </div>
-
-      {/* ══ TAB: ML — PUBLICADOS ══════════════════════════════════════════════ */}
-      {tab === "ml-publicados" && (
-        <Card>
-          <TableHeader cols={["Producto", "SKU", "ML Item ID", "Estado", "Último sync", "Acciones"]} />
-          <tbody>
-            {loading ? (
-              <LoadingRow colSpan={6} />
-            ) : listings.length === 0 ? (
-              <EmptyRow colSpan={6} text="Sin publicaciones activas en ML" />
-            ) : listings.map((l, idx) => (
-              <tr key={l.listing_id} style={{
-                borderBottom: `1px solid ${T.borderLight}`,
-                background: idx % 2 === 0 ? T.bgCard : T.bgMain,
-              }}>
-                <td style={tdStyle({ maxWidth: 200 })}>{l.item_title}</td>
-                <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>
-                  {l.sku}
-                </td>
-                <td style={{ padding: "10px 16px" }}>
-                  {l.external_id ? (
-                    <a href={`https://articulo.mercadolibre.com.uy/${l.external_id}`}
-                      target="_blank" rel="noreferrer"
-                      style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: T.primary, textDecoration: "none" }}>
-                      {l.external_id} ↗
-                    </a>
-                  ) : <span style={{ color: T.textMuted, fontSize: 11 }}>—</span>}
-                </td>
-                <td style={{ padding: "10px 16px" }}><ListingStatusBadge status={l.listing_status} /></td>
-                <td style={{ padding: "10px 16px", fontSize: 11, color: T.textMuted }}>
-                  {l.synced_at
-                    ? new Date(l.synced_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-                    : "—"}
-                </td>
-                <td style={{ padding: "10px 16px" }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <Btn label="↺ Sync" variant="primary" size="xs"
-                      disabled={saving === l.variant_id} onClick={() => handlePublicar(l.variant_id)} />
-                    {l.listing_status === "active"
-                      ? <Btn label="⏸ Pausar" variant="ghost" size="xs"
-                          disabled={saving === `status_${l.listing_id}`}
-                          onClick={() => handleSetStatus(l.listing_id, "paused")} />
-                      : l.listing_status === "paused"
-                      ? <Btn label="▶ Activar" variant="success" size="xs"
-                          disabled={saving === `status_${l.listing_id}`}
-                          onClick={() => handleSetStatus(l.listing_id, "active")} />
-                      : null}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Card>
-      )}
-
-      {/* ══ TAB: ML — COLA (PENDIENTES) ═══════════════════════════════════════ */}
-      {tab === "ml-pendientes" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Btn label={saving === "all" ? "Publicando…" : "▶ Procesar ahora"}
-              variant="primary" disabled={saving === "all"} onClick={handleProcesarCola} />
-          </div>
-          <Card>
-            <TableHeader cols={["Producto", "SKU", "Estado", "Último error", "Ver", "Acciones"]} />
-            <tbody>
-              {pendientes.length === 0 ? (
-                <EmptyRow colSpan={5} text="Cola vacía ✓" success />
-              ) : pendientes.map((l, idx) => (
-                <tr key={l.listing_id} style={{
-                  borderBottom: `1px solid ${T.borderLight}`,
-                  background: idx % 2 === 0 ? T.bgCard : T.bgMain,
-                }}>
-                  <td style={tdStyle({ maxWidth: 200 })}>{l.item_title}</td>
-                  <td style={{ padding: "10px 16px", fontFamily: "'Courier New', monospace", fontSize: 11, color: T.textMuted }}>{l.sku}</td>
-                  <td style={{ padding: "10px 16px" }}><ListingStatusBadge status={l.listing_status} /></td>
-                  <td style={{ padding: "10px 16px", fontSize: 11, color: T.danger, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {l.last_error
-                      ? (() => { const t = traducirErrorMl(l.last_error);
-                          return (
-                            <span title={t.crudo}>
-                              {t.motivo}
-                              {t.accion && (
-                                <span style={{ display: "block", fontSize: 11, color: T.textMuted }}>
-                                  → {t.accion}
-                                </span>
-                              )}
-                            </span>
-                          ); })()
-                      : "—"}
-                  </td>
-                  <td style={{ padding: "10px 16px" }}>
-                    <Btn label="👁 Ver" variant="secondary" size="xs"
-                      disabled={false} onClick={() => setPreview(l)} />
-                  </td>
-                  <td style={{ padding: "10px 16px" }}>
-                    <Btn label="▶ Publicar" variant="primary" size="xs"
-                      disabled={saving === l.variant_id}
-                      onClick={() => handlePublicar(l.variant_id)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Card>
-        </div>
-      )}
-
-      {/* ══ TAB: ML — ERRORES ═════════════════════════════════════════════════ */}
-      {tab === "ml-errores" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {syncErrors.length === 0 ? (
-            <div style={{
-              padding: "3rem", textAlign: "center", color: T.success,
-              fontWeight: 700, fontSize: 14,
-              background: T.bgCard, borderRadius: T.radiusLg,
-              border: `1px solid ${T.border}`, boxShadow: T.shadowCard,
-            }}>
-              ✓ Sin errores de sincronización
-            </div>
-          ) : syncErrors.map(e => (
-            <div key={e.id} style={{
-              background: T.bgCard, borderRadius: T.radiusMd,
-              border: `1px solid ${T.border}`, borderLeft: `3px solid ${T.danger}`,
-              padding: "14px 20px", boxShadow: T.shadowCard,
-              display: "flex", alignItems: "center", gap: 16,
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: T.textDark }}>{e.item_title}</div>
-                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                  ML ID: <code style={{ fontFamily: "'Courier New', monospace" }}>{e.external_id || "—"}</code>
-                  {" · "}Acción: {e.action}
-                  {e.error_code && <>{" · "}<span style={{ color: T.danger }}>{e.error_code}</span></>}
-                  {" · "}{new Date(e.created_at).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-              <Btn label="🔁 Reintentar" variant="danger" size="sm"
-                disabled={saving === e.listing_id}
-                onClick={() => handleRetry(e.listing_id)} />
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ══ TAB: MP — PAGOS ══════════════════════════════════════════════════ */}
       {tab === "mp-pagos" && (
@@ -832,713 +443,8 @@ function TabBtn({ label, active, accentColor, hasAlert, onClick }: {
 }
 
 
-/**
- * Vista previa de una publicacion, sin salir del panel.
- *
- * Dos fuentes segun el estado, porque significan cosas distintas:
- *  - Ya publicado (hay external_id): se trae el item real de la API publica de
- *    Mercado Libre. Es lo que el comprador ve hoy, no lo que creemos haber
- *    mandado.
- *  - Todavia en cola: se arma desde nuestro catalogo via catalog_vidriera, la
- *    misma puerta publica que usa la tienda. Es "asi se va a publicar".
- *
- * El boton de abrir en Mercado Libre usa el permalink que devuelve su API; si
- * no hay, se cae al buscador por id. Nunca se inventa una URL.
- */
-// onGuardado ya no hace falta: publicar lo hace el padre, y su handler recarga.
-function ModalPreview({ fila, onClose, onPublicar }: {
-  fila: any; onClose: () => void;
-  onPublicar?: (variantId: string) => void;
-}) {
-  const [datos, setDatos]   = useState<any>(null);
-  const [cargando, setCarg] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
-  const publicado = Boolean(fila?.external_id);
-  // Edicion en linea: lo que falta se corrige aca, sin ir a otra pantalla.
-  const [edit, setEdit]       = useState<Record<string, string>>({});
-  const [guardando, setGuard] = useState(false);
-  const [aviso, setAviso]     = useState<string | null>(null);
-  const [ruta, setRuta]       = useState<string | null>(null);
-  // Lo que Mercado Libre va a rechazar, sabido de antemano. Es la unica lista
-  // que el modal necesita mostrar: el resto de los datos ya estan bien.
-  const [problemas, setProblemas] = useState<Array<{ campo: string; etiqueta: string; mensaje: string }> | null>(null);
-
-  // Atributos obligatorios de la categoria. Se arrancan con lo ya guardado en
-  // channel_attrs.extra_attributes para no pedir dos veces lo mismo.
-  const [atrs, setAtrs] = useState<Record<string, string>>(() => {
-    const previos = fila?.channel_attrs?.extra_attributes;
-    const out: Record<string, string> = {};
-    if (Array.isArray(previos)) {
-      for (const a of previos) {
-        if (a && typeof a === "object" && a.id) out[String(a.id)] = String(a.value_name ?? "");
-      }
-    }
-    return out;
-  });
-  // Los atributos que faltan los nombra la verificacion del servidor, que es
-  // la que bloquea; el componente solo los marca en rojo donde se editan.
-  const recibirFaltan = useCallback((_n: string[]) => {}, []);
-  const traduccion = fila?.last_error ? traducirErrorMl(fila.last_error) : null;
-  const detectados  = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
-  // Si hubo un error pero no se pudo deducir que campo tocar, igual se ofrecen
-  // los que suelen faltar. Dejar a la persona mirando un aviso sin nada que
-  // hacer es peor que ofrecerle de mas.
-  // Los campos editables se ofrecen SIEMPRE que la publicacion no este en
-  // Mercado Libre, no solo despues de un fallo: si hay que corregir algo,
-  // conviene poder hacerlo antes de intentar y no despues de que rebote.
-  // Cuando ya hubo error y se pudo deducir que campo tocar, se muestran esos
-  // primero; si no, se ofrecen los que Mercado Libre exige siempre.
-  const BASICOS = [
-    { campo: "category_id", etiqueta: "Categoría de Mercado Libre" },
-    { campo: "price",       etiqueta: "Precio" },
-    { campo: "title",       etiqueta: "Título" },
-    { campo: "stock",       etiqueta: "Stock" },
-  ];
-  const valorActual = (campo: string) => {
-    switch (campo) {
-      case "category_id": return datos?.categoria ?? null;
-      case "price":       return datos?.precio ?? null;
-      case "title":       return datos?.titulo ?? null;
-      case "stock":       return datos?.stock ?? null;
-      default:            return null;
-    }
-  };
-  // La categoria que efectivamente se va a mandar: la recien elegida, o la
-  // guardada solo si tiene forma de id de Mercado Libre.
-  const catGuardada = String(fila?.channel_attrs?.category_id ?? "").trim();
-  const catEfectiva = (edit["category_id"] ?? "").trim() || (esIdMl(catGuardada) ? catGuardada : "");
-
-  // La ruta completa es lo unico que permite verificar que la categoria sea la
-  // correcta: "MLU203672" no dice nada, "Farmacia > Analgesicos" si.
-  useEffect(() => {
-    let cancelado = false;
-    if (!esIdMl(catEfectiva)) { setRuta(null); return; }
-    (async () => {
-      try {
-        const r = await fetch("https://api.mercadolibre.com/categories/" + catEfectiva);
-        if (!r.ok) return;
-        const d = await r.json();
-        const camino = (d?.path_from_root ?? []).map((x: any) => x?.name).filter(Boolean).join(" > ");
-        if (!cancelado) setRuta(camino || d?.name || null);
-      } catch (_) { /* la ruta es una ayuda, no un requisito */ }
-    })();
-    return () => { cancelado = true; };
-  }, [catEfectiva]);
-
-  // Los campos a mostrar salen de la verificacion del servidor: son los que
-  // efectivamente van a bloquear. Antes se mostraban los cuatro basicos
-  // siempre, llenos o vacios, y encontrar cual tocar quedaba a cargo de la
-  // persona. Mientras la verificacion no volvio se muestran los deducidos del
-  // ultimo error, para no dejar la pantalla vacia.
-  const camposBloqueados = new Set((problemas ?? []).map((x) => x.campo));
-  const faltantes = publicado
-    ? []
-    : problemas === null
-      ? detectados
-      : BASICOS.filter((b) => camposBloqueados.has(b.campo)).map((b) => {
-          const actual = valorActual(b.campo);
-          return { ...b, actual, vacio: actual === null || actual === undefined || actual === "" || actual === 0 };
-        });
-
-  // La categoria se ofrece si la bloquea la verificacion, y tambien cuando
-  // faltan atributos: cambiarla suele ser la salida mas rapida cuando la
-  // categoria elegida exige cinco cosas que el producto no tiene.
-  const pideCategoria = camposBloqueados.has("category_id")
-    || (problemas ?? []).some((x) => x.campo.startsWith("attr:"));
-
-  // Que falta AHORA. El ultimo error es del intento anterior y puede estar
-  // resuelto: mostrarlo como si fuera el estado actual confunde mas de lo que
-  // ayuda -por eso viaja aparte, abajo-.
-  const faltanAhora: string[] = (problemas ?? []).map((x) => x.mensaje);
-
-  useEffect(() => {
-    if (publicado) { setProblemas([]); return; }
-    let cancelado = false;
-    (async () => {
-      const p = await callVerificar(fila.variant_id);
-      if (!cancelado) setProblemas(p);
-    })();
-    return () => { cancelado = true; };
-  }, [fila?.variant_id, publicado]);
-
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      setCarg(true); setError(null);
-      try {
-        if (publicado) {
-          const r = await fetch(`https://api.mercadolibre.com/items/${fila.external_id}`);
-          if (!r.ok) throw new Error(`Mercado Libre respondio ${r.status}`);
-          const d = await r.json();
-          if (!cancelado) setDatos({
-            titulo: d.title, precio: d.price, moneda: d.currency_id,
-            stock: d.available_quantity, estado: d.status,
-            imagenes: (d.pictures ?? []).map((p: any) => p.secure_url ?? p.url),
-            permalink: d.permalink, categoria: d.category_id, real: true,
-          });
-        } else {
-          const { data, error } = await supabase.rpc("catalog_vidriera", { p_ids: [fila.variant_id] });
-          if (error) throw new Error(error.message);
-          const p = (data ?? [])[0];
-          if (!p) throw new Error("El producto no esta publicado en la tienda, asi que no hay nada que previsualizar todavia.");
-          if (!cancelado) setDatos({
-            titulo: p.nombre, precio: Number(p.precio), moneda: p.moneda,
-            stock: p.stock, estado: null, descripcion: p.descripcion,
-            imagenes: (p.imagenes ?? []).map((i: any) => i.url ?? i),
-            permalink: null, categoria: fila?.channel_attrs?.category_id ?? null, real: false,
-          });
-        }
-      } catch (e: any) {
-        if (!cancelado) setError(e.message || "No se pudo cargar la vista previa");
-      } finally {
-        if (!cancelado) setCarg(false);
-      }
-    })();
-    return () => { cancelado = true; };
-  }, [fila, publicado]);
-
-  /**
-   * Guarda las correcciones y vuelve a publicar, sin salir del modal.
-   * La categoria vive en channel_attrs del listing; el resto son datos del
-   * producto y van por actualizar_publicacion, el mismo RPC que usa la
-   * pantalla de publicaciones.
-   */
-  const guardarYPublicar = async () => {
-    setGuard(true); setAviso(null);
-    try {
-      // Mercado Libre no acepta el nombre de una categoria nuestra. Si la que
-      // hay guardada no tiene forma de id de ML y no se eligio otra, se avisa
-      // ahora: intentar publicar solo produciria el mismo rechazo de vuelta.
-      const cat = edit["category_id"]?.trim();
-      const catGuardada = String(fila?.channel_attrs?.category_id ?? "").trim();
-      const formaDeIdMl = (v: string) => /^ML[A-Z][0-9]+$/.test(v);
-      if (cat && !formaDeIdMl(cat)) {
-        throw new Error(`"${cat}" no es una categoria de Mercado Libre. Elegi una de la lista.`);
-      }
-      if (!cat && catGuardada && !formaDeIdMl(catGuardada)) {
-        throw new Error(`La categoria guardada ("${catGuardada}") es de tu catalogo, no de Mercado Libre. Elegi una de la lista.`);
-      }
-
-      // Los atributos obligatorios van a extra_attributes, que publicar-en-ml ya
-      // mezcla en el payload de Mercado Libre.
-      const extra = Object.entries(atrs)
-        .filter(([, v]) => String(v).trim())
-        .map(([id, value_name]) => ({ id, value_name: String(value_name).trim() }));
-
-      if (cat || extra.length > 0) {
-        const attrs: Record<string, unknown> = { ...(fila.channel_attrs ?? {}) };
-        if (cat) { attrs.category_id = cat; attrs.category_id_origen = "manual"; }
-        if (extra.length > 0) attrs.extra_attributes = extra;
-        const { error } = await supabase
-          .from("catalog_listings").update({ channel_attrs: attrs }).eq("id", fila.listing_id);
-        if (error) throw new Error(error.message);
-      }
-
-      const patch: Record<string, unknown> = { p_variant_id: fila.variant_id };
-      if (edit["title"]?.trim())       patch.p_title       = edit["title"].trim();
-      if (edit["description"]?.trim()) patch.p_description = edit["description"].trim();
-      if (edit["price"]?.trim()) {
-        const precio = Number(edit["price"]);
-        if (!Number.isFinite(precio) || precio <= 0) throw new Error("El precio tiene que ser un numero mayor que cero.");
-        patch.p_price = precio;
-      }
-      if (edit["stock"]?.trim())       patch.p_stock       = parseInt(edit["stock"], 10);
-      if (Object.keys(patch).length > 1) {
-        const { error } = await supabase.rpc("actualizar_publicacion", patch);
-        if (error) throw new Error(error.message);
-      }
-
-      // Guardar es rapido; publicar tarda porque va contra Mercado Libre. El
-      // modal se cierra apenas termina el guardado y la publicacion la sigue
-      // el padre, que ya sabe avisar y recargar la tabla. Esperar adentro
-      // dejaba el modal congelado varios segundos sin razon.
-      onClose();
-      onPublicar?.(fila.variant_id);
-    } catch (e: any) {
-      setAviso(e.message || "No se pudo guardar");
-    } finally {
-      setGuard(false);
-    }
-  };
-
-  const urlMl = datos?.permalink
-    ?? (fila?.external_id ? `https://articulo.mercadolibre.com.uy/${fila.external_id}` : null);
-
-  return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, background: "rgba(8,28,56,.55)", zIndex: 1000,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: T.bgCard, borderRadius: T.radiusLg, maxWidth: 620, width: "100%",
-        maxHeight: "85vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(8,28,56,.3)",
-      }}>
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "16px 20px", borderBottom: `1px solid ${T.borderLight}`,
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, color: T.textDark }}>
-              {publicado ? "Publicacion en Mercado Libre" : "Asi se va a publicar"}
-            </div>
-            <div style={{ fontSize: 12, color: T.textMuted }}>
-              {publicado
-                ? `Datos reales de Mercado Libre · ${fila.external_id}`
-                : "Vista previa desde tu catalogo · todavia no esta en Mercado Libre"}
-            </div>
-          </div>
-          <button onClick={onClose} aria-label="Cerrar" style={{
-            border: "none", background: "none", fontSize: 22, cursor: "pointer", color: T.textMuted,
-          }}>x</button>
-        </div>
-
-        <div style={{ padding: 20 }}>
-          {cargando && <div style={{ color: T.textMuted }}>Cargando vista previa...</div>}
-
-          {error && !cargando && (
-            <div style={{
-              background: T.dangerBg, color: T.danger, padding: "10px 12px",
-              borderRadius: T.radiusMd, fontSize: 13,
-            }}>{error}</div>
-          )}
-
-          {datos && !cargando && !error && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* La vista previa completa es util cuando ya esta publicado
-                  -es lo que ve el comprador-. Cuando todavia no salio, lo que
-                  importa es que lo bloquea: el producto queda en una linea y el
-                  espacio es para el problema. */}
-              {publicado ? (
-                <>
-                  {datos.imagenes?.length > 0 && (
-                    <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
-                      {datos.imagenes.slice(0, 6).map((u: string, i: number) => (
-                        <img key={i} src={u} alt="" style={{
-                          width: 92, height: 92, objectFit: "cover", borderRadius: T.radiusMd,
-                          border: `1px solid ${T.borderLight}`, flexShrink: 0,
-                        }} />
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 17, fontWeight: 700, color: T.textDark }}>{datos.titulo}</div>
-                  <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
-                    <span style={{ fontSize: 22, fontWeight: 700, color: T.primary }}>
-                      {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")}
-                    </span>
-                    <span style={{ fontSize: 13, color: T.textMuted }}>Stock: {datos.stock ?? 0}</span>
-                    {datos.estado && <span style={{ fontSize: 13, color: T.textMuted }}>Estado: {datos.estado}</span>}
-                  </div>
-                  {datos.categoria && (
-                    <div style={{ fontSize: 12, color: T.textMuted }}>Categoria: {datos.categoria}</div>
-                  )}
-                  {datos.descripcion && (
-                    <div style={{ fontSize: 13, color: T.textBody, whiteSpace: "pre-wrap" }}>
-                      {String(datos.descripcion).slice(0, 400)}
-                      {String(datos.descripcion).length > 400 ? "..." : ""}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  {datos.imagenes?.length > 0 && (
-                    <img src={datos.imagenes[0]} alt="" style={{
-                      width: 44, height: 44, objectFit: "cover", borderRadius: T.radiusSm,
-                      border: `1px solid ${T.borderLight}`, flexShrink: 0,
-                    }} />
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, color: T.textDark,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>{datos.titulo}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>
-                      {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")} · Stock {datos.stock ?? 0}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!publicado && (faltantes.length > 0 || pideCategoria || problemas !== null) && (
-                <div style={{
-                  border: `1px solid ${T.border}`, borderRadius: T.radiusMd, padding: 14,
-                  display: "flex", flexDirection: "column", gap: 10,
-                }}>
-                  <div>
-                    {/* Lo que bloquea, en una lista, y nada mas. Es el motivo
-                        por el que se abre este modal; el resto de los datos ya
-                        estan bien y no necesitan pantalla. */}
-                    <div style={{
-                      fontWeight: 700, fontSize: 14,
-                      color: faltanAhora.length ? T.danger : T.success,
-                    }}>
-                      {faltanAhora.length === 0
-                        ? "Listo para publicar"
-                        : faltanAhora.length === 1
-                          ? "Falta una cosa para publicar"
-                          : `Faltan ${faltanAhora.length} cosas para publicar`}
-                    </div>
-
-                    {faltanAhora.length > 0 && (
-                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: T.textBody }}>
-                        {faltanAhora.map((m, i) => <li key={i} style={{ marginBottom: 2 }}>{m}</li>)}
-                      </ul>
-                    )}
-
-                    {faltanAhora.length === 0 && (
-                      <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
-                        Cumple los requisitos de Mercado Libre para esta categoría.
-                      </div>
-                    )}
-
-                    {/* El rechazo anterior se guarda pero no compite con lo de
-                        arriba: si la verificacion ya dice que falta, repetir el
-                        error viejo solo agrega ruido. */}
-                    {traduccion && (
-                      <details style={{ marginTop: 8 }}>
-                        <summary style={{ fontSize: 11, color: T.textMuted, cursor: "pointer" }}>
-                          Rechazo anterior de Mercado Libre
-                        </summary>
-                        <div style={{ fontSize: 11, color: T.textBody, marginTop: 4 }}>
-                          {traduccion.motivo}{traduccion.accion ? " — " + traduccion.accion : ""}
-                        </div>
-                        <pre style={{
-                          fontSize: 10, color: T.textMuted, background: T.bgMain,
-                          padding: 8, borderRadius: T.radiusSm, marginTop: 6,
-                          maxHeight: 140, overflow: "auto",
-                          whiteSpace: "pre-wrap", wordBreak: "break-word",
-                        }}>{traduccion.crudo}</pre>
-                      </details>
-                    )}
-                  </div>
-                  {pideCategoria && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      <SelectorCategoria
-                        titulo={datos?.titulo ?? null}
-                        valorActual={catGuardada || null}
-                        valor={edit["category_id"] ?? ""}
-                        ruta={ruta}
-                        onChange={(id) => setEdit((p) => ({ ...p, category_id: id }))} />
-                      {catEfectiva && (
-                        <AtributosCategoria categoria={catEfectiva} valores={atrs}
-                          onChange={(id, v) => setAtrs((p) => ({ ...p, [id]: v }))}
-                          onFaltan={recibirFaltan} />
-                      )}
-                    </div>
-                  )}
-
-                  {faltantes.filter((f) => f.campo !== "category_id").map((f) => (
-                    <label key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ fontSize: 12, color: T.textMuted }}>
-                        {f.etiqueta}
-                        {f.vacio
-                          ? <span style={{ color: T.danger }}> · falta</span>
-                          : <span style={{ color: T.textMuted }}> · actual: {String(f.actual)}</span>}
-                      </span>
-                      <input
-                        value={edit[f.campo] ?? (f.vacio ? "" : String(f.actual ?? ""))}
-                        onChange={(e) => setEdit((p) => ({ ...p, [f.campo]: e.target.value }))}
-                        style={{
-                          padding: "8px 10px", fontSize: 13, outline: "none",
-                          borderRadius: T.radiusSm,
-                          border: `1px solid ${(edit[f.campo] ?? String(f.actual ?? "")).trim() ? T.border : T.danger}`,
-                        }} />
-                    </label>
-                  ))}
-                  {/* Solo problemas al guardar: si se llego a publicar, el
-                      resultado se ve en la tabla y el modal ya se cerro. */}
-                  {aviso && (
-                    <div style={{
-                      background: T.dangerBg, border: `1px solid ${T.danger}`,
-                      borderRadius: T.radiusSm, padding: "8px 10px",
-                      fontSize: 12, color: T.danger, fontWeight: 600,
-                    }}>{aviso}</div>
-                  )}
-                </div>
-              )}
 
 
-            </div>
-          )}
-        </div>
-
-        <div style={{
-          display: "flex", justifyContent: "flex-end", gap: 8,
-          padding: "14px 20px", borderTop: `1px solid ${T.borderLight}`,
-        }}>
-          <Btn label="Cerrar" variant="secondary" disabled={guardando} onClick={onClose} />
-          {!publicado && (
-            <Btn label={guardando ? "Publicando…" : faltanAhora.length ? "Guardar y reintentar" : "Publicar"}
-              variant="primary" disabled={guardando} onClick={guardarYPublicar} />
-          )}
-          {urlMl && (
-            <a href={urlMl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-              <Btn label="Abrir en Mercado Libre" variant="primary" disabled={false} onClick={() => {}} />
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Selector de categoria de Mercado Libre.
- *
- * Nadie sabe de memoria que MLU203672 es Analgesicos, asi que un campo de
- * texto libre no sirve. Ademas los productos traen una categoria propia
- * -"Varios"- que no significa nada para Mercado Libre.
- *
- * Se comporta como un combo: cerrado muestra que hay elegido, se abre al
- * hacer clic, se cierra al elegir, con Escape o al hacer clic afuera. La
- * busqueda usa domain_discovery, el endpoint publico que Mercado Libre expone
- * para sugerir categoria a partir de un texto -el mismo que usa publicar-en-ml
- * para predecir-.
- */
-function esIdMl(v: unknown): boolean {
-  return typeof v === "string" && /^ML[A-Z][0-9]+$/.test(v.trim());
-}
-
-function SelectorCategoria({ titulo, valorActual, valor, ruta, onChange }: {
-  titulo: string | null;
-  valorActual: string | null;
-  valor: string;
-  ruta: string | null;
-  onChange: (id: string) => void;
-}) {
-  const [abierto, setAbierto]   = useState(false);
-  const [consulta, setConsulta] = useState("");
-  const [opciones, setOpciones] = useState<Array<{ id: string; nombre: string; dominio: string }>>([]);
-  const [buscando, setBuscando] = useState(false);
-  const [fallo, setFallo]       = useState<string | null>(null);
-  const caja  = useRef<HTMLDivElement | null>(null);
-  const busca = useRef<HTMLInputElement | null>(null);
-
-  const elegido = valor || (esIdMl(valorActual) ? String(valorActual).trim() : "");
-  const heredadaInvalida = !!valorActual && !esIdMl(valorActual);
-
-  const buscar = useCallback(async (texto: string) => {
-    const q = texto.trim();
-    if (q.length < 2) { setOpciones([]); setFallo(null); return; }
-    setBuscando(true); setFallo(null);
-    try {
-      const r = await fetch(
-        // limit acepta 1..8; con 10 Mercado Libre devuelve 400 y el combo quedaba
-        // mostrando "respondio 400" en vez de las categorias.
-        "https://api.mercadolibre.com/sites/MLU/domain_discovery/search?limit=8&q=" + encodeURIComponent(q)
-      );
-      if (!r.ok) throw new Error("Mercado Libre respondio " + r.status);
-      const d = await r.json();
-      setOpciones((Array.isArray(d) ? d : [])
-        .filter((x: any) => x?.category_id)
-        .map((x: any) => ({
-          id: String(x.category_id),
-          nombre: String(x.category_name ?? x.category_id),
-          dominio: String(x.domain_name ?? ""),
-        })));
-    } catch (e: any) {
-      setFallo(e?.message ?? "No se pudieron traer las sugerencias");
-      setOpciones([]);
-    } finally {
-      setBuscando(false);
-    }
-  }, []);
-
-  // Al abrir se sugiere por el titulo del producto, que es el dato que ya
-  // existe, y el foco va a la busqueda para poder escribir de una.
-  useEffect(() => {
-    if (!abierto) return;
-    busca.current?.focus();
-    if (!consulta.trim()) void buscar(titulo ?? "");
-  }, [abierto]);
-
-  // Cerrar con clic afuera o con Escape. Sin esto la lista queda abierta y
-  // tapando el resto del formulario.
-  useEffect(() => {
-    if (!abierto) return;
-    const afuera = (e: MouseEvent) => {
-      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
-    };
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.stopPropagation(); setAbierto(false); }
-    };
-    document.addEventListener("mousedown", afuera);
-    document.addEventListener("keydown", tecla, true);
-    return () => {
-      document.removeEventListener("mousedown", afuera);
-      document.removeEventListener("keydown", tecla, true);
-    };
-  }, [abierto]);
-
-  const elegir = (id: string) => { onChange(id); setAbierto(false); };
-
-  return (
-    <div ref={caja} style={{ display: "flex", flexDirection: "column", gap: 5, position: "relative" }}>
-      <span style={{ fontSize: 12, color: T.textMuted }}>Categoria de Mercado Libre</span>
-
-      <button onClick={() => setAbierto((v) => !v)} style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-        padding: "9px 11px", fontSize: 13, textAlign: "left", cursor: "pointer",
-        background: T.bgCard, color: T.textDark,
-        border: "1px solid " + (elegido ? T.border : T.danger),
-        borderRadius: T.radiusSm,
-      }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {elegido
-            ? (ruta ? ruta : elegido)
-            : <span style={{ color: T.danger }}>Sin categoria - elegi una</span>}
-        </span>
-        <span style={{ fontSize: 11, color: T.textMuted, whiteSpace: "nowrap" }}>
-          {elegido ? elegido + "  v" : "v"}
-        </span>
-      </button>
-
-      {heredadaInvalida && !valor && (
-        <div style={{ fontSize: 11, color: T.warning, background: T.warningBg, padding: "6px 8px", borderRadius: T.radiusSm }}>
-          "{valorActual}" es una categoria de tu catalogo, no de Mercado Libre.
-        </div>
-      )}
-
-      {abierto && (
-        <div style={{
-          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 30, marginTop: 4,
-          background: T.bgCard, border: "1px solid " + T.border, borderRadius: T.radiusSm,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.14)", overflow: "hidden",
-        }}>
-          <input ref={busca}
-            value={consulta}
-            onChange={(e) => { setConsulta(e.target.value); void buscar(e.target.value); }}
-            placeholder="Que es el producto? ej. remera, celular, analgesico"
-            style={{
-              width: "100%", boxSizing: "border-box", padding: "9px 11px", fontSize: 13,
-              border: "none", borderBottom: "1px solid " + T.borderLight, outline: "none",
-            }} />
-
-          <div style={{ maxHeight: 220, overflowY: "auto" }}>
-            {buscando && (
-              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>Buscando...</div>
-            )}
-
-            {!buscando && fallo && (
-              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>
-                No se pudieron traer las categorias en este momento. Proba de nuevo
-                escribiendo otra palabra.
-              </div>
-            )}
-
-            {!buscando && !fallo && opciones.length === 0 && (
-              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>
-                {consulta.trim().length >= 2
-                  ? "Sin resultados para \"" + consulta.trim() + "\". Proba con otra palabra."
-                  : "Escribi que es el producto para ver categorias."}
-              </div>
-            )}
-
-            {!buscando && opciones.map((o) => {
-              const activa = o.id === elegido;
-              return (
-                <button key={o.id} onClick={() => elegir(o.id)} style={{
-                  display: "block", width: "100%", textAlign: "left",
-                  padding: "8px 11px", fontSize: 12, cursor: "pointer", border: "none",
-                  background: activa ? T.primary : "transparent",
-                  color: activa ? "#fff" : T.textDark,
-                }}>
-                  {o.nombre}
-                  <span style={{ opacity: 0.65, marginLeft: 6, fontSize: 11 }}>
-                    {o.dominio ? o.dominio + " - " : ""}{o.id}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Atributos que la categoria elegida exige.
- *
- * Es la respuesta concreta a "que falta": Mercado Libre publica, por
- * categoria, cuales atributos son obligatorios. Decir "faltan datos
- * obligatorios" sin nombrarlos deja a la persona adivinando.
- *
- * Lo que se completa aca se guarda en channel_attrs.extra_attributes, que
- * publicar-en-ml ya mezcla en el payload; no hace falta tocar la funcion.
- */
-function AtributosCategoria({ categoria, valores, onChange, onFaltan }: {
-  categoria: string;
-  valores: Record<string, string>;
-  onChange: (id: string, valor: string) => void;
-  onFaltan: (nombres: string[]) => void;
-}) {
-  const [reqs, setReqs] = useState<Array<{ id: string; nombre: string; opciones: string[] }> | null>(null);
-  const [fallo, setFallo] = useState(false);
-
-  useEffect(() => {
-    let cancelado = false;
-    setReqs(null); setFallo(false);
-    if (!esIdMl(categoria)) return;
-    (async () => {
-      try {
-        const r = await fetch("https://api.mercadolibre.com/categories/" + categoria + "/attributes");
-        if (!r.ok) throw new Error(String(r.status));
-        const d = await r.json();
-        const lista = (Array.isArray(d) ? d : [])
-          .filter((a: any) => a?.tags?.required)
-          .map((a: any) => ({
-            id: String(a.id),
-            nombre: String(a.name ?? a.id),
-            opciones: (a.values ?? []).map((v: any) => String(v?.name)).filter(Boolean).slice(0, 60),
-          }));
-        if (!cancelado) setReqs(lista);
-      } catch (_) {
-        if (!cancelado) setFallo(true);
-      }
-    })();
-    return () => { cancelado = true; };
-  }, [categoria]);
-
-  // El resumen de arriba tiene que poder nombrar estos atributos: si no, la
-  // persona lee "faltan datos" y no sabe cuales.
-  useEffect(() => {
-    if (reqs === null) { onFaltan([]); return; }
-    onFaltan(reqs.filter((a) => !(valores[a.id] ?? "").trim()).map((a) => a.nombre));
-  }, [reqs, valores, onFaltan]);
-
-  if (fallo || reqs === null || reqs.length === 0) return null;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 12, color: T.textMuted }}>
-        Esta categoria exige {reqs.length === 1 ? "este atributo" : "estos atributos"}:
-      </div>
-      {reqs.map((a) => {
-        const v = valores[a.id] ?? "";
-        return (
-          <label key={a.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>
-              {a.nombre}
-              {!v.trim() && <span style={{ color: T.danger }}> - falta</span>}
-            </span>
-            <input list={a.opciones.length ? "opc-" + a.id : undefined}
-              value={v}
-              onChange={(e) => onChange(a.id, e.target.value)}
-              style={{
-                padding: "8px 10px", border: "1px solid " + (v.trim() ? T.border : T.danger),
-                borderRadius: T.radiusSm, fontSize: 13, outline: "none",
-              }} />
-            {a.opciones.length > 0 && (
-              <datalist id={"opc-" + a.id}>
-                {a.opciones.map((o) => <option key={o} value={o} />)}
-              </datalist>
-            )}
-          </label>
-        );
-      })}
-    </div>
-  );
-}
 
 function Btn({ label, variant = "secondary", size = "md", disabled, onClick }: {
   label: string; variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -1611,30 +517,7 @@ function EmptyRow({ colSpan, text, success }: { colSpan: number; text: string; s
   );
 }
 
-function tdStyle(extra?: React.CSSProperties): React.CSSProperties {
-  return {
-    padding: "10px 16px", fontSize: 13, fontWeight: 600, color: T.textDark,
-    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-    ...extra,
-  };
-}
 
-function ListingStatusBadge({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    active:   [T.successBg, T.success],
-    syncing:  [T.primaryLight, T.primary],
-    paused:   [T.warningBg, T.warning],
-    pending:  [T.warningBg, T.warning],
-    error:    [T.dangerBg,  T.danger],
-    delisted: ["#f1f5f9",   T.textMuted],
-  };
-  const [bg, color] = map[status] ?? ["#f1f5f9", T.textMuted];
-  return (
-    <span style={{ padding: "2px 9px", borderRadius: T.radiusPill, fontSize: 10, fontWeight: 700, background: bg, color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-      {status || "—"}
-    </span>
-  );
-}
 
 function OrderStatusBadge({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
