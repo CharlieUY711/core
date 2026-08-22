@@ -48,6 +48,16 @@ export interface Publicacion {
   master_price: number | null;
   master_currency: string;
   channels: CanalPublicacion[];
+  /**
+   * Ficha ampliada guardada en el item: lo que sabemos del producto.
+   *
+   * Se guarda y no se arma cada vez porque viene de APIs ajenas: si se
+   * reconstruyera en cada visita, un canal caido dejaria al articulo sin
+   * informacion.
+   */
+  ficha: Record<string, any> | null;
+  ficha_fuente: string | null;
+  ficha_at: string | null;
   created_at: string;
   updated_at: string;
 }

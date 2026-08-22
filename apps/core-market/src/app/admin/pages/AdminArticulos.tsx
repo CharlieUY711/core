@@ -193,7 +193,7 @@ export default function AdminArticulos(
       if (disponibilidad)        atributos.disponibilidad = disponibilidad;
       if (deptoId)               atributos.departamento = { id: deptoId, nombre: depto?.nombre ?? null };
 
-      const { error } = await supabase.rpc("crear_publicacion", {
+      const { data: nuevaVariante, error } = await supabase.rpc("crear_publicacion", {
         p_title:       nombre.trim(),
         p_price:       parseFloat(precio),
         p_currency:    moneda,
@@ -207,6 +207,22 @@ export default function AdminArticulos(
         p_videos:      videoUrls,
       });
       if (error) throw error;
+
+      // La ficha se guarda apenas existe el articulo. Si se dejara para
+      // despues dependeria de que alguien vuelva a abrirlo con el canal
+      // respondiendo, y lo que ya sabiamos se perderia.
+      if (elegido && nuevaVariante) {
+        const { error: eF } = await supabase.rpc("guardar_ficha_articulo", {
+          p_variant_id:  nuevaVariante,
+          p_ficha:       elegido,
+          p_fuente:      "mercadolibre",
+          p_producto_id: idElegido,
+        });
+        // Que falle no invalida el alta: el articulo esta creado y la ficha se
+        // puede volver a traer. Se avisa, no se aborta.
+        if (eF) console.warn("[ficha]", eF.message);
+      }
+
       notify(publicarComo === "draft" ? "Guardado como borrador — podés publicarlo cuando quieras" : "¡Listo! Tu artículo ya está publicado en Charlie Market");
       setTimeout(() => salir(true), 1500);
     } catch (e: any) {

@@ -113,6 +113,8 @@ interface Art {
   // Añadidos por la migración a catalog_*: `id` es el variant_id, y estos dos
   // conservan lo que la forma plana de Art no puede representar.
   item_id?:string; canales?:Publicacion["channels"];
+  // Lo que sabemos del producto, guardado. Ver la migracion 001900.
+  ficha?:Record<string,any>|null; fichaFuente?:string|null; fichaAt?:string|null;
   sync_market?:boolean; sync_second?:boolean;
 }
 
@@ -137,6 +139,9 @@ function toArt(p:Publicacion):Art {
     created_at:  p.created_at,
     published_at:p.item_status === "active" ? p.updated_at : undefined,
     canales:     p.channels,
+    ficha:       (p as any).ficha ?? null,
+    fichaFuente: (p as any).ficha_fuente ?? null,
+    fichaAt:     (p as any).ficha_at ?? null,
     sync_market: canalActivo(p,"market"),
     sync_second: canalActivo(p,"secondhand"),
     sync_ml:     canalActivo(p,"mercadolibre"),
@@ -181,11 +186,14 @@ const fmtP = (n:number,m="UYU") => m+" "+Number(n).toLocaleString("es-UY");
  * tiene la misma competencia en cada uno, y esa es justamente la comparacion
  * que permite decidir con que precio salir en cada lado.
  */
-function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onAplicado }: {
+function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, guardada, fuente, traidaEl, onAplicado }: {
   variantId: string;
   canales: CanalUI[];
   nombreCanal: Record<string,string>;
   precioActual: number;
+  guardada: Record<string,any>|null;
+  fuente: string|null;
+  traidaEl: string|null;
   onAplicado: () => void;
 }) {
   const [fichas, setFichas] = useState<Record<string, FichaCanal|null>|null>(null);
@@ -198,19 +206,37 @@ function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onApl
     setFichas(null);
     (async () => {
       const f = await fichasDeCanales(variantId, canales.map(c => c.channel));
-      if (vivo) setFichas(f);
+      if (!vivo) return;
+      setFichas(f);
+
+      // Lo que se acaba de traer se guarda: la proxima vez el articulo tiene
+      // su ficha aunque el canal no conteste.
+      const primera = Object.entries(f).find(([,x]) => x);
+      if (primera) {
+        const [canal, datos] = primera;
+        await supabase.rpc("guardar_ficha_articulo", {
+          p_variant_id: variantId, p_ficha: datos, p_fuente: canal,
+          p_producto_id: (datos as FichaCanal).productoId ?? null,
+        });
+      }
     })();
     return () => { vivo = false; };
   }, [variantId, canales.map(c=>c.channel).join(",")]);
 
-  if (fichas === null) {
-    return <div style={{fontSize:"0.75rem",color:"var(--gray-400)",marginBottom:"0.9rem"}}>
-      Buscando datos del producto en los canales…
-    </div>;
-  }
+  // Mientras se consulta se muestra lo guardado: tener la ficha en pantalla
+  // vale mas que un cartel de espera, y si el canal no contesta queda esa.
+  const efectivas: Array<[string, FichaCanal]> = fichas
+    ? Object.entries(fichas).filter(([,f]) => f) as Array<[string, FichaCanal]>
+    : (guardada ? [[fuente ?? "guardada", guardada as FichaCanal]] : []);
 
-  const conDatos = Object.entries(fichas).filter(([,f]) => f);
-  if (!conDatos.length) return null;
+  if (!efectivas.length) {
+    return fichas === null
+      ? <div style={{fontSize:"0.75rem",color:"var(--gray-400)",marginBottom:"0.9rem"}}>
+          Buscando datos del producto…
+        </div>
+      : null;
+  }
+  const conDatos = efectivas;
 
   // La descripcion sugerida se toma del primer canal que la tenga: es del
   // producto, no del canal, asi que no tiene sentido repetirla por cada uno.
@@ -259,6 +285,15 @@ function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onApl
         textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.5rem"}}>
         Datos del producto, traídos de los canales
       </div>
+      {/* De donde salio y cuando: dos fuentes pueden diferir, y una ficha
+          vieja sigue sirviendo pero conviene saber que lo es. */}
+      {traidaEl && (
+        <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginTop:-4,marginBottom:"0.55rem"}}>
+          {fuente ? nombreCanal[fuente] ?? fuente : "Origen desconocido"}
+          {" · actualizada el "}
+          {new Date(traidaEl).toLocaleDateString("es-UY",{day:"2-digit",month:"2-digit",year:"numeric"})}
+        </div>
+      )}
 
       {fotos.length > 0 && (
         <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:"0.7rem"}}>
@@ -282,7 +317,9 @@ function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onApl
         </thead>
         <tbody>
           {canales.map(c => {
-            const f = fichas[c.channel];
+            // `fichas` puede ser null mientras se consulta; ahi vale la
+            // guardada, que es lo que `efectivas` ya resolvio.
+            const f = fichas?.[c.channel] ?? efectivas.find(([k])=>k===c.channel)?.[1] ?? null;
             const m = f?.mercado;
             return (
               <tr key={c.channel} style={{borderTop:"1px solid var(--gray-50)"}}>
@@ -322,6 +359,61 @@ function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onApl
       <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginBottom:"0.6rem"}}>
         Dejar el precio vacío y fijar quita el precio propio de ese canal: vuelve a valer el general.
       </div>
+
+      {/* Ficha tecnica: lo que define al producto, no a la publicacion. */}
+      {(() => {
+        const attrs = conDatos.map(([,f]) => f.atributos).find(a => a?.length) ?? [];
+        if (!attrs.length) return null;
+        return (
+          <details style={{marginBottom:"0.5rem"}}>
+            <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
+              Ficha técnica ({attrs.length})
+            </summary>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",
+              gap:"3px 14px",marginTop:6}}>
+              {attrs.map((at,i)=>(
+                <div key={i} style={{fontSize:"0.73rem",display:"flex",gap:6,
+                  borderBottom:"1px solid var(--gray-50)",padding:"2px 0"}}>
+                  <span style={{color:"var(--gray-400)",flex:"0 0 45%",
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {at.id.replace(/_/g," ").toLowerCase()}
+                  </span>
+                  <span style={{color:"#111",fontWeight:600,minWidth:0,
+                    overflow:"hidden",textOverflow:"ellipsis"}}>{at.valor}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        );
+      })()}
+
+      {/* Competencia: a que precio y en que condiciones lo vende el resto. */}
+      {(() => {
+        const comp = conDatos.map(([,f]) => f.mercado?.competencia).find(c => c?.length) ?? [];
+        if (!comp.length) return null;
+        return (
+          <details style={{marginBottom:"0.5rem"}}>
+            <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
+              Competencia ({comp.length})
+            </summary>
+            <table style={{width:"100%",borderCollapse:"collapse",marginTop:6}}>
+              <tbody>
+                {comp.map((c,i)=>(
+                  <tr key={i} style={{borderTop:"1px solid var(--gray-50)"}}>
+                    <td style={{...tdc,textAlign:"left",fontWeight:700}}>
+                      {money(c.precio,c.moneda)}
+                      {c.ganaLaCompra && <span style={{color:VERDE_SYNC,fontWeight:700}}> · gana la compra</span>}
+                    </td>
+                    <td style={tdc}>{c.envioGratis?"Envío gratis":"—"}</td>
+                    <td style={tdc}>{c.vendidos>0?c.vendidos+" vendidos":"—"}</td>
+                    <td style={tdc}>{c.condicion==="new"?"Nuevo":c.condicion==="used"?"Usado":c.condicion}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        );
+      })()}
 
       {argumentos.length > 0 && (
         <details style={{marginBottom:"0.5rem"}}>
@@ -1280,6 +1372,8 @@ export default function AdminPublicaciones() {
             {!isNew&&a&&canales.length>0&&(
               <FichaDelProducto variantId={a.id} canales={canales}
                 nombreCanal={nombreCanal} precioActual={a.precio}
+                guardada={a.ficha ?? null} fuente={a.fichaFuente ?? null}
+                traidaEl={a.fichaAt ?? null}
                 onAplicado={reload}/>
             )}
 
