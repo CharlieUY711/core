@@ -179,6 +179,22 @@ const REGLAS: Regla[] = [
     }),
   },
 
+  // "The fields [title] are invalid for requested call": el titulo no esta mal
+  // escrito, no corresponde en esta llamada. Pasa en las categorias que
+  // publican contra el catalogo de Mercado Libre, donde el titulo lo arma ML a
+  // partir de la familia de producto. Va ANTES de la regla de titulo, que si no
+  // se lo lleva puesto y manda a reescribir un titulo que esta bien.
+  {
+    aplica: (c, m) => /invalid_fields/i.test(c + " " + m) && /\btitle\b/i.test(m),
+    traducir: () => ({
+      // No hay campo que corregir: es la forma del pedido, no el dato.
+      campos:  [],
+      motivo:  "Esta categoría no admite título propio",
+      detalle: "Mercado Libre arma el título a partir del producto de catálogo, así que no acepta que se lo enviemos.",
+      accion:  "Reintentar: se envía como familia de producto",
+    }),
+  },
+
   // Titulo invalido o demasiado largo.
   {
     // Antes bastaba con que apareciera "title" en cualquier parte del mensaje.

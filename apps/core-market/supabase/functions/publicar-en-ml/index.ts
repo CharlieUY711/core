@@ -319,7 +319,7 @@ serve(async (req: Request) => {
   }
 
   const mlPayload: Record<string, unknown> = {
-    title:          v.item_title,
+    // title y family_name NO conviven: ver el bloque de abajo.
     description:    v.item_description ?? undefined,
     price:          resolvedPrice.amount,
     currency_id:    resolvedPrice.currency,
@@ -328,19 +328,45 @@ serve(async (req: Request) => {
     listing_type_id: attrs["listing_type_id"] ?? "gold_special",
     condition:      attrs["condition"]      ?? "new",
     ...(categoriaId ? { category_id: categoriaId } : {}),
-    // Mercado Libre exige family_name en los dominios que tienen catalogo
-    // -practicamente todos-, salvo que se publique contra un producto del
-    // catalogo con catalog_product_id. Es el nombre de la familia de producto
-    // y sirve para agrupar variaciones.
-    //
-    // No tiene sentido pedirselo a nadie: el titulo ya lo dice. Se manda
-    // derivado del titulo, y si alguien lo define explicitamente en
-    // channel_attrs manda lo suyo. Sin esto ML rechazaba con
-    // "body.required_fields [family_name]", que no le decia nada al usuario.
-    family_name: String(attrs["family_name"] ?? v.item_title ?? "").trim().slice(0, 60) || undefined,
     ...(pictures.length > 0  ? { pictures }                          : {}),
     ...(v.weight_g           ? { shipping: buildShipping(v, attrs) } : {}),
   };
+
+  /**
+   * `title` o `family_name`, nunca los dos.
+   *
+   * Mercado Libre acepta dos formas de crear un item y son excluyentes:
+   *
+   *   - publicacion suelta: se manda `title`.
+   *   - familia de catalogo: se manda `family_name` y `title` queda prohibido,
+   *     porque el titulo lo arma Mercado Libre a partir de la familia.
+   *
+   * Cual corresponde depende de la categoria, y Mercado Libre NO lo publica en
+   * los metadatos de la categoria: lo unico que expone es `catalog_domain`, que
+   * esta en casi todas y no distingue. Asi que no se puede saber de antemano.
+   *
+   * Se manda `title`, que es el caso comun, y si Mercado Libre responde que
+   * hace falta `family_name` -o que `title` no corresponde- se reintenta una
+   * vez con la otra forma y se deja anotado en channel_attrs. A partir de ahi
+   * ese producto sale bien al primer intento.
+   *
+   * Mandar las dos fue el bug: se agrego family_name para resolver
+   * "required_fields [family_name]" sin ver que eso vuelve invalido a title, y
+   * el rechazo que seguia -"The fields [title] are invalid"- se leia como si el
+   * titulo estuviera mal escrito.
+   */
+  const nombreFamilia = String(attrs["family_name"] ?? v.item_title ?? "").trim().slice(0, 60);
+  const aplicarForma = (usaFamilia: boolean) => {
+    if (usaFamilia) {
+      delete mlPayload.title;
+      if (nombreFamilia) mlPayload.family_name = nombreFamilia;
+    } else {
+      delete mlPayload.family_name;
+      mlPayload.title = v.item_title;
+    }
+  };
+  let usaFamilia = attrs["usa_family_name"] === true;
+  aplicarForma(usaFamilia);
 
   // Atributos de variante (talle, color, etc.) → ML attributes array
   const mlAttrs = buildMLAttributes(v.attributes, attrs["extra_attributes"] as unknown[] ?? []);
@@ -419,8 +445,40 @@ serve(async (req: Request) => {
     return json({ error: "ML API unreachable" }, 502);
   }
 
-  const mlBody = await mlResponse.json().catch(() => ({}));
-  const success = mlResponse.status >= 200 && mlResponse.status < 300;
+  let mlBody = await mlResponse.json().catch(() => ({}));
+  let success = mlResponse.status >= 200 && mlResponse.status < 300;
+
+  // ¿El rechazo es por haber elegido la forma equivocada? Si es asi se cambia
+  // y se reintenta una sola vez. Un segundo rechazo ya no es esto.
+  const pideLaOtraForma = (b: any): boolean => {
+    const txt = JSON.stringify(b ?? {});
+    const pideFamilia  = /required_fields/i.test(txt) && /family_name/i.test(txt);
+    const sobraTitulo  = /invalid_fields/i.test(txt) && /\[?"?title"?\]?/i.test(txt);
+    const sobraFamilia = /invalid_fields/i.test(txt) && /family_name/i.test(txt);
+    return usaFamilia ? sobraFamilia : (pideFamilia || sobraTitulo);
+  };
+
+  if (!success && pideLaOtraForma(mlBody)) {
+    usaFamilia = !usaFamilia;
+    aplicarForma(usaFamilia);
+    try {
+      const r2 = await fetch(mlUrl, {
+        method:  isUpdate ? "PUT" : "POST",
+        headers: { Authorization: `Bearer ${mlToken}`, "Content-Type": "application/json" },
+        body:    JSON.stringify(mlPayload),
+      });
+      mlBody  = await r2.json().catch(() => ({}));
+      success = r2.status >= 200 && r2.status < 300;
+      // Solo se recuerda si funciono: anotar una forma que tampoco anda seria
+      // dejar el producto peor de lo que estaba.
+      if (success) {
+        const attrsNuevos = { ...(existingListing?.channel_attrs ?? {}), usa_family_name: usaFamilia };
+        await supabase.from("catalog_listings")
+          .update({ channel_attrs: attrsNuevos })
+          .eq("variant_id", body.variantId).eq("channel", CHANNEL);
+      }
+    } catch (_) { /* se responde con el rechazo original */ }
+  }
 
   // `message` de Mercado Libre suele repetir el codigo -"body.required_fields"-
   // y el detalle util vive en `cause`: que campo falta, que atributo exige la
