@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { buscarProductos, fichaPorTitulo, type FichaCanal } from "../utils/canalesSync";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
@@ -71,7 +72,54 @@ export default function AdminArticulos(
   // PASO 2: Información
   const [nombre,      setNombre]      = useState("");
   const [descripcion, setDescripcion] = useState("");
+
+  // Lo que el canal sabe del producto. Se busca mientras se escribe el nombre:
+  // todo lo que no es una decision de quien vende -las versiones que existen,
+  // la descripcion, las fotos del fabricante, el precio de mercado- es
+  // informacion publica del producto y no hay por que hacersela cargar.
+  const [candidatos, setCandidatos] = useState<Array<{id:string;nombre:string;imagen:string|null;rasgos:string[]}>>([]);
+  const [buscandoProd, setBuscandoProd] = useState(false);
+  const [elegido, setElegido] = useState<FichaCanal|null>(null);
+  const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
+
+  // Se espera a que deje de escribir: buscar en cada tecla castiga la API y
+  // hace parpadear la lista sin que nadie llegue a leerla.
+  useEffect(() => {
+    if (idElegido) return;              // ya eligio: no se le cambia debajo
+    const q = nombre.trim();
+    if (q.length < 4) { setCandidatos([]); return; }
+    let vivo = true;
+    setBuscandoProd(true);
+    const t = setTimeout(async () => {
+      const r = await buscarProductos(q);
+      if (!vivo) return;
+      setCandidatos(r);
+      setBuscandoProd(false);
+    }, 600);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [nombre, idElegido]);
+
+  /**
+   * Adopta la version elegida.
+   *
+   * Se completa lo que esta vacio y no se pisa lo escrito: si alguien ya
+   * redacto su descripcion o cargo sus fotos, son suyas y valen mas que las
+   * del catalogo.
+   */
+  const adoptarProducto = async (id: string) => {
+    setBuscandoProd(true);
+    const f = await fichaPorTitulo("", "mercadolibre", id);
+    setBuscandoProd(false);
+    if (!f) return;
+    setElegido(f);
+    setIdElegido(id);
+    setCandidatos([]);
+    if (f.nombre) setNombre(f.nombre);
+    if (!descripcion.trim() && f.descripcionSugerida) setDescripcion(f.descripcionSugerida);
+    if (!imagenes.length && f.imagenes.length) setImagenes(f.imagenes.slice(0, 8));
+    if (!precio && f.mercado?.mediana) setPrecio(String(Math.round(f.mercado.mediana)));
+  };
 
   // PASO 6: Destinos
   const [canales, setCanales] = useState<string[]>([]);
@@ -263,8 +311,70 @@ export default function AdminArticulos(
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Información del artículo</h2>
             <div>
               <label style={lbl}>Nombre *</label>
-              <input style={inp} value={nombre} onChange={e => setNombre(e.target.value)}
+              <input style={inp} value={nombre}
+                onChange={e => { setNombre(e.target.value); setIdElegido(null); setElegido(null); }}
                 placeholder="Ej: iPhone 14 Pro 256GB Negro" />
+
+              {buscandoProd && !elegido && (
+                <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
+                  Buscando el producto…
+                </div>
+              )}
+
+              {/* Las versiones que existen. "iPhone 17" son varias -256 GB,
+                  512 GB, cada color- y cual es solo lo sabe quien lo tiene en
+                  la mano, asi que se listan en vez de adivinar. */}
+              {candidatos.length > 0 && !elegido && (
+                <div style={{ border:"1px solid var(--border)", borderRadius:8, marginTop:6,
+                  maxHeight:230, overflowY:"auto" }}>
+                  <div style={{ padding:"6px 10px", fontSize:"0.72rem", color:"var(--gray-400)",
+                    borderBottom:"1px solid var(--gray-50)" }}>
+                    ¿Cuál de estos es? Elegir uno completa el resto solo.
+                  </div>
+                  {candidatos.map(c => (
+                    <button key={c.id} onClick={() => adoptarProducto(c.id)}
+                      style={{ display:"flex", alignItems:"center", gap:9, width:"100%",
+                        textAlign:"left", padding:"7px 10px", border:"none", background:"transparent",
+                        cursor:"pointer", borderBottom:"1px solid var(--gray-50)" }}>
+                      {c.imagen
+                        ? <img src={c.imagen} alt="" style={{width:34,height:34,objectFit:"cover",
+                            borderRadius:5,border:"1px solid var(--border)",flexShrink:0}}/>
+                        : <div style={{width:34,height:34,flexShrink:0}}/>}
+                      <span style={{ minWidth:0 }}>
+                        <span style={{ display:"block", fontSize:"0.8rem", fontWeight:600, color:"#111" }}>
+                          {c.nombre}
+                        </span>
+                        {c.rasgos.length > 0 && (
+                          <span style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>
+                            {c.rasgos.join(" · ")}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {elegido && (
+                <div style={{ marginTop:7, padding:"7px 10px", borderRadius:8,
+                  background:"rgba(22,163,74,.07)", border:"1px solid rgba(22,163,74,.35)",
+                  fontSize:"0.76rem", color:"#166534" }}>
+                  <div style={{ fontWeight:700 }}>{elegido.nombre}</div>
+                  <div style={{ color:"#374151", marginTop:2 }}>
+                    Se completaron los datos que estaban vacíos.
+                    {elegido.mercado &&
+                      ` Hoy hay ${elegido.mercado.ofertas} publicaciones del mismo producto,`
+                      + ` entre ${elegido.mercado.moneda} ${elegido.mercado.min.toLocaleString("es-UY")}`
+                      + ` y ${elegido.mercado.moneda} ${elegido.mercado.max.toLocaleString("es-UY")}.`}
+                  </div>
+                  <button onClick={() => { setElegido(null); setIdElegido(null); }}
+                    style={{ marginTop:5, border:"none", background:"none", padding:0,
+                      cursor:"pointer", color:"#166534", textDecoration:"underline",
+                      fontSize:"0.73rem" }}>
+                    No es este
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <label style={lbl}>Descripción *</label>
