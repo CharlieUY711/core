@@ -182,6 +182,15 @@ const REGLAS: Regla[] = [
  * respuesta cruda de Mercado Libre.
  */
 export function traducirErrorMl(respuesta: any): ErrorTraducido {
+  // publicar-en-ml devuelve `resumen`: el mismo texto que persiste en
+  // last_error. Traducir siempre eso -y no el objeto crudo- es lo que hace que
+  // el aviso del momento, la columna de la tabla y el modal digan lo mismo.
+  // Antes el aviso leia la respuesta completa y la tabla un texto mas pobre, y
+  // el mismo rechazo aparecia con tres redacciones distintas.
+  if (respuesta && typeof respuesta === "object" && typeof respuesta.resumen === "string") {
+    respuesta = respuesta.resumen;
+  }
+
   // `catalog_listings.last_error` guarda solo el texto de ML, sin estructura.
   // Se acepta ese caso para poder traducir tambien lo que ya quedo registrado.
   if (typeof respuesta === "string") {

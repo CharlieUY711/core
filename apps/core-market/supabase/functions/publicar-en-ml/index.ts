@@ -395,17 +395,37 @@ serve(async (req: Request) => {
   // y el detalle util vive en `cause`: que campo falta, que atributo exige la
   // categoria. Guardar solo `message` dejaba en last_error un texto que no
   // cambia nunca y no dice nada.
+  // `cause` viene en formas distintas segun el error: array de objetos, array
+  // de strings, un objeto suelto, o anidado en cause.cause. Cualquiera que no
+  // se contemple termina descartando el unico texto que explica el rechazo, y
+  // last_error queda en el codigo pelado -"body.invalid_fields"- mientras la
+  // respuesta viva si traia el detalle. De ahi salian mensajes distintos para
+  // el mismo error segun quien lo leyera.
+  const aplanarCausas = (raw: any, prof = 0): string[] => {
+    if (raw == null || prof > 3) return [];
+    if (typeof raw === "string") return [raw];
+    if (Array.isArray(raw)) return raw.flatMap((c) => aplanarCausas(c, prof + 1));
+    if (typeof raw === "object") {
+      const propio = [raw.code, raw.message ?? raw.description]
+        .filter(Boolean).map(String).join(": ");
+      const hijos = aplanarCausas(raw.cause ?? raw.causes, prof + 1);
+      return [propio, ...hijos].filter(Boolean);
+    }
+    return [String(raw)];
+  };
+
   const resumenMl = (b: any): string => {
-    const partes: string[] = [];
+    const codigo = String(b?.error ?? "");
     const msg = b?.message ? String(b.message) : "";
-    const causas = Array.isArray(b?.cause) ? b.cause : [];
-    for (const c of causas.slice(0, 4)) {
-      const t = typeof c === "string" ? c : [c?.code, c?.message].filter(Boolean).join(": ");
-      if (t && !partes.includes(t)) partes.push(String(t));
+    const partes: string[] = [];
+    for (const t of aplanarCausas(b?.cause ?? b?.causes).slice(0, 4)) {
+      if (t && !partes.includes(t)) partes.push(t);
     }
     // El mensaje general solo suma si no es el mismo codigo repetido.
-    if (msg && msg !== String(b?.error ?? "") && !partes.includes(msg)) partes.unshift(msg);
-    if (partes.length === 0 && b?.error) partes.push(String(b.error));
+    if (msg && msg !== codigo && !partes.includes(msg)) partes.unshift(msg);
+    // El codigo va siempre al final: es lo que hace que las reglas del
+    // traductor puedan reconocer el error aunque el texto cambie.
+    if (codigo && !partes.some((x) => x.includes(codigo))) partes.push(codigo);
     return partes.join(" | ") || `Mercado Libre respondio ${mlResponse.status} sin detalle`;
   };
 
@@ -435,9 +455,13 @@ serve(async (req: Request) => {
   });
 
   if (!success) {
+    // `resumen` es exactamente el mismo texto que quedo en last_error. Que
+    // viaje en la respuesta es lo que garantiza que el aviso del momento y lo
+    // que despues muestra la tabla digan lo mismo: una sola fuente.
     return json({
       error:   "ML API error",
       status:  mlResponse.status,
+      resumen: resumenMl(mlBody),
       detail:  mlBody,
     }, mlResponse.status >= 500 ? 502 : 422);
   }

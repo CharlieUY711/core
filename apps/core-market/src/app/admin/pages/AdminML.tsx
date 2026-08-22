@@ -1086,7 +1086,7 @@ function ModalPreview({ fila, onClose, onPublicar }: {
                 {datos.estado && <span style={{ fontSize: 13, color: T.textMuted }}>Estado: {datos.estado}</span>}
               </div>
 
-              {datos.categoria && (
+              {datos.categoria && publicado && (
                 <div style={{ fontSize: 12, color: T.textMuted }}>
                   Categoria: {datos.categoria}
                   {fila?.channel_attrs?.category_id_origen === "prediccion_ml" && !publicado && (
@@ -1108,30 +1108,36 @@ function ModalPreview({ fila, onClose, onPublicar }: {
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
                   <div>
-                    {/* Decir "no falta nada" cuando Mercado Libre acaba de
-                        rechazar es peor que no decir nada: la persona lee que
-                        esta todo bien y no entiende por que no se publica. */}
+                    {/* Un solo mensaje, el mismo que muestran el aviso de
+                        arriba y la columna de la tabla: sale del traductor,
+                        no de un texto propio del modal. Antes el modal
+                        redactaba lo suyo y aparte repetia "Ultimo intento",
+                        asi que el mismo rechazo se leia de tres formas. */}
                     <div style={{
                       fontWeight: 700, fontSize: 14,
-                      color: faltanAhora.length ? T.danger : traduccion ? T.warning : T.success,
+                      color: traduccion ? T.danger : faltanAhora.length ? T.danger : T.success,
                     }}>
-                      {faltanAhora.length
-                        ? "Falta " + faltanAhora.join(", ")
-                        : traduccion
-                          ? "Mercado Libre lo rechazó, pero los datos que pide están completos"
+                      {traduccion
+                        ? traduccion.motivo
+                        : faltanAhora.length
+                          ? "Falta " + faltanAhora.join(", ")
                           : "No falta ningún dato obligatorio"}
                     </div>
                     <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
-                      {faltanAhora.length
-                        ? "Completá lo marcado en rojo y guardá."
-                        : traduccion
-                          ? "Revisá que la categoría sea la correcta: es la causa más común cuando no falta ningún dato. Si ya lo es, mirá abajo qué respondió Mercado Libre."
+                      {traduccion
+                        ? traduccion.detalle
+                        : faltanAhora.length
+                          ? "Completá lo marcado en rojo y guardá."
                           : "Podés publicar. Si Mercado Libre igual lo rechaza, el motivo va a quedar acá."}
                     </div>
-                    {traduccion && (
-                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 8 }}>
-                        Último intento: {traduccion.motivo}
-                        {traduccion.accion ? " — " + traduccion.accion : ""}
+                    {traduccion?.accion && (
+                      <div style={{ fontSize: 12, color: T.textDark, marginTop: 6, fontWeight: 600 }}>
+                        {traduccion.accion}
+                      </div>
+                    )}
+                    {traduccion && faltanAhora.length > 0 && (
+                      <div style={{ fontSize: 12, color: T.danger, marginTop: 4 }}>
+                        Además falta {faltanAhora.join(", ")}.
                       </div>
                     )}
                     {/* El original nunca se oculta: si la traduccion no
