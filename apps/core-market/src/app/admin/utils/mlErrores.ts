@@ -185,7 +185,7 @@ const REGLAS: Regla[] = [
   // partir de la familia de producto. Va ANTES de la regla de titulo, que si no
   // se lo lleva puesto y manda a reescribir un titulo que esta bien.
   {
-    aplica: (c, m) => /invalid_fields/i.test(c + " " + m) && /\btitle\b/i.test(m),
+    aplica: (c, m) => /invalid_fields/i.test(c + " " + m) && /title/i.test(m),
     traducir: () => ({
       // No hay campo que corregir: es la forma del pedido, no el dato.
       campos:  [],

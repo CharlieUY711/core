@@ -3,21 +3,33 @@
 export type VaultEnv  = 'production' | 'staging' | 'development' | 'testing'
 export type VaultType = 'api_key' | 'token' | 'oauth' | 'secret' | 'webhook' | 'connection' | 'jwt' | 'cert'
 
+// DEC-011: estado operativo persistido por REPORT (Credential Provider) y
+// leído por HEALTH. Ver supabase/migrations/20260822001700_api_vault_health_columns.sql.
+export type VaultStatus =
+  | 'active' | 'expired' | 'invalid' | 'revoked'
+  | 'requires_reauth' | 'error' | 'unknown'
+
 export interface ApiVaultEntry {
-  id:         string
-  user_id:    string
-  tenant_id:  string | null
-  created_by: string | null
-  name:       string
-  platform:   string
-  type:       VaultType
-  value:      string
-  env:        VaultEnv
-  tags:       string[]
-  notes:      string | null
-  expires_at: string | null
-  created_at: string
-  updated_at: string
+  id:               string
+  user_id:          string
+  tenant_id:        string | null
+  created_by:       string | null
+  name:             string
+  platform:         string
+  type:             VaultType
+  value:            string
+  env:              VaultEnv
+  tags:             string[]
+  notes:            string | null
+  expires_at:       string | null
+  created_at:       string
+  updated_at:       string
+  // DEC-011 HEALTH columns. Optional because rows written before this
+  // migration only have the NOT NULL default ('unknown') for `status`;
+  // `last_checked_at`/`last_error` are nullable in the DB.
+  status?:          VaultStatus
+  last_checked_at?: string | null
+  last_error?:      string | null
 }
 
 export type ApiVaultInsert = Omit<ApiVaultEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>

@@ -875,3 +875,50 @@ en el cliente.
 Aplicar `20260822000200`, habilitar el hook, y enchufar `AdminPublicaciones.tsx`
 al hook nuevo — bloqueado hasta que la sesión de design tokens commitee ese
 archivo, para no pisarnos.
+
+## 2026-08-22 — DEC-011: API Vault Credential Provider (RESOLVE/REPORT/HEALTH)
+Implemented (partial, by design — see DEC-011 in DECISIONS.md for full
+detail, contradictions found, and what was deliberately not migrated).
+
+**Added:**
+- `supabase/functions/_shared/api-vault/CredentialProvider.ts` — generic
+  server-side RESOLVE/DELIVER/REPORT/HEALTH over `api_vault`. Provider-
+  agnostic (no ML/Meta/payments knowledge).
+- `supabase/migrations/20260822001700_api_vault_health_columns.sql` —
+  adds `status` (with CHECK constraint), `last_checked_at`, `last_error`
+  to `api_vault`. Additive, idempotent, no RLS changes.
+
+**Modified:**
+- `src/lib/core-apivault/src/services/apiVaultTypes.ts` — added optional
+  `status`/`last_checked_at`/`last_error` to `ApiVaultEntry` (additive).
+- `supabase/functions/ml-webhook/index.ts` — fixed a confirmed bug:
+  `fetchMLResource()` queried `api_vault` with `.eq("provider",
+  "mercadolibre")`; that column doesn't exist (real column is
+  `platform`, value `"MercadoLibre"`), so the query always failed
+  silently and the function always returned `null` for any ML webhook
+  without a `storeId` in its payload. Fixed with a corrected direct
+  query (not routed through RESOLVE — this is a discovery query, not a
+  known-tenant resolution; see DEC-011 for why).
+- `supabase/functions/extract-catalog/index.ts` — migrated
+  `getKeyFromVault()` from an ad-hoc `.ilike("platform", "%groq%")`
+  query to `resolveCredential()`. Behavior change: now an exact match on
+  `"Groq"` instead of a substring/case-insensitive match — unverified
+  against live data, flagged for the next agent in DEC-011.
+
+**Not touched (deliberate):** `ml-oauth`, `MLVaultService.ts`,
+`TokenManager.ts`, `OAuthService.ts`, MercadoPago, PayPal, Resend, META,
+RLS policies on `api_vault`, `client_exposed` (does not exist, and DEC-011's
+design doc's premise that it does was found to be false against this
+repo — documented in DECISIONS.md).
+
+**Verification:** no test infra in this repo (confirmed, unchanged from
+prior sessions). Manual review against `production_schema.sql` (real
+DDL) and against `MLVaultService.get()`'s already-correct tenant→global
+pattern. `tsc --noEmit` on `src/` shows 0 new errors from the one `src/`
+file touched (`apiVaultTypes.ts`) — but surfaced an unrelated, pre-existing
+problem: this ZIP's `node_modules` is missing `@supabase/supabase-js` and
+`react-dom`, so the full `tsc` run shows 5,533 errors here, not the ~270
+baseline CURRENT.md records from a prior session's environment. Not
+fixed (out of scope, not caused by this session). Edge Functions
+(`supabase/functions`) are outside `tsconfig.json`'s `include`, so no
+type-check exists for them in this repo at all — reviewed by hand.

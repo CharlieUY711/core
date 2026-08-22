@@ -4,7 +4,7 @@ import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
-         fichasDeCanales, type ProblemaPublicacion, type FichaCanal } from "../utils/canalesSync";
+         type ProblemaPublicacion } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
 
 const ACCENT = "var(--brand-madre)";
@@ -167,194 +167,6 @@ const XCOLS = [
 type SK = "precio"|"stock"|"status"|"alta"|null;
 const fmt = (s?:string) => s?new Date(s).toLocaleDateString("es-UY",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
 const fmtP = (n:number,m="UYU") => m+" "+Number(n).toLocaleString("es-UY");
-
-
-/**
- * Lo que los canales ya saben del producto.
- *
- * Una vez que alguien definio QUE producto es, el resto -codigos, fotos del
- * fabricante, caracteristicas, a que precio se vende hoy- es informacion
- * publica del producto. Hacersela cargar a mano es pedirle que copie algo que
- * podemos traer.
- *
- * Se muestra por canal y no mezclado: el mismo producto no vale lo mismo ni
- * tiene la misma competencia en cada uno, y esa es justamente la comparacion
- * que permite decidir con que precio salir en cada lado.
- */
-function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onAplicado }: {
-  variantId: string;
-  canales: CanalUI[];
-  nombreCanal: Record<string,string>;
-  precioActual: number;
-  onAplicado: () => void;
-}) {
-  const [fichas, setFichas] = useState<Record<string, FichaCanal|null>|null>(null);
-  const [objetivo, setObjetivo] = useState<Record<string,string>>({});
-  const [guardando, setGuardando] = useState<string|null>(null);
-  const [aviso, setAviso] = useState<string|null>(null);
-
-  useEffect(() => {
-    let vivo = true;
-    setFichas(null);
-    (async () => {
-      const f = await fichasDeCanales(variantId, canales.map(c => c.channel));
-      if (vivo) setFichas(f);
-    })();
-    return () => { vivo = false; };
-  }, [variantId, canales.map(c=>c.channel).join(",")]);
-
-  if (fichas === null) {
-    return <div style={{fontSize:"0.75rem",color:"var(--gray-400)",marginBottom:"0.9rem"}}>
-      Buscando datos del producto en los canales…
-    </div>;
-  }
-
-  const conDatos = Object.entries(fichas).filter(([,f]) => f);
-  if (!conDatos.length) return null;
-
-  // La descripcion sugerida se toma del primer canal que la tenga: es del
-  // producto, no del canal, asi que no tiene sentido repetirla por cada uno.
-  const sugerida = conDatos.map(([,f]) => f!.descripcionSugerida).find(Boolean) ?? null;
-  const argumentos = conDatos.map(([,f]) => f!.argumentosDeVenta).find(a => a?.length) ?? [];
-  const fotos = conDatos.map(([,f]) => f!.imagenes).find(i => i?.length) ?? [];
-
-  const fijarPrecio = async (channel: string) => {
-    const bruto = (objetivo[channel] ?? "").trim();
-    const monto = bruto === "" ? null : Number(bruto);
-    if (bruto !== "" && (!Number.isFinite(monto!) || monto! < 0)) {
-      setAviso("El precio tiene que ser un número."); return;
-    }
-    setGuardando(channel); setAviso(null);
-    const { error } = await supabase.rpc("fijar_precio_canal", {
-      p_variant_id: variantId, p_channel: channel, p_amount: monto, p_currency: "UYU",
-    });
-    setGuardando(null);
-    if (error) { setAviso(error.message); return; }
-    setAviso(monto === null || monto === 0
-      ? "Sin precio propio: vuelve a valer el precio general."
-      : "Precio guardado para ese canal.");
-    onAplicado();
-  };
-
-  const usarDescripcion = async () => {
-    if (!sugerida) return;
-    setGuardando("desc"); setAviso(null);
-    const { error } = await supabase.rpc("actualizar_publicacion", {
-      p_variant_id: variantId, p_description: sugerida,
-    });
-    setGuardando(null);
-    setAviso(error ? error.message : "Descripción actualizada.");
-    if (!error) onAplicado();
-  };
-
-  const th: React.CSSProperties = {textAlign:"right",padding:"3px 6px",fontSize:"0.68rem",
-    color:"var(--gray-400)",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"};
-  const tdc: React.CSSProperties = {textAlign:"right",padding:"4px 6px",fontSize:"0.76rem",color:"#374151"};
-  const money = (n:number,m:string) => (m?m+" ":"") + Number(n).toLocaleString("es-UY");
-
-  return (
-    <div style={{border:"1px solid var(--border)",borderRadius:9,padding:"0.75rem 0.85rem",
-      marginBottom:"0.9rem",background:"#fff"}}>
-      <div style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
-        textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.5rem"}}>
-        Datos del producto, traídos de los canales
-      </div>
-
-      {fotos.length > 0 && (
-        <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:"0.7rem"}}>
-          {fotos.slice(0,8).map((u,i)=>(
-            <img key={i} src={u} alt="" style={{width:56,height:56,objectFit:"cover",
-              borderRadius:6,border:"1px solid var(--border)",flexShrink:0}}/>
-          ))}
-        </div>
-      )}
-
-      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"0.6rem"}}>
-        <thead>
-          <tr>
-            <th style={{...th,textAlign:"left"}}>Canal</th>
-            <th style={th}>Publicaciones</th>
-            <th style={th}>Mínimo</th>
-            <th style={th}>Mediana</th>
-            <th style={th}>Máximo</th>
-            <th style={{...th,textAlign:"center"}}>Tu precio ahí</th>
-          </tr>
-        </thead>
-        <tbody>
-          {canales.map(c => {
-            const f = fichas[c.channel];
-            const m = f?.mercado;
-            return (
-              <tr key={c.channel} style={{borderTop:"1px solid var(--gray-50)"}}>
-                <td style={{...tdc,textAlign:"left",fontWeight:700}}>
-                  {nombreCanal[c.channel] ?? c.label}
-                </td>
-                {m ? (
-                  <>
-                    <td style={tdc}>{m.ofertas}</td>
-                    <td style={tdc}>{money(m.min,m.moneda)}</td>
-                    <td style={{...tdc,fontWeight:700}}>{money(m.mediana,m.moneda)}</td>
-                    <td style={tdc}>{money(m.max,m.moneda)}</td>
-                  </>
-                ) : (
-                  <td colSpan={4} style={{...tdc,color:"var(--gray-400)"}}>
-                    Sin datos de mercado en este canal
-                  </td>
-                )}
-                <td style={{padding:"3px 6px",textAlign:"center",whiteSpace:"nowrap"}}>
-                  <input value={objetivo[c.channel] ?? ""}
-                    onChange={e=>setObjetivo(p=>({...p,[c.channel]:e.target.value}))}
-                    placeholder={String(precioActual||"")}
-                    style={{width:88,padding:"3px 6px",fontSize:"0.75rem",textAlign:"right",
-                      border:"1px solid var(--border)",borderRadius:5}}/>
-                  <button onClick={()=>fijarPrecio(c.channel)} disabled={guardando===c.channel}
-                    style={{marginLeft:5,padding:"3px 8px",fontSize:"0.7rem",fontWeight:700,
-                      border:"none",borderRadius:5,background:BLUE,color:"#fff",
-                      cursor:guardando===c.channel?"wait":"pointer"}}>
-                    {guardando===c.channel?"…":"Fijar"}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginBottom:"0.6rem"}}>
-        Dejar el precio vacío y fijar quita el precio propio de ese canal: vuelve a valer el general.
-      </div>
-
-      {argumentos.length > 0 && (
-        <details style={{marginBottom:"0.5rem"}}>
-          <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
-            Para vender ({argumentos.length})
-          </summary>
-          <ul style={{margin:"5px 0 0",paddingLeft:17,fontSize:"0.75rem",color:"#374151",lineHeight:1.5}}>
-            {argumentos.map((a,i)=><li key={i} style={{marginBottom:2}}>{a}</li>)}
-          </ul>
-        </details>
-      )}
-
-      {sugerida && (
-        <details>
-          <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
-            Descripción ampliada sugerida
-          </summary>
-          <pre style={{fontSize:"0.72rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
-            background:"var(--gray-25, #FAFBFC)",border:"1px solid var(--border)",borderRadius:6,
-            padding:8,marginTop:6,maxHeight:180,overflow:"auto",fontFamily:"inherit"}}>{sugerida}</pre>
-          <button onClick={usarDescripcion} disabled={guardando==="desc"}
-            style={{marginTop:6,padding:"5px 11px",fontSize:"0.73rem",fontWeight:700,
-              border:"none",borderRadius:6,background:BLUE,color:"#fff",
-              cursor:guardando==="desc"?"wait":"pointer"}}>
-            {guardando==="desc"?"Guardando…":"Usar esta descripción"}
-          </button>
-        </details>
-      )}
-
-      {aviso && <div style={{fontSize:"0.73rem",color:"#374151",marginTop:"0.5rem"}}>{aviso}</div>}
-    </div>
-  );
-}
 
 // ── Chip de canal ─────────────────────────────────────────────────────────
 //
@@ -607,11 +419,7 @@ export default function AdminPublicaciones() {
   // Lo que respondio el canal, textual. Se guarda siempre y se muestra siempre
   // -plegado-: si la traduccion se equivoca, el original es lo unico que
   // permite darse cuenta. Ocultarlo fue un error de mi parte y esto lo corrige.
-  // `delCanal` distingue las palabras del canal de las nuestras: last_error
-  // guarda las dos cosas -el rechazo textual, o el resumen de la verificacion
-  // previa- y presentar lo segundo como "respuesta de Mercado Libre" es
-  // atribuirle a otro lo que escribimos nosotros.
-  const [crudoCanal,setCrudoCanal]=useState<Record<string,{texto:string;delCanal:boolean}>>({});
+  const [crudoCanal,setCrudoCanal]=useState<Record<string,string>>({});
 
   // Los canales que se ofrecen son los que su motor declara operativos: no una
   // lista fija, ni lo que haya en los datos. Un canal cuyo modulo no esta
@@ -687,7 +495,7 @@ export default function AdminPublicaciones() {
       return;
     }
 
-    if(r.crudo)setCrudoCanal(p=>({...p,[a.id]:{texto:r.crudo!,delCanal:true}}));
+    if(r.crudo)setCrudoCanal(p=>({...p,[a.id]:r.crudo!}));
     if(r.problemas?.length){
       setProblemas(p=>({...p,[a.id]:r.problemas!}));
       setOrigenProblema(p=>({...p,[a.id]:"rechazo"}));
@@ -717,9 +525,7 @@ export default function AdminPublicaciones() {
     // El rechazo anterior quedo guardado en el listing: se trae para que este
     // disponible aunque el fallo haya sido en otra sesion.
     const l=(a.canales??[]).find((x:any)=>x.channel===canal);
-    // De last_error no se puede saber quien lo escribio, asi que no se le
-    // atribuye al canal.
-    if(l?.last_error)setCrudoCanal(p=>({...p,[a.id]:{texto:String(l.last_error),delCanal:false}}));
+    if(l?.last_error)setCrudoCanal(p=>({...p,[a.id]:String(l.last_error)}));
   };
 
   /**
@@ -757,7 +563,7 @@ export default function AdminPublicaciones() {
         setOrigenProblema(p=>({...p,[id]:"rechazo"}));
         primerFallo=primerFallo??id;
       }
-      if(r.crudo)setCrudoCanal(p=>({...p,[id]:{texto:r.crudo!,delCanal:true}}));
+      if(r.crudo)setCrudoCanal(p=>({...p,[id]:r.crudo!}));
     }
     setSincro(false);
     setChips(new Set());
@@ -1132,27 +938,18 @@ export default function AdminPublicaciones() {
           borderTop:`2px solid ${color}33`}}>
           {/* Izquierda: que falta + form */}
           <div style={{padding:"1rem 1.25rem",borderRight:"1px solid #EAECF0"}}>
-            {!isNew&&a&&problemas[a.id]!==undefined&&(()=>{
-              // Verde solo si de verdad esta todo bien. Con el canal en error y
-              // sin faltantes no es "listo": es que no sabemos que mas pedir, y
-              // decirlo en verde al lado de un chip rojo no cierra.
-              const enError=(a.canales??[]).some((x:any)=>
-                  x.channel===canalConProblema[a.id]&&x.status==="error");
-              const tono=problemas[a.id].length?ROJO_SYNC:enError?"#B45309":VERDE_SYNC;
-              const tonoFondo=problemas[a.id].length?"rgba(239,68,68,.06)"
-                        :enError?"rgba(245,158,11,.10)":"rgba(22,163,74,.06)";
-              return (
+            {!isNew&&a&&problemas[a.id]!==undefined&&(
               <div style={{
-                border:`1.5px solid ${tono}`, background:tonoFondo,
+                border:`1.5px solid ${problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}`,
+                background:problemas[a.id].length?"rgba(239,68,68,.06)":"rgba(22,163,74,.06)",
                 borderRadius:9, padding:"0.7rem 0.85rem", marginBottom:"0.9rem",
               }}>
-                <div style={{fontSize:"0.82rem",fontWeight:800,color:tono}}>
+                <div style={{fontSize:"0.82rem",fontWeight:800,
+                  color:problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}}>
                   {(()=>{
                     const n=problemas[a.id].length;
                     const donde=nombreCanal[canalConProblema[a.id]]??canalConProblema[a.id]??"este canal";
-                    if(n===0)return enError
-                      ? donde+" rechazó la publicación y no pudimos deducir qué campo corregir"
-                      : "No falta nada para publicar en "+donde;
+                    if(n===0)return "No falta nada para publicar en "+donde;
                     if(origenProblema[a.id]==="rechazo")
                       return donde+" rechazó "+(n===1?"este dato":"estos "+n+" datos");
                     return n===1
@@ -1232,13 +1029,11 @@ export default function AdminPublicaciones() {
                     {!!crudoCanal[a.id]&&(
                       <details style={{marginTop:"0.6rem"}}>
                         <summary style={{cursor:"pointer",fontSize:"0.72rem",color:"var(--gray-400)"}}>
-                          {crudoCanal[a.id].delCanal
-                            ? "Respuesta textual de "+(nombreCanal[canalConProblema[a.id]]??"el canal")
-                            : "Detalle del último intento"}
+                          Respuesta textual de {nombreCanal[canalConProblema[a.id]]??"el canal"}
                         </summary>
                         <pre style={{fontSize:"0.68rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
                           background:"#fff",border:"1px solid var(--border)",borderRadius:6,
-                          padding:7,marginTop:5,maxHeight:130,overflow:"auto"}}>{crudoCanal[a.id].texto}</pre>
+                          padding:7,marginTop:5,maxHeight:130,overflow:"auto"}}>{crudoCanal[a.id]}</pre>
                       </details>
                     )}
 
@@ -1274,13 +1069,6 @@ export default function AdminPublicaciones() {
                   );
                 })()}
               </div>
-              );
-            })()}
-
-            {!isNew&&a&&canales.length>0&&(
-              <FichaDelProducto variantId={a.id} canales={canales}
-                nombreCanal={nombreCanal} precioActual={a.precio}
-                onAplicado={reload}/>
             )}
 
             {/* Canales del articulo: activar o dar de baja sin salir de aca */}
@@ -1341,6 +1129,15 @@ export default function AdminPublicaciones() {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",height:"100%"}}>
 
+      {toast&&(
+        <div style={{position:"fixed",bottom:"1.5rem",right:"1.5rem",zIndex:9999,
+          padding:"0.75rem 1.25rem",borderRadius:10,fontWeight:600,fontSize:"0.875rem",
+          background:toast.ok?"#f0fdf4":"#fef2f2",color:toast.ok?"#166534":"#dc2626",
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
+          boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
+          {toast.text}
+        </div>
+      )}
 
       {/* STATS tira compacta */}
       <div style={{display:"flex",gap:"0.5rem"}}>
@@ -1461,26 +1258,6 @@ export default function AdminPublicaciones() {
             </div>
           )}
         </div>
-
-        {/* Aviso en linea, en el flujo de la pagina y pegado a la barra.
-            El cartel flotante abajo a la derecha se elimino: aparecia lejos de
-            donde estaba pasando la cosa y, cuando el detalle ya mostraba el
-            problema, terminaba diciendo lo mismo en dos lugares. */}
-        {toast&&(
-          <div style={{
-            display:"flex",alignItems:"center",gap:8,flexShrink:0,
-            padding:"0.6rem 1rem",fontSize:"0.8rem",fontWeight:600,
-            background:toast.ok?"#f0fdf4":"#fef2f2",
-            color:toast.ok?"#166534":"#dc2626",
-            borderBottom:`1px solid ${toast.ok?"#bbf7d0":"#fecaca"}`,
-          }}>
-            <span>{toast.ok?"✓":"✕"}</span>
-            <span style={{flex:1}}>{toast.text}</span>
-            <button onClick={()=>setToast(null)} aria-label="Cerrar"
-              style={{border:"none",background:"none",cursor:"pointer",
-                color:"inherit",opacity:.7,fontSize:"1rem",lineHeight:1}}>×</button>
-          </div>
-        )}
 
         {/* El alta reemplaza la tabla, sin cambiar de pantalla ni perder filtros */}
         {showWizard?(

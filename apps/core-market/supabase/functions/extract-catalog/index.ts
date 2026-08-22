@@ -1,5 +1,6 @@
 // extract-catalog — texto (chunk de PDF) → filas de producto, con Groq (gratis).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveCredential } from "../_shared/api-vault/CredentialProvider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,6 @@ const corsHeaders = {
 };
 
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
-const VAULT_PLATFORM = "%groq%";
 
 const DEFAULT_FIELDS = [
   "nombre", "descripcion", "marca", "codigo", "numero_parte",
@@ -50,15 +50,25 @@ function extractRows(text: string): any[] {
   }
 }
 
+// DEC-011: migrado al RESOLVE generico del Credential Provider. Este caso
+// (una API key global, sin tenant, buscada por nombre exacto de plataforma)
+// encaja de lleno en el contrato de resolveCredential -- a diferencia del
+// caso de ml-webhook, que era un descubrimiento por tenant_id y por eso
+// quedo con su query directa (ver .agent/DECISIONS.md, DEC-011).
+//
+// Cambio de comportamiento minimo y deliberado: el `.ilike("platform", "%groq%")`
+// original matcheaba cualquier plataforma que CONTUVIERA "groq"; se reemplaza
+// por una igualdad exacta contra "Groq" (el nombre tal cual aparece en
+// VAULT_PLATFORM_DEFS, apiVaultTypes.ts). Si en el futuro hay mas de una fila
+// "Groq" global, RESOLVE ya no puede elegir "la mas reciente" (no ordena por
+// updated_at) -- ese caso no esta contemplado hoy (constraint unico
+// api_vault_platform_global_uidx impide dos filas Groq globales), pero queda
+// documentado por si cambia.
 async function getKeyFromVault(): Promise<string | null> {
   try {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data, error } = await admin
-      .from("api_vault").select("value")
-      .ilike("platform", VAULT_PLATFORM).eq("type", "api_key")
-      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-    if (error || !data?.value) return null;
-    return data.value as string;
+    const resolved = await resolveCredential(admin, { platform: "Groq", type: "api_key" });
+    return resolved?.value ?? null;
   } catch { return null; }
 }
 

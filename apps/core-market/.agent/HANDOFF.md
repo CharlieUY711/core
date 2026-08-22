@@ -5,7 +5,7 @@ Read AGENTS.md first.
 Then read:
 .agent/CURRENT.md
 .agent/TASK.md
-.agent/DECISIONS.md      (DEC-007 is the live one; DEC-002...DEC-006 are older, still valid)
+.agent/DECISIONS.md      (DEC-011 is the most recent; DEC-007 is a separate, still-live thread; DEC-002...DEC-006 are older, still valid)
 .agent/HANDOFF.md (this file)
 
 Do not read the rest of the repository until you've read the above.
@@ -13,6 +13,83 @@ Do not read the rest of the repository until you've read the above.
 ---
 
 # CORE-Market — Agent Handoff
+
+## UPDATE 4 (2026-08-22, DEC-011 — API Vault Credential Provider, IMPLEMENTED partial)
+Separate task thread from the design-token work below (UPDATE 1-3) —
+that thread is untouched by this session.
+
+**What was implemented:**
+1. `supabase/functions/_shared/api-vault/CredentialProvider.ts` — generic
+   RESOLVE/DELIVER/REPORT/HEALTH over `api_vault`, server-side only
+   (service_role), provider-agnostic.
+2. `supabase/migrations/20260822001700_api_vault_health_columns.sql` —
+   adds `status`/`last_checked_at`/`last_error`. Additive, idempotent, no
+   RLS change.
+3. `ml-webhook/index.ts` — fixed a real, confirmed bug: `fetchMLResource()`
+   filtered on a column (`provider`) that doesn't exist on `api_vault`
+   (real column: `platform`). The query always failed silently; the
+   function always returned `null` for any ML webhook without a `storeId`
+   in its payload. Fixed with a corrected direct query — deliberately NOT
+   routed through RESOLVE (it's a "find any tenant with a credential"
+   discovery query, which RESOLVE's contract doesn't cover — see DEC-011
+   for the reasoning).
+4. `extract-catalog/index.ts` — migrated its ad-hoc Groq-key lookup to
+   `resolveCredential()`. **Unverified behavior change**: was a
+   case-insensitive substring match (`ilike "%groq%"`), now an exact
+   match on `"Groq"`. Next agent should confirm the real `platform`
+   value in production before trusting this is correct.
+5. `apiVaultTypes.ts` — added optional `status`/`last_checked_at`/
+   `last_error` to `ApiVaultEntry` (additive).
+
+**What was found but NOT changed, and why (see DEC-011 in DECISIONS.md
+for full reasoning on each):**
+- The DEC-011 design doc's premises about `client_exposed` and
+  `getClientCredential.ts` are **false** against this repo — neither
+  exists. The doc was written against an earlier, incomplete ZIP (its own
+  §0 says so). Did not create either — no justified use case, and
+  DEC-011's own rules forbid expanding exposure "because the design
+  assumed it."
+- `ml-oauth`, `MLVaultService.ts`, `TokenManager.ts`, `OAuthService.ts` —
+  untouched. They're the ML-specific OAuth lifecycle owners (rule: don't
+  rewrite/genericize). `MLVaultService.get()` already correctly
+  implements the tenant→global pattern RESOLVE now generalizes.
+  `MLVaultService.save()` remains confirmed-dead code (writes columns the
+  table doesn't have, no callers) — left alone per "don't delete without
+  verifying callers," already documented in its own comments before this
+  session.
+- MercadoPago, PayPal, Resend — not touched, out of scope per the brief.
+- META — not touched, still blocked.
+- `GRANT ALL ON api_vault TO anon` (preexisting, in `production_schema.sql`)
+  — flagged, not evaluated in depth, not changed.
+
+**Do NOT touch, per this session's findings:**
+- `ml-oauth`'s tags-filtered (`appId`/`siteId`) vault lookup — RESOLVE
+  deliberately can't replace it (would require the Vault to know
+  provider-specific semantics).
+- `TokenManager.ts` / `MLVaultService.ts` refresh logic — verified
+  correct, untouched, don't "improve" it as part of any Vault work.
+
+**Testing:** no test framework exists in this repo (confirmed again this
+session). Manual verification only — see DEC-011 in DECISIONS.md for
+exactly what was checked. **New finding, not caused by this session**:
+this ZIP's `node_modules` is missing `@supabase/supabase-js` and
+`react-dom` — `tsc --noEmit` shows 5,533 errors here vs. the ~270 CURRENT.md
+records from a differently-installed environment. Someone needs to
+reinstall dependencies in whatever environment actually gates commits;
+don't trust a `tsc`/`vite build` PASS from this ZIP's `node_modules` as-is.
+
+### NEXT AGENT (post-DEC-011)
+1. Verify the real `platform` value for the Groq row in production DB —
+   confirm or fix the `extract-catalog` migration.
+2. Reinstall/repair `node_modules` in whatever the canonical dev
+   environment is (this ZIP's copy is missing at least `@supabase/supabase-js`
+   and `react-dom`) before trusting any `tsc`/`build` gate.
+3. If/when API Vault is considered fully verified: **META INTEGRATION
+   MODULE** is the planned next phase — NOT started, NOT to be started
+   without an explicit new brief.
+4. DEC-006 (`/admin` privilege escalation) remains the highest-severity
+   open item overall, independent of both the token work and DEC-011,
+   still needs DB access.
 
 ## UPDATE 3 (2026-08-22, Fase 5 — DEC-008 deep-evidence pass, analysis-only, no code touched)
 Brief was explicit: "PHASE 1: ANALYSIS ONLY." Did the evidence-gathering

@@ -916,3 +916,212 @@ have a clearer, evidence-backed direction (see above) but every one still
 needs an explicit human call before migration — none of this session's
 findings should be read as pre-approval. Does not block DEC-007's closure
 or the repo's `TOKEN COMPLIANT WITH EXCEPTIONS` status.
+
+---
+
+## DEC-011 — API Vault como Credential Provider (IMPLEMENTED, parcial — 2026-08-22)
+
+### Objetivo
+Convertir `api_vault` en el Credential Provider central del sistema
+(RESOLVE / DELIVER / REPORT / HEALTH), según
+`DEC-011-api-vault-credential-provider-design.md` (repo root). Esta
+entrada registra qué se implementó, qué contradijo el diseño previo, y
+por qué.
+
+### Contradicciones encontradas entre el diseño (DEC-011 doc) y el repo real
+El documento de diseño fue escrito, por su propia sección 0, contra un
+ZIP que **no contenía** `ml-webhook`, `extract-catalog`, `MLVaultService`,
+`TokenManager`, `OAuthService`, ni la migración base de `api_vault`. Este
+ZIP sí los contiene. Verificado directamente:
+
+1. **`client_exposed` no existe.** El diseño asume una migración
+   `20260822001700_api_vault_client_exposed.sql` ya aplicada. No existe en
+   `supabase/migrations/` (el último archivo real es `...001600_...`), no
+   aparece en `supabase/schema/production_schema.sql` (fuente de verdad
+   del DDL, ver CURRENT.md "F-2 CERRADO"), y `ApiVaultEntry` no tenía el
+   campo. **No se creó `client_exposed` en esta sesión** — no hay un caso
+   de uso ya soportado por la arquitectura que lo requiera (regla 11/13
+   del brief), y añadirlo "porque el diseño lo daba por hecho" sería
+   ampliar exposición por comodidad, prohibido explícitamente.
+2. **`getClientCredential.ts` no existe.** El diseño lo cita como
+   "el helper genérico de lectura client-side que existe hoy". No está en
+   `src/lib/core-apivault/src/services/`. No se creó — no estaba pedido
+   por las reglas 5-8 (RESOLVE/DELIVER/REPORT/HEALTH son server-side).
+3. **`tenant_id` sí existe** (a diferencia de lo que el diseño marcaba
+   como "no confirmado"): está en `production_schema.sql`, con los
+   índices `api_vault_platform_global_uidx` (único, `tenant_id IS NULL`)
+   y `api_vault_platform_tenant_uidx` (único, `tenant_id` no nulo) ya
+   aplicados. El patrón tenant → global que pide DEC-011 §5 ya está
+   soportado por el schema y ya lo implementa `MLVaultService.get()`
+   correctamente.
+4. **El bug de `ml-webhook` reportado en el brief §3 es real, y peor de
+   lo que se sospechaba.** `fetchMLResource()` consultaba
+   `.eq("provider", "mercadolibre")`. La columna no es `platform` con un
+   valor distinto — la columna `provider` **no existe en la tabla**.
+   PostgREST rechaza un filtro contra una columna inexistente, así que
+   `vaultRow` era siempre `undefined` (el error de Postgrest se
+   descartaba al desestructurar sólo `data`) y la función devolvía `null`
+   para **todo** webhook de ML sin `storeId` en el payload. Confirmado
+   leyendo el archivo real, no inferido.
+
+### RESOLVE / DELIVER / REPORT / HEALTH — implementado
+Nuevo módulo genérico, server-side únicamente (corre con `service_role`,
+no expuesto a `anon`/browser):
+`supabase/functions/_shared/api-vault/CredentialProvider.ts`
+
+- `resolveCredential(supabase, { platform, tenantId?, type?, env? })` →
+  RESOLVE + DELIVER. Busca fila `platform` + `tenant_id = tenantId`; si no
+  existe, fallback a `tenant_id IS NULL`. Devuelve
+  `{ credentialId, value, metadata }` — `value` es el string crudo tal
+  cual está en la fila, sin parsear (el Vault no conoce `accessToken`,
+  `sellerId`, etc., como pide DEC-011 §5).
+- `reportCredentialOutcome(supabase, { credentialId, outcome, error? })`
+  → REPORT. Actualiza `status` + `last_checked_at` + `last_error` por
+  `id`, no por `platform` (puede haber más de una fila por plataforma).
+  Valida `outcome` contra la taxonomía única (`active | expired | invalid
+  | revoked | requires_reauth | error | unknown`) — no crea una taxonomía
+  paralela.
+- `getCredentialHealth(supabase, credentialId)` → HEALTH (lectura de lo
+  que REPORT ya persistió).
+- **No implementa** OAuth genérico ni refresh genérico (prohibido por
+  regla 9/14). Lifecycle de ML sigue 100% en `TokenManager.ts` +
+  `MLVaultService.ts`, sin tocar.
+
+### DATABASE — migración nueva
+`supabase/migrations/20260822001700_api_vault_health_columns.sql`
+(idempotente, aditiva, no borra columnas ni filas):
+- `status text NOT NULL DEFAULT 'unknown'` + `CHECK` con la taxonomía de
+  DEC-011.
+- `last_checked_at timestamptz`
+- `last_error text`
+- índice sobre `status`.
+
+No se tocó RLS: las policies existentes de `api_vault`
+(`auth.uid() = user_id` para SELECT/INSERT/UPDATE/DELETE) ya cubren estas
+columnas nuevas porque son de la misma fila. RESOLVE/REPORT corren
+server-side con `service_role`, que ya bypassea RLS — igual que
+`ml-oauth`, `MLVaultService` y `TokenManager` ya hacían antes de esta
+sesión. No se amplió ni se restringió ningún permiso.
+
+`ApiVaultEntry` (`apiVaultTypes.ts`) ganó `status?`, `last_checked_at?`,
+`last_error?` opcionales — cambio aditivo, no rompe consumidores
+existentes que hacen `select('*')`.
+
+### Consumidores migrados a RESOLVE
+1. **`extract-catalog`** (`getKeyFromVault()`): reemplazado
+   `.ilike("platform", "%groq%")` ad-hoc por
+   `resolveCredential(admin, { platform: "Groq", type: "api_key" })`.
+   Encaja de lleno en el contrato de RESOLVE (credencial global, sin
+   tenant). **Cambio de comportamiento no trivial, sin verificar contra
+   datos reales**: el `ilike` matcheaba cualquier plataforma que
+   *contuviera* "groq" (case-insensitive); ahora es una igualdad exacta
+   contra `"Groq"` (el nombre tal cual en `VAULT_PLATFORM_DEFS`). Si en
+   producción la fila real tiene otro `platform` (ej. minúsculas, u otro
+   texto), esto rompe la extracción de catálogo hasta que alguien lo
+   verifique contra la DB real. **Próximo agente: confirmar el valor
+   exacto de `platform` en la fila Groq de producción antes de dar esto
+   por cerrado.**
+
+### Consumidores NO migrados (deliberado)
+1. **`ml-webhook`** (`fetchMLResource`'s vault lookup): se corrigió el
+   bug (columna y valor correctos: `.eq("platform", "MercadoLibre")`,
+   antes `.eq("provider", "mercadolibre")`) pero **no se ruteó por
+   RESOLVE**. Motivo: esa query es un *descubrimiento* ("dame cualquier
+   tenant con credencial ML propia"), no una resolución de un
+   `platform`+`tenantId` ya conocido — RESOLVE (por diseño, DEC-011 §5)
+   no tiene ni debe tener un modo "elegime cualquier fila con `tenant_id`
+   no nulo"; forzarlo ahí sería inventar una abstracción nueva no prevista
+   por el diseño. El fix quedó como una query directa, corregida, con el
+   razonamiento documentado inline.
+2. **`ml-oauth`** — no tocado. Ya implementa correctamente el patrón
+   tenant → global (`platform`/`tenant_id`) para lectura, pero además
+   filtra por `tags` (`contains('tags', [appId, siteId])`) para soportar
+   múltiples apps/sites de ML sobre la misma plataforma — algo que
+   RESOLVE deliberadamente no sabe hacer (sería conocimiento de dominio
+   de un proveedor específico). Es además el dueño legítimo del lifecycle
+   OAuth (escribe `value`, `expires_at`, maneja refresh) — exactamente lo
+   que la regla 10/14 prohíbe reescribir o "genericizar".
+3. **`MLVaultService` / `TokenManager` / `OAuthService`** — no tocados,
+   como exige la regla 10. `MLVaultService.get()` ya implementa
+   correctamente (con nombres de plataforma capitalizados, vía
+   `nombrePlataforma()`) el mismo patrón tenant → global que ahora
+   RESOLVE generaliza. `MLVaultService.save()` sigue siendo código muerto
+   documentado (escribe columnas que la tabla no tiene, sin callers) —
+   verificado que sigue sin callers, no se tocó ni se borró (regla 8).
+
+### MercadoPago / PayPal / Resend / pagos
+No migrados, no tocados. Fuera de alcance explícito de esta fase (regla
+7 del brief).
+
+### META
+No tocado. Sigue bloqueado hasta que esta fase se dé por completa.
+
+### Seguridad — verificado, no modificado
+- RLS de `api_vault`: 4 policies (`SELECT`/`INSERT`/`UPDATE`/`DELETE`),
+  todas `auth.uid() = user_id`. Sin cambios.
+- `GRANT ALL ON TABLE api_vault TO anon` existe en
+  `production_schema.sql` (línea ~8463) — llamativo para una tabla de
+  secretos, pero es preexistente y RLS lo cubre (un `anon` sin
+  `auth.uid()` no matchea ninguna policy `USING`). **No se tocó**: no
+  estaba roto por evidencia, y revocarlo es un cambio de superficie de
+  permisos que esta fase no pidió — queda anotado para que un humano lo
+  revise, no decidido acá.
+- Ningún secreto se logueó, se puso en un mensaje de error, ni se
+  documentó en texto plano en ningún archivo de esta sesión.
+  `CredentialProvider.ts` trunca/nunca persiste `value` en `last_error`.
+- El admin UI (`ApiVaultPage.tsx`, `apiVaultService.ts` en
+  `src/app/admin` y `src/lib/core-apivault`) sigue haciendo
+  `select('*')` desde el browser — incluye `value` (el secreto) en el
+  payload que llega al cliente para las filas del propio usuario. Esto
+  es **arquitectura preexistente**, no introducida por DEC-011, y no fue
+  tocada: no hay evidencia de que sea un caso no autorizado (el usuario
+  ve *sus propias* credenciales en su propia pantalla de administración,
+  protegido por la misma RLS `auth.uid() = user_id`), y rediseñar esa UI
+  no estaba en el alcance de esta fase. Se anota como observación para un
+  humano, no como hallazgo accionado.
+
+### Testing
+No hay infraestructura de test en el repo (`package.json` no tiene
+`vitest`/`jest`/nada — confirmado, ya lo decían sesiones previas). No se
+inventó una. Verificación manual realizada:
+- `resolveCredential`/`reportCredentialOutcome`/`getCredentialHealth`
+  revisados a mano contra el schema real (columnas, tipos, constraints)
+  y contra el patrón ya probado en producción por `MLVaultService.get()`.
+- La migración fue revisada por lectura línea a línea contra
+  `production_schema.sql` para confirmar que ninguna columna/constraint
+  que agrega ya existe (evitar duplicar `status`, etc.).
+- `npx tsc --noEmit` sobre `src/` (los Edge Functions de `supabase/functions`
+  quedan fuera de `tsconfig.json`, no hay type-check disponible para
+  ellos en este repo — confirmado, `"include": ["src"]`). El archivo que
+  sí toqué en `src/` (`apiVaultTypes.ts`) no agrega errores nuevos.
+  **Hallazgo no relacionado, para el próximo agente**: en este entorno
+  (`node_modules` de este ZIP), `tsc` da **5,533 errores**, no los ~270
+  que reportaba `CURRENT.md` — causa raíz: `node_modules/@supabase` y
+  `node_modules/react-dom` no están instalados en esta copia (confirmado
+  con `ls`), a diferencia de la sesión que registró el baseline de 270.
+  Esto es un problema de instalación de dependencias de este ZIP
+  puntual, no algo que esta sesión introdujo ni algo relacionado a
+  API Vault — no se intentó `npm install` (fuera de alcance de esta
+  tarea, y no pedido).
+
+### Status
+**IMPLEMENTED (parcial, por diseño).** RESOLVE/DELIVER/REPORT/HEALTH
+existen y están migrados a 2 de los 3 consumidores priorizados por la
+regla 10 del brief (`ml-webhook` corregido sin pasar por RESOLVE por
+motivo documentado arriba; `extract-catalog` sí). `ml-oauth` queda
+explícitamente fuera por ser lifecycle-owner. Ningún secreto expuesto
+nuevo, ninguna RLS ampliada, ninguna segunda arquitectura de
+credenciales creada, META no tocado, pagos no tocados.
+
+**PENDIENTE (no bloqueante, para un agente futuro):**
+- Verificar el valor real de `platform` para la fila Groq en producción
+  antes de confiar en el `extract-catalog` migrado.
+- Decidir si `ml-oauth`'s lectura debería, en algún momento, exponer un
+  modo de RESOLVE con filtro adicional (`tags`) — o si eso rompería la
+  regla de "RESOLVE no conoce el dominio del proveedor" y debe quedar
+  fuera para siempre.
+- Revisar el `GRANT ALL ... TO anon` en `api_vault` (preexistente, no
+  tocado, anotado arriba).
+- Investigar por qué este ZIP tiene `node_modules` incompleto
+  (`@supabase/supabase-js`, `react-dom` ausentes) — bloquea confiar en
+  `tsc`/`vite build` como gate real hasta que se resuelva.

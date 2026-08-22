@@ -285,14 +285,38 @@ async function fetchMLResource(
   supabase: ReturnType<typeof createClient>,
   resource: string
 ): Promise<Record<string, unknown> | null> {
-  // Obtener el primer storeId con credencial ML activa
-  const { data: vaultRow } = await supabase
+  // BUG CONFIRMADO (verificado contra supabase/schema/production_schema.sql):
+  // esta funcion consultaba api_vault con `.eq("provider", "mercadolibre")`,
+  // pero esa columna no existe -- la tabla real usa `platform`, con el
+  // nombre capitalizado "MercadoLibre" (no el slug), ver
+  // core-mlmp/MLVaultService.ts:nombrePlataforma. PostgREST rechaza un
+  // filtro por columna inexistente, asi que `vaultRow` siempre daba
+  // undefined y esta funcion SIEMPRE devolvia null para cualquier webhook
+  // sin storeId en el payload.
+  //
+  // Esta query es un DESCUBRIMIENTO ("algun tenant que tenga credencial ML
+  // propia"), no una resolucion de un tenant ya conocido -- por eso NO se
+  // rutea por resolveCredential()/RESOLVE (DEC-011 SS5): RESOLVE toma
+  // platform + tenantId opcional y devuelve esa fila o el fallback global;
+  // no tiene un modo "elegime cualquier fila con tenant_id no nulo", y
+  // inventarle ese modo ahora seria una abstraccion nueva no prevista por
+  // el diseno. El fix minimo y correcto es arreglar el nombre/valor de
+  // columna en esta query puntual. MLVaultService/TokenManager (que si
+  // hacen tenant -> global correctamente) quedan intactos: son los que
+  // entregan el access token via getMLToken() mas abajo.
+  const { data: vaultRow, error: vaultErr } = await supabase
     .from("api_vault")
     .select("tenant_id")
-    .eq("provider", "mercadolibre")
+    .eq("platform", "MercadoLibre")
+    .eq("type", "oauth")
     .not("tenant_id", "is", null)
     .limit(1)
     .maybeSingle();
+
+  if (vaultErr) {
+    console.error("[ml-webhook] Vault query error:", vaultErr.message);
+    return null;
+  }
 
   const storeId = vaultRow?.tenant_id as string | null;
   if (!storeId) {

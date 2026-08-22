@@ -216,5 +216,24 @@ the pre-existing, unrelated `tw-animate-css` gap. Nothing committed (no
 `.git` present in this working copy — it was extracted from a zip).
 Full detail: 2026-08-22 CHANGELOG entry, DEC-007 in DECISIONS.md.
 
+## Last Agent (DEC-011, API Vault Credential Provider — 2026-08-22)
+Different task from the design-token work above (that thread — DEC-007/
+DEC-008 — is untouched by this session). Implemented DEC-011: RESOLVE/
+DELIVER/REPORT/HEALTH as a generic server-side Credential Provider over
+`api_vault` (`supabase/functions/_shared/api-vault/CredentialProvider.ts`),
+a new additive migration (`status`/`last_checked_at`/`last_error`), fixed
+a confirmed real bug in `ml-webhook` (queried a column, `provider`, that
+does not exist — always returned null), and migrated `extract-catalog`'s
+ad-hoc Groq-key lookup to RESOLVE. Found and documented several
+contradictions between the DEC-011 design doc's premises and the actual
+repo (`client_exposed` and `getClientCredential.ts` do not exist; the doc
+was written against an earlier, incomplete ZIP). `ml-oauth`, `MLVaultService`,
+`TokenManager`, `OAuthService`, payments, and META were explicitly not
+touched. Full detail: DEC-011 in DECISIONS.md, 2026-08-22 CHANGELOG entry.
+**Also surfaced**: this ZIP's `node_modules` is missing `@supabase/supabase-js`
+and `react-dom` — `tsc --noEmit` shows 5,533 errors here, not the ~270
+baseline this file records from a prior session's (differently-installed)
+environment. Not fixed, not caused by this session — see DEC-011.
+
 ## Last Updated
-2026-08-22
+2026-08-22 (DEC-011 session)

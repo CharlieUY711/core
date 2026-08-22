@@ -186,3 +186,32 @@ Consecuencia de diseño: decidir si el impuesto es atributo del precio
 puede tener distintas tasas por canal o por destino.
 
 NO empezar sin resolver antes esa pregunta: define el modelo de datos.
+
+---
+
+## DEC-011 — API Vault Credential Provider (2026-08-22, separate thread from the design-token work above)
+
+### Objective
+Implement DEC-011 (RESOLVE/DELIVER/REPORT/HEALTH) as the real Credential
+Provider over `api_vault`, per `DEC-011-api-vault-credential-provider-design.md`.
+
+### Done
+- `CredentialProvider.ts` (RESOLVE/DELIVER/REPORT/HEALTH), new migration
+  (HEALTH columns), `ml-webhook` bug fix, `extract-catalog` migrated to
+  RESOLVE. Full detail: DEC-011 in DECISIONS.md.
+
+### Blocked on a human decision / follow-up (not started)
+1. Confirm the real `platform` value for the Groq row in production
+   before trusting the `extract-catalog` migration (exact-match risk,
+   see DEC-011).
+2. Whether `ml-oauth`'s tags-filtered lookup should ever get its own
+   RESOLVE mode, or stay outside RESOLVE permanently.
+3. `GRANT ALL ... TO anon` on `api_vault` — preexisting, not evaluated in
+   depth this session, flagged for a human.
+4. This ZIP's incomplete `node_modules` (`@supabase/supabase-js`,
+   `react-dom` missing) — blocks trusting `tsc`/`vite build` as a gate.
+
+### Out of scope (explicit, per brief)
+MercadoPago, PayPal, Resend migration; META module; generic web
+integration; any change to `ml-oauth`/`MLVaultService`/`TokenManager`/
+`OAuthService` behavior.
