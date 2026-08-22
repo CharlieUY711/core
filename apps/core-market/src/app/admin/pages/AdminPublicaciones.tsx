@@ -536,11 +536,14 @@ export default function AdminPublicaciones() {
       const a=arts.find(x=>x.id===primerFallo);
       if(a&&exp!==a.id){setEForm({...a});setETab(TABS[0]);setExp(a.id);setDirty(false);}
     }
-    if(fallos.length===0) notify("Sincronizado ✓ ("+ok+")");
-    // Con un solo fallo se dice cual; con varios se remite a los chips rojos,
-    // que ya senializan cual es cual sin llenar el aviso de texto.
-    else if(fallos.length===1) notify(fallos[0]+(primerFallo?" — abajo está el campo para corregirlo":""),false);
-    else notify(fallos.length+" fallaron. Tocá cada chip en rojo para ver qué corregir.",false);
+    if(fallos.length===0){ notify("Sincronizado ✓ ("+ok+")"); return; }
+
+    // Si el fallo abrio el panel con el campo, el aviso no lo repite: decir lo
+    // mismo en dos lugares hace dudar de si son dos problemas. El panel gana
+    // porque es donde se corrige.
+    if(fallos.length===1&&primerFallo) return;
+    if(fallos.length===1){ notify(fallos[0],false); return; }
+    notify(fallos.length+" no se pudieron publicar. Tocá cada chip en rojo para ver qué corregir.",false);
   };
 
   const togSync=async(a:Art,k:string)=>{
@@ -953,6 +956,31 @@ export default function AdminPublicaciones() {
                               <datalist id={listId}>
                                 {x.opciones.map(o=><option key={o} value={o}/>)}
                               </datalist>
+                            )}
+
+                            {/* Contador: si el canal impone un largo, hay que
+                                poder verlo mientras se escribe y no descubrirlo
+                                al ser rechazado otra vez. */}
+                            {!!x.maxLargo&&(
+                              <div style={{fontSize:"0.7rem",marginTop:2,textAlign:"right",
+                                color:String(val).length>x.maxLargo?ROJO_SYNC:"var(--gray-400)"}}>
+                                {String(val).length} / {x.maxLargo}
+                              </div>
+                            )}
+
+                            {/* Las reglas las declara el motor del canal. Decir
+                                "no cumple las reglas" sin decir cuales deja a
+                                la persona probando de a una. */}
+                            {!!x.ayuda?.length&&(
+                              <details style={{marginTop:4}} open={x.campo==="title"}>
+                                <summary style={{cursor:"pointer",fontSize:"0.72rem",color:BLUE,fontWeight:600}}>
+                                  Cómo lo pide {nombreCanal[canalConProblema[a.id]]??"el canal"}
+                                </summary>
+                                <ul style={{margin:"5px 0 0",paddingLeft:17,fontSize:"0.72rem",
+                                  color:"#4B5563",lineHeight:1.5}}>
+                                  {x.ayuda.map((r,k)=><li key={k} style={{marginBottom:2}}>{r}</li>)}
+                                </ul>
+                              </details>
                             )}
                           </label>
                         );

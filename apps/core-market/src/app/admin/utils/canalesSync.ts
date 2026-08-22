@@ -46,6 +46,16 @@ export interface ProblemaPublicacion {
   valor?: string | null;
   /** Pista de control: number, boolean, string… */
   tipo?: string;
+  /**
+   * Cómo se completa bien ese campo, según el canal.
+   *
+   * Decir "el título no cumple las reglas" y no decir cuáles son deja a la
+   * persona probando de a una. Las reglas las pone el canal, así que las
+   * declara su motor.
+   */
+  ayuda?: string[];
+  /** Largo máximo, si el canal lo impone. Se muestra como contador. */
+  maxLargo?: number;
 }
 
 export interface ResultadoSync {
@@ -110,6 +120,44 @@ async function invocar(fn: string, body: Record<string, unknown>) {
   return res.json();
 }
 
+/**
+ * Reglas de Mercado Libre para escribir un título, tal como las publica.
+ *
+ * Viven en el motor y no en la pantalla: son de este canal y de ningún otro.
+ * Otro canal traerá las suyas y la pantalla las mostrará igual sin conocerlas.
+ */
+const AYUDA_ML: Record<string, string[]> = {
+  title: [
+    "Formato que recomienda Mercado Libre: producto + marca + modelo + algo que lo distinga. Por ejemplo: «Celular Apple iPhone 17 256 GB».",
+    "Hasta 60 caracteres.",
+    "Sin datos de contacto, links ni precios.",
+    "Sin palabras promocionales: oferta, descuento, envío gratis, liquidación.",
+    "Sin mayúsculas sostenidas ni signos repetidos (!!!, ***).",
+    "Sin condiciones de venta ni información de envío.",
+  ],
+  price: [
+    "Tiene que ser mayor que cero y estar dentro del rango que admite la categoría.",
+  ],
+  pictures: [
+    "Al menos una imagen, accesible públicamente.",
+    "Fondo blanco y sin textos ni logos superpuestos en la principal.",
+  ],
+  category_id: [
+    "Tiene que ser una categoría final, no una que agrupe otras.",
+    "La categoría define qué atributos son obligatorios: cambiarla cambia lo que se pide.",
+  ],
+};
+
+const MAX_LARGO_ML: Record<string, number> = { title: 60 };
+
+/** Suma a cada problema las reglas del canal para ese campo. */
+const conAyudaMl = (ps: ProblemaPublicacion[]): ProblemaPublicacion[] =>
+  ps.map((p) => ({
+    ...p,
+    ayuda:    p.ayuda    ?? AYUDA_ML[p.campo],
+    maxLargo: p.maxLargo ?? MAX_LARGO_ML[p.campo],
+  }));
+
 const motorMercadoLibre: MotorCanal = {
   nombre: "Mercado Libre",
 
@@ -140,7 +188,7 @@ const motorMercadoLibre: MotorCanal = {
   async verificar(variantId) {
     try {
       const d = await invocar("publicar-en-ml", { variantId, soloVerificar: true });
-      return Array.isArray(d?.problemas) ? d.problemas : [];
+      return conAyudaMl(Array.isArray(d?.problemas) ? d.problemas : []);
     } catch (_) {
       // No poder verificar no es lo mismo que no faltar nada, pero bloquear la
       // pantalla por una consulta caída es peor: se deja publicar y que el
@@ -215,11 +263,11 @@ const motorMercadoLibre: MotorCanal = {
       motivo: t.motivo,
       accion: t.accion ?? undefined,
       crudo:  t.crudo,
-      problemas: t.campos.map((campo) => ({
+      problemas: conAyudaMl(t.campos.map((campo) => ({
         campo,
         etiqueta: etiquetaDeCampo(campo),
         mensaje:  t.detalle,
-      })),
+      }))),
     };
   },
 };
