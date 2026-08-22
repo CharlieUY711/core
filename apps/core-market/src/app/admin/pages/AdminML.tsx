@@ -130,6 +130,28 @@ async function callMlSync(body: Record<string, unknown>) {
   return res.json();
 }
 
+/**
+ * Pregunta que falta sin publicar nada.
+ *
+ * La verificacion vive en publicar-en-ml, del lado del servidor, porque es la
+ * que efectivamente impide que salga una publicacion incompleta. La UI usa la
+ * misma para mostrar exactamente lo mismo que va a bloquear: si estuviera
+ * duplicada aca, tarde o temprano diria otra cosa.
+ */
+async function callVerificar(variantId: string): Promise<Array<{ campo: string; etiqueta: string; mensaje: string }>> {
+  try {
+    const res = await fetch(`${FUNCTIONS_URL}/publicar-en-ml`, {
+      method: "POST",
+      headers: { Authorization: await getAuthHeader(), "Content-Type": "application/json" },
+      body:   JSON.stringify({ variantId, soloVerificar: true }),
+    });
+    const d = await res.json();
+    return Array.isArray(d?.problemas) ? d.problemas : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 async function callPublicar(variantId: string) {
   const res = await fetch(`${FUNCTIONS_URL}/publicar-en-ml`, {
     method: "POST",
@@ -837,6 +859,9 @@ function ModalPreview({ fila, onClose, onPublicar }: {
   const [guardando, setGuard] = useState(false);
   const [aviso, setAviso]     = useState<string | null>(null);
   const [ruta, setRuta]       = useState<string | null>(null);
+  // Lo que Mercado Libre va a rechazar, sabido de antemano. Es la unica lista
+  // que el modal necesita mostrar: el resto de los datos ya estan bien.
+  const [problemas, setProblemas] = useState<Array<{ campo: string; etiqueta: string; mensaje: string }> | null>(null);
 
   // Atributos obligatorios de la categoria. Se arrancan con lo ya guardado en
   // channel_attrs.extra_attributes para no pedir dos veces lo mismo.
@@ -850,10 +875,9 @@ function ModalPreview({ fila, onClose, onPublicar }: {
     }
     return out;
   });
-  const [atrsFaltan, setAtrsFaltan] = useState<string[]>([]);
-  const recibirFaltan = useCallback((n: string[]) => {
-    setAtrsFaltan((p) => (p.length === n.length && p.every((x, i) => x === n[i]) ? p : n));
-  }, []);
+  // Los atributos que faltan los nombra la verificacion del servidor, que es
+  // la que bloquea; el componente solo los marca en rojo donde se editan.
+  const recibirFaltan = useCallback((_n: string[]) => {}, []);
   const traduccion = fila?.last_error ? traducirErrorMl(fila.last_error) : null;
   const detectados  = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
   // Si hubo un error pero no se pudo deducir que campo tocar, igual se ofrecen
@@ -901,26 +925,41 @@ function ModalPreview({ fila, onClose, onPublicar }: {
     return () => { cancelado = true; };
   }, [catEfectiva]);
 
+  // Los campos a mostrar salen de la verificacion del servidor: son los que
+  // efectivamente van a bloquear. Antes se mostraban los cuatro basicos
+  // siempre, llenos o vacios, y encontrar cual tocar quedaba a cargo de la
+  // persona. Mientras la verificacion no volvio se muestran los deducidos del
+  // ultimo error, para no dejar la pantalla vacia.
+  const camposBloqueados = new Set((problemas ?? []).map((x) => x.campo));
   const faltantes = publicado
     ? []
-    : detectados.length > 0
+    : problemas === null
       ? detectados
-      : BASICOS.map((b) => {
+      : BASICOS.filter((b) => camposBloqueados.has(b.campo)).map((b) => {
           const actual = valorActual(b.campo);
           return { ...b, actual, vacio: actual === null || actual === undefined || actual === "" || actual === 0 };
         });
 
+  // La categoria se ofrece si la bloquea la verificacion, y tambien cuando
+  // faltan atributos: cambiarla suele ser la salida mas rapida cuando la
+  // categoria elegida exige cinco cosas que el producto no tiene.
+  const pideCategoria = camposBloqueados.has("category_id")
+    || (problemas ?? []).some((x) => x.campo.startsWith("attr:"));
+
   // Que falta AHORA. El ultimo error es del intento anterior y puede estar
   // resuelto: mostrarlo como si fuera el estado actual confunde mas de lo que
   // ayuda -por eso viaja aparte, abajo-.
-  const faltanAhora: string[] = [
-    ...(!catEfectiva ? ["la categoria"] : []),
-    ...faltantes
-      .filter((f) => f.campo !== "category_id")
-      .filter((f) => !(edit[f.campo] ?? String(f.actual ?? "")).trim())
-      .map((f) => f.etiqueta.toLowerCase()),
-    ...atrsFaltan.map((n) => n.toLowerCase()),
-  ];
+  const faltanAhora: string[] = (problemas ?? []).map((x) => x.mensaje);
+
+  useEffect(() => {
+    if (publicado) { setProblemas([]); return; }
+    let cancelado = false;
+    (async () => {
+      const p = await callVerificar(fila.variant_id);
+      if (!cancelado) setProblemas(p);
+    })();
+    return () => { cancelado = true; };
+  }, [fila?.variant_id, publicado]);
 
   useEffect(() => {
     let cancelado = false;
@@ -1065,103 +1104,117 @@ function ModalPreview({ fila, onClose, onPublicar }: {
 
           {datos && !cargando && !error && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {datos.imagenes?.length > 0 && (
-                <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
-                  {datos.imagenes.slice(0, 6).map((u: string, i: number) => (
-                    <img key={i} src={u} alt="" style={{
-                      width: 92, height: 92, objectFit: "cover", borderRadius: T.radiusMd,
+              {/* La vista previa completa es util cuando ya esta publicado
+                  -es lo que ve el comprador-. Cuando todavia no salio, lo que
+                  importa es que lo bloquea: el producto queda en una linea y el
+                  espacio es para el problema. */}
+              {publicado ? (
+                <>
+                  {datos.imagenes?.length > 0 && (
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+                      {datos.imagenes.slice(0, 6).map((u: string, i: number) => (
+                        <img key={i} src={u} alt="" style={{
+                          width: 92, height: 92, objectFit: "cover", borderRadius: T.radiusMd,
+                          border: `1px solid ${T.borderLight}`, flexShrink: 0,
+                        }} />
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 17, fontWeight: 700, color: T.textDark }}>{datos.titulo}</div>
+                  <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: T.primary }}>
+                      {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")}
+                    </span>
+                    <span style={{ fontSize: 13, color: T.textMuted }}>Stock: {datos.stock ?? 0}</span>
+                    {datos.estado && <span style={{ fontSize: 13, color: T.textMuted }}>Estado: {datos.estado}</span>}
+                  </div>
+                  {datos.categoria && (
+                    <div style={{ fontSize: 12, color: T.textMuted }}>Categoria: {datos.categoria}</div>
+                  )}
+                  {datos.descripcion && (
+                    <div style={{ fontSize: 13, color: T.textBody, whiteSpace: "pre-wrap" }}>
+                      {String(datos.descripcion).slice(0, 400)}
+                      {String(datos.descripcion).length > 400 ? "..." : ""}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  {datos.imagenes?.length > 0 && (
+                    <img src={datos.imagenes[0]} alt="" style={{
+                      width: 44, height: 44, objectFit: "cover", borderRadius: T.radiusSm,
                       border: `1px solid ${T.borderLight}`, flexShrink: 0,
                     }} />
-                  ))}
-                </div>
-              )}
-
-              <div style={{ fontSize: 17, fontWeight: 700, color: T.textDark }}>{datos.titulo}</div>
-
-              <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: T.primary }}>
-                  {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")}
-                </span>
-                <span style={{ fontSize: 13, color: T.textMuted }}>Stock: {datos.stock ?? 0}</span>
-                {datos.estado && <span style={{ fontSize: 13, color: T.textMuted }}>Estado: {datos.estado}</span>}
-              </div>
-
-              {datos.categoria && publicado && (
-                <div style={{ fontSize: 12, color: T.textMuted }}>
-                  Categoria: {datos.categoria}
-                  {fila?.channel_attrs?.category_id_origen === "prediccion_ml" && !publicado && (
-                    <span style={{ color: T.warning }}> · sugerida automaticamente</span>
                   )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, color: T.textDark,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{datos.titulo}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted }}>
+                      {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")} · Stock {datos.stock ?? 0}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {datos.descripcion && (
-                <div style={{ fontSize: 13, color: T.textBody, whiteSpace: "pre-wrap" }}>
-                  {String(datos.descripcion).slice(0, 400)}
-                  {String(datos.descripcion).length > 400 ? "..." : ""}
-                </div>
-              )}
-
-              {faltantes.length > 0 && (
+              {!publicado && (faltantes.length > 0 || pideCategoria || problemas !== null) && (
                 <div style={{
                   border: `1px solid ${T.border}`, borderRadius: T.radiusMd, padding: 14,
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
                   <div>
-                    {/* Un solo mensaje, el mismo que muestran el aviso de
-                        arriba y la columna de la tabla: sale del traductor,
-                        no de un texto propio del modal. Antes el modal
-                        redactaba lo suyo y aparte repetia "Ultimo intento",
-                        asi que el mismo rechazo se leia de tres formas. */}
+                    {/* Lo que bloquea, en una lista, y nada mas. Es el motivo
+                        por el que se abre este modal; el resto de los datos ya
+                        estan bien y no necesitan pantalla. */}
                     <div style={{
                       fontWeight: 700, fontSize: 14,
-                      color: traduccion ? T.danger : faltanAhora.length ? T.danger : T.success,
+                      color: faltanAhora.length ? T.danger : T.success,
                     }}>
-                      {traduccion
-                        ? traduccion.motivo
-                        : faltanAhora.length
-                          ? "Falta " + faltanAhora.join(", ")
-                          : "No falta ningún dato obligatorio"}
+                      {faltanAhora.length === 0
+                        ? "Listo para publicar"
+                        : faltanAhora.length === 1
+                          ? "Falta una cosa para publicar"
+                          : `Faltan ${faltanAhora.length} cosas para publicar`}
                     </div>
-                    <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
-                      {traduccion
-                        ? traduccion.detalle
-                        : faltanAhora.length
-                          ? "Completá lo marcado en rojo y guardá."
-                          : "Podés publicar. Si Mercado Libre igual lo rechaza, el motivo va a quedar acá."}
-                    </div>
-                    {traduccion?.accion && (
-                      <div style={{ fontSize: 12, color: T.textDark, marginTop: 6, fontWeight: 600 }}>
-                        {traduccion.accion}
+
+                    {faltanAhora.length > 0 && (
+                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: T.textBody }}>
+                        {faltanAhora.map((m, i) => <li key={i} style={{ marginBottom: 2 }}>{m}</li>)}
+                      </ul>
+                    )}
+
+                    {faltanAhora.length === 0 && (
+                      <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
+                        Cumple los requisitos de Mercado Libre para esta categoría.
                       </div>
                     )}
-                    {traduccion && faltanAhora.length > 0 && (
-                      <div style={{ fontSize: 12, color: T.danger, marginTop: 4 }}>
-                        Además falta {faltanAhora.join(", ")}.
-                      </div>
-                    )}
-                    {/* El original nunca se oculta: si la traduccion no
-                        acerto, el texto de Mercado Libre es lo unico que
-                        sirve para entender el rechazo. */}
+
+                    {/* El rechazo anterior se guarda pero no compite con lo de
+                        arriba: si la verificacion ya dice que falta, repetir el
+                        error viejo solo agrega ruido. */}
                     {traduccion && (
-                      <details style={{ marginTop: 4 }}>
+                      <details style={{ marginTop: 8 }}>
                         <summary style={{ fontSize: 11, color: T.textMuted, cursor: "pointer" }}>
-                          Ver lo que respondió Mercado Libre
+                          Rechazo anterior de Mercado Libre
                         </summary>
+                        <div style={{ fontSize: 11, color: T.textBody, marginTop: 4 }}>
+                          {traduccion.motivo}{traduccion.accion ? " — " + traduccion.accion : ""}
+                        </div>
                         <pre style={{
-                          fontSize: 10, color: T.textBody, background: T.bgMain,
+                          fontSize: 10, color: T.textMuted, background: T.bgMain,
                           padding: 8, borderRadius: T.radiusSm, marginTop: 6,
-                          maxHeight: 180, overflow: "auto",
+                          maxHeight: 140, overflow: "auto",
                           whiteSpace: "pre-wrap", wordBreak: "break-word",
                         }}>{traduccion.crudo}</pre>
                       </details>
                     )}
                   </div>
-                  {faltantes.map((f) => f.campo === "category_id" ? (
-                    <div key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {pideCategoria && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <SelectorCategoria
                         titulo={datos?.titulo ?? null}
-                        valorActual={f.actual != null ? String(f.actual) : null}
+                        valorActual={catGuardada || null}
                         valor={edit["category_id"] ?? ""}
                         ruta={ruta}
                         onChange={(id) => setEdit((p) => ({ ...p, category_id: id }))} />
@@ -1171,7 +1224,9 @@ function ModalPreview({ fila, onClose, onPublicar }: {
                           onFaltan={recibirFaltan} />
                       )}
                     </div>
-                  ) : (
+                  )}
+
+                  {faltantes.filter((f) => f.campo !== "category_id").map((f) => (
                     <label key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <span style={{ fontSize: 12, color: T.textMuted }}>
                         {f.etiqueta}
@@ -1201,16 +1256,7 @@ function ModalPreview({ fila, onClose, onPublicar }: {
                 </div>
               )}
 
-              {!publicado && (
-                <div style={{
-                  background: T.warningBg, color: T.warning, padding: "8px 12px",
-                  borderRadius: T.radiusMd, fontSize: 12,
-                }}>
-                  {faltanAhora.length
-                    ? "Completá lo que falta y usá Guardar y publicar."
-                    : "Todavía no está en Mercado Libre. Usá Guardar y publicar para intentarlo; el resultado queda en la tabla."}
-                </div>
-              )}
+
             </div>
           )}
         </div>
@@ -1220,9 +1266,9 @@ function ModalPreview({ fila, onClose, onPublicar }: {
           padding: "14px 20px", borderTop: `1px solid ${T.borderLight}`,
         }}>
           <Btn label="Cerrar" variant="secondary" disabled={guardando} onClick={onClose} />
-          {faltantes.length > 0 && (
-            <Btn label={guardando ? "Publicando…" : (traduccion ? "Guardar y reintentar" : "Guardar y publicar")} variant="primary"
-              disabled={guardando} onClick={guardarYPublicar} />
+          {!publicado && (
+            <Btn label={guardando ? "Publicando…" : faltanAhora.length ? "Guardar y reintentar" : "Publicar"}
+              variant="primary" disabled={guardando} onClick={guardarYPublicar} />
           )}
           {urlMl && (
             <a href={urlMl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>

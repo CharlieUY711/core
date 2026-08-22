@@ -32,6 +32,8 @@ import { MLModuleError } from "../_shared/core-mlmp/MLModuleError.ts";
 interface PublicarBody {
   variantId: string;
   storeId?: string;
+  /** Solo comprueba requisitos y responde que falta, sin publicar. */
+  soloVerificar?: boolean;
   /** Contexto de precio — todos opcionales, se usan como filtros en resolve_price */
   priceContext?: {
     priceList?: string;
@@ -344,6 +346,35 @@ serve(async (req: Request) => {
   const mlAttrs = buildMLAttributes(v.attributes, attrs["extra_attributes"] as unknown[] ?? []);
   if (mlAttrs.length > 0) mlPayload.attributes = mlAttrs;
 
+  // -- 8b. Verificacion previa ---------------------------------------------
+  // Conocer los requisitos de Mercado Libre y comprobarlos aca evita que una
+  // publicacion incompleta llegue a ML y vuelva como un rechazo en jerga. El
+  // texto que se guarda es el mismo que ve quien vende, y no se gasta una
+  // llamada a la API para averiguar algo que ya sabiamos.
+  const problemas = await verificarAntesDePublicar(mlPayload, mlAttrs);
+  if (problemas.length > 0 && body.soloVerificar) {
+    // Verificar no es publicar: se informa que falta sin ensuciar el estado
+    // del listing con un error que nadie provoco.
+    return json({ ok: false, verificado: true, problemas }, 200);
+  }
+  if (problemas.length > 0) {
+    const resumen = problemas.map((p) => p.mensaje).join(" | ");
+    await upsertListing(supabase, {
+      variant_id:  body.variantId,
+      channel:     CHANNEL,
+      status:      "error",
+      external_id: existingListing?.external_id ?? null,
+      last_error:  resumen,
+      channel_attrs: existingListing?.channel_attrs ?? {},
+    });
+    return json({ error: "Faltan datos", status: 422, resumen, problemas }, 422);
+  }
+
+  // Modo verificacion: se responde que falta sin publicar ni tocar el listing.
+  if (body.soloVerificar) {
+    return json({ ok: true, verificado: true, problemas: [] });
+  }
+
   // -- 9. Marcar listing como syncing --------------------------------------
   const listingUpsert = await upsertListing(supabase, {
     variant_id:  body.variantId,
@@ -507,6 +538,117 @@ function buildShipping(
         }
       : undefined,
   };
+}
+
+/**
+ * Requisitos de Mercado Libre para una categoria.
+ *
+ * ML los publica y son distintos por categoria: largo maximo del titulo,
+ * monedas aceptadas, si admite publicaciones directas, y que atributos exige.
+ * Consultarlos antes de publicar es lo que permite decir "falta la marca" en
+ * lugar de mandar el pedido y traducir despues un rechazo en jerga.
+ *
+ * Son datos publicos y estables; se cachean en memoria por invocacion caliente.
+ */
+const cacheCategoria = new Map<string, any>();
+
+async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
+  if (cacheCategoria.has(categoriaId)) return cacheCategoria.get(categoriaId);
+  try {
+    const [cat, attrs] = await Promise.all([
+      fetch(`https://api.mercadolibre.com/categories/${categoriaId}`).then((r) => r.ok ? r.json() : null),
+      fetch(`https://api.mercadolibre.com/categories/${categoriaId}/attributes`).then((r) => r.ok ? r.json() : []),
+    ]);
+    if (!cat) return null;
+    const info = {
+      nombre:        cat.name ?? categoriaId,
+      esHoja:        (cat.children_categories ?? []).length === 0,
+      permitePublicar: cat.settings?.listing_allowed !== false && cat.settings?.status !== "disabled",
+      maxTitulo:     Number(cat.settings?.max_title_length ?? 60),
+      monedas:       Array.isArray(cat.settings?.currencies) ? cat.settings.currencies : null,
+      requeridos:    (Array.isArray(attrs) ? attrs : [])
+        .filter((a: any) => a?.tags?.required)
+        .map((a: any) => ({ id: String(a.id), nombre: String(a.name ?? a.id) })),
+    };
+    cacheCategoria.set(categoriaId, info);
+    return info;
+  } catch (_) {
+    // Sin los requisitos no se bloquea nada: se deja que Mercado Libre
+    // decida. Vale mas intentar que impedir por una consulta caida.
+    return null;
+  }
+}
+
+interface Problema { campo: string; etiqueta: string; mensaje: string }
+
+/**
+ * Verifica la publicacion contra los requisitos de Mercado Libre ANTES de
+ * mandarla. Devuelve la lista de lo que falta, ya redactada para quien vende.
+ */
+async function verificarAntesDePublicar(
+  payload: Record<string, unknown>,
+  attrsMl: Array<{ id: string; value_name: string }>,
+): Promise<Problema[]> {
+  const problemas: Problema[] = [];
+  const titulo = String(payload.title ?? "").trim();
+  const categoriaId = String(payload.category_id ?? "").trim();
+
+  if (!titulo) {
+    problemas.push({ campo: "title", etiqueta: "Titulo", mensaje: "El producto no tiene titulo" });
+  }
+  if (!(Number(payload.price) > 0)) {
+    problemas.push({ campo: "price", etiqueta: "Precio", mensaje: "El precio tiene que ser mayor que cero" });
+  }
+  if (!(Number(payload.available_quantity) > 0)) {
+    problemas.push({ campo: "stock", etiqueta: "Stock", mensaje: "No hay unidades disponibles para vender" });
+  }
+  if (!Array.isArray(payload.pictures) || (payload.pictures as unknown[]).length === 0) {
+    problemas.push({ campo: "pictures", etiqueta: "Imagenes", mensaje: "Mercado Libre necesita al menos una imagen" });
+  }
+  if (!categoriaId) {
+    problemas.push({ campo: "category_id", etiqueta: "Categoria", mensaje: "Falta elegir la categoria de Mercado Libre" });
+    return problemas; // sin categoria no se puede verificar nada mas
+  }
+
+  const req = await requisitosDeCategoria(categoriaId);
+  if (!req) return problemas;
+
+  if (!req.esHoja) {
+    problemas.push({
+      campo: "category_id", etiqueta: "Categoria",
+      mensaje: `"${req.nombre}" agrupa otras categorias; hay que elegir una mas especifica`,
+    });
+  }
+  if (!req.permitePublicar) {
+    problemas.push({
+      campo: "category_id", etiqueta: "Categoria",
+      mensaje: `Mercado Libre no admite publicaciones nuevas en "${req.nombre}"`,
+    });
+  }
+  if (titulo.length > req.maxTitulo) {
+    problemas.push({
+      campo: "title", etiqueta: "Titulo",
+      mensaje: `El titulo tiene ${titulo.length} caracteres y esta categoria admite hasta ${req.maxTitulo}`,
+    });
+  }
+  if (req.monedas && !req.monedas.includes(String(payload.currency_id))) {
+    problemas.push({
+      campo: "price", etiqueta: "Moneda",
+      mensaje: `Esta categoria no acepta ${payload.currency_id}; acepta ${req.monedas.join(" o ")}`,
+    });
+  }
+
+  const puestos = new Set(attrsMl.filter((a) => String(a.value_name ?? "").trim()).map((a) => a.id));
+  for (const r of req.requeridos) {
+    if (!puestos.has(r.id)) {
+      problemas.push({
+        campo: `attr:${r.id}`, etiqueta: r.nombre,
+        mensaje: `"${req.nombre}" exige ${r.nombre.toLowerCase()}`,
+      });
+    }
+  }
+
+  return problemas;
 }
 
 function buildMLAttributes(
