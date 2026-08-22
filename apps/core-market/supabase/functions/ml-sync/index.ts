@@ -21,7 +21,7 @@
 //       priceList?: string,
 //       country?: string,
 //       campaign?: string,
-//       currency?: string,        // default: 'ARS'
+//       currency?: string,        // default: 'UYU' (cuenta MLU)
 //     }
 //   }
 //
@@ -125,7 +125,9 @@ serve(async (req: Request) => {
   const statuses = body.statuses ?? ["pending", "error"];
   const limit    = Math.min(body.limit ?? 50, 200); // techo de seguridad
   const ctx      = body.priceContext ?? {};
-  const currency = ctx.currency ?? "ARS";
+  // Mismo criterio que publicar-en-ml: la cuenta es MLU y el catalogo esta en
+  // UYU. Con ARS, resolve_price no encuentra fila y el sync falla entero.
+  const currency = ctx.currency ?? "UYU";
 
   // -- Token ML -------------------------------------------------------------
   let mlToken: string;

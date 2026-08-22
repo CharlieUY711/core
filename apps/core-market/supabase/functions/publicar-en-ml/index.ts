@@ -37,7 +37,7 @@ interface PublicarBody {
     priceList?: string;
     country?: string;
     campaign?: string;
-    currency?: string; // default 'ARS'
+    currency?: string; // default 'UYU' (cuenta MLU)
   };
 }
 
@@ -126,7 +126,12 @@ serve(async (req: Request) => {
   if (!storeId) return json({ error: "Cannot determine storeId" }, 400);
 
   const ctx = body.priceContext ?? {};
-  const currency = ctx.currency ?? "ARS";
+  // La cuenta conectada es MLU (Uruguay) y los precios del catalogo estan en
+  // UYU. El default anterior era ARS, con lo cual resolve_price no encontraba
+  // ninguna fila y toda publicacion moria en "No price found". Si en el futuro
+  // se conectan otros sitios, esto debe derivarse del site_id (MLA->ARS,
+  // MLB->BRL, MLU->UYU) en vez de un default fijo.
+  const currency = ctx.currency ?? "UYU";
 
   // -- 2. Leer variante + ítem ----------------------------------------------
   const { data: variant, error: varErr } = await supabase
