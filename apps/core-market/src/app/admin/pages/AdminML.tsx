@@ -9,7 +9,7 @@
  * Tablas nuevas: v_catalog_variants_full, catalog_listings, catalog_sync_log.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { traducirErrorMl, resumirErrorMl, camposAEditar } from "../utils/mlErrores";
 import { supabase } from "../../../utils/supabase/client";
 
@@ -829,6 +829,23 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
   const [edit, setEdit]       = useState<Record<string, string>>({});
   const [guardando, setGuard] = useState(false);
   const [aviso, setAviso]     = useState<string | null>(null);
+  const [ruta, setRuta]       = useState<string | null>(null);
+  // Atributos obligatorios de la categoria. Se arrancan con lo ya guardado en
+  // channel_attrs.extra_attributes para no pedir dos veces lo mismo.
+  const [atrs, setAtrs] = useState<Record<string, string>>(() => {
+    const previos = fila?.channel_attrs?.extra_attributes;
+    const out: Record<string, string> = {};
+    if (Array.isArray(previos)) {
+      for (const a of previos) {
+        if (a && typeof a === "object" && a.id) out[String(a.id)] = String(a.value_name ?? "");
+      }
+    }
+    return out;
+  });
+  const [atrsFaltan, setAtrsFaltan] = useState<string[]>([]);
+  const recibirFaltan = useCallback((n: string[]) => {
+    setAtrsFaltan((p) => (p.length === n.length && p.every((x, i) => x === n[i]) ? p : n));
+  }, []);
   const traduccion = fila?.last_error ? traducirErrorMl(fila.last_error) : null;
   const detectados  = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
   // Si hubo un error pero no se pudo deducir que campo tocar, igual se ofrecen
@@ -854,6 +871,28 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
       default:            return null;
     }
   };
+  // La categoria que efectivamente se va a mandar: la recien elegida, o la
+  // guardada solo si tiene forma de id de Mercado Libre.
+  const catGuardada = String(fila?.channel_attrs?.category_id ?? "").trim();
+  const catEfectiva = (edit["category_id"] ?? "").trim() || (esIdMl(catGuardada) ? catGuardada : "");
+
+  // La ruta completa es lo unico que permite verificar que la categoria sea la
+  // correcta: "MLU203672" no dice nada, "Farmacia > Analgesicos" si.
+  useEffect(() => {
+    let cancelado = false;
+    if (!esIdMl(catEfectiva)) { setRuta(null); return; }
+    (async () => {
+      try {
+        const r = await fetch("https://api.mercadolibre.com/categories/" + catEfectiva);
+        if (!r.ok) return;
+        const d = await r.json();
+        const camino = (d?.path_from_root ?? []).map((x: any) => x?.name).filter(Boolean).join(" > ");
+        if (!cancelado) setRuta(camino || d?.name || null);
+      } catch (_) { /* la ruta es una ayuda, no un requisito */ }
+    })();
+    return () => { cancelado = true; };
+  }, [catEfectiva]);
+
   const faltantes = publicado
     ? []
     : detectados.length > 0
@@ -862,6 +901,18 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
           const actual = valorActual(b.campo);
           return { ...b, actual, vacio: actual === null || actual === undefined || actual === "" || actual === 0 };
         });
+
+  // Que falta AHORA. El ultimo error es del intento anterior y puede estar
+  // resuelto: mostrarlo como si fuera el estado actual confunde mas de lo que
+  // ayuda -por eso viaja aparte, abajo-.
+  const faltanAhora: string[] = [
+    ...(!catEfectiva ? ["la categoria"] : []),
+    ...faltantes
+      .filter((f) => f.campo !== "category_id")
+      .filter((f) => !(edit[f.campo] ?? String(f.actual ?? "")).trim())
+      .map((f) => f.etiqueta.toLowerCase()),
+    ...atrsFaltan.map((n) => n.toLowerCase()),
+  ];
 
   useEffect(() => {
     let cancelado = false;
@@ -921,8 +972,16 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
         throw new Error(`La categoria guardada ("${catGuardada}") es de tu catalogo, no de Mercado Libre. Elegi una de la lista.`);
       }
 
-      if (cat) {
-        const attrs = { ...(fila.channel_attrs ?? {}), category_id: cat, category_id_origen: "manual" };
+      // Los atributos obligatorios van a extra_attributes, que publicar-en-ml ya
+      // mezcla en el payload de Mercado Libre.
+      const extra = Object.entries(atrs)
+        .filter(([, v]) => String(v).trim())
+        .map(([id, value_name]) => ({ id, value_name: String(value_name).trim() }));
+
+      if (cat || extra.length > 0) {
+        const attrs: Record<string, unknown> = { ...(fila.channel_attrs ?? {}) };
+        if (cat) { attrs.category_id = cat; attrs.category_id_origen = "manual"; }
+        if (extra.length > 0) attrs.extra_attributes = extra;
         const { error } = await supabase
           .from("catalog_listings").update({ channel_attrs: attrs }).eq("id", fila.listing_id);
         if (error) throw new Error(error.message);
@@ -1042,17 +1101,22 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: traduccion ? T.danger : T.textDark }}>
-                      {traduccion?.motivo ?? "Datos de la publicación"}
+                    <div style={{ fontWeight: 700, fontSize: 14, color: faltanAhora.length ? T.danger : T.success }}>
+                      {faltanAhora.length
+                        ? "Falta " + faltanAhora.join(", ")
+                        : "No falta ningún dato obligatorio"}
                     </div>
-                    {traduccion?.detalle && (
-                      <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
-                        {traduccion.detalle}
+                    <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
+                      {faltanAhora.length
+                        ? "Completá lo marcado en rojo y guardá."
+                        : "Podés publicar. Si Mercado Libre igual lo rechaza, el motivo va a quedar acá."}
+                    </div>
+                    {traduccion && (
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 8 }}>
+                        Último intento: {traduccion.motivo}
+                        {traduccion.accion ? " — " + traduccion.accion : ""}
                       </div>
                     )}
-                    <div style={{ fontSize: 12, color: T.textDark, marginTop: 6, fontWeight: 600 }}>
-                      {traduccion?.accion ?? "Podés ajustar estos datos antes de publicar. Los vacíos son los que Mercado Libre va a rechazar."}
-                    </div>
                     {traduccion && !traduccion.reconocido && (
                       <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
                         Mercado Libre dijo: {traduccion.crudo}
@@ -1060,11 +1124,19 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                     )}
                   </div>
                   {faltantes.map((f) => f.campo === "category_id" ? (
-                    <SelectorCategoria key={f.campo}
-                      titulo={datos?.titulo ?? null}
-                      valorActual={f.actual != null ? String(f.actual) : null}
-                      valor={edit["category_id"] ?? ""}
-                      onChange={(id) => setEdit((p) => ({ ...p, category_id: id }))} />
+                    <div key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <SelectorCategoria
+                        titulo={datos?.titulo ?? null}
+                        valorActual={f.actual != null ? String(f.actual) : null}
+                        valor={edit["category_id"] ?? ""}
+                        ruta={ruta}
+                        onChange={(id) => setEdit((p) => ({ ...p, category_id: id }))} />
+                      {catEfectiva && (
+                        <AtributosCategoria categoria={catEfectiva} valores={atrs}
+                          onChange={(id, v) => setAtrs((p) => ({ ...p, [id]: v }))}
+                          onFaltan={recibirFaltan} />
+                      )}
+                    </div>
                   ) : (
                     <label key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <span style={{ fontSize: 12, color: T.textMuted }}>
@@ -1077,8 +1149,9 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                         value={edit[f.campo] ?? (f.vacio ? "" : String(f.actual ?? ""))}
                         onChange={(e) => setEdit((p) => ({ ...p, [f.campo]: e.target.value }))}
                         style={{
-                          padding: "8px 10px", border: `1px solid ${T.border}`,
-                          borderRadius: T.radiusSm, fontSize: 13, outline: "none",
+                          padding: "8px 10px", fontSize: 13, outline: "none",
+                          borderRadius: T.radiusSm,
+                          border: `1px solid ${(edit[f.campo] ?? String(f.actual ?? "")).trim() ? T.border : T.danger}`,
                         }} />
                     </label>
                   ))}
@@ -1123,44 +1196,45 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
 /**
  * Selector de categoria de Mercado Libre.
  *
- * Pedir "el category_id" a mano no es razonable: nadie sabe de memoria que
- * MLU1234 es Celulares. Ademas los productos suelen traer una categoria propia
- * -"Varios", "Ofertas"- que no significa nada para Mercado Libre y que, si se
- * manda tal cual, garantiza el rechazo.
+ * Nadie sabe de memoria que MLU203672 es Analgesicos, asi que un campo de
+ * texto libre no sirve. Ademas los productos traen una categoria propia
+ * -"Varios"- que no significa nada para Mercado Libre.
  *
- * Este componente usa domain_discovery, el endpoint publico que Mercado Libre
- * expone justamente para sugerir categoria a partir de un texto. Arranca
- * sugiriendo por el titulo del producto -que es lo que la persona ya escribio-
- * y permite buscar otra cosa si ninguna sirve.
- *
- * Es el mismo endpoint que usa publicar-en-ml para predecir: lo que se elija
- * aca queda marcado como manual y le gana a la prediccion automatica.
+ * Se comporta como un combo: cerrado muestra que hay elegido, se abre al
+ * hacer clic, se cierra al elegir, con Escape o al hacer clic afuera. La
+ * busqueda usa domain_discovery, el endpoint publico que Mercado Libre expone
+ * para sugerir categoria a partir de un texto -el mismo que usa publicar-en-ml
+ * para predecir-.
  */
-function SelectorCategoria({ titulo, valorActual, valor, onChange }: {
+function esIdMl(v: unknown): boolean {
+  return typeof v === "string" && /^ML[A-Z][0-9]+$/.test(v.trim());
+}
+
+function SelectorCategoria({ titulo, valorActual, valor, ruta, onChange }: {
   titulo: string | null;
   valorActual: string | null;
   valor: string;
+  ruta: string | null;
   onChange: (id: string) => void;
 }) {
-  const [consulta, setConsulta] = useState<string>(titulo ?? "");
+  const [abierto, setAbierto]   = useState(false);
+  const [consulta, setConsulta] = useState("");
   const [opciones, setOpciones] = useState<Array<{ id: string; nombre: string; dominio: string }>>([]);
   const [buscando, setBuscando] = useState(false);
   const [fallo, setFallo]       = useState<string | null>(null);
-  const [ruta, setRuta]         = useState<string | null>(null);
+  const caja  = useRef<HTMLDivElement | null>(null);
+  const busca = useRef<HTMLInputElement | null>(null);
 
-  // Un category_id de Mercado Libre es el prefijo del sitio y numeros: MLU1234.
-  // Cualquier otra cosa -el nombre de una categoria nuestra, por ejemplo- no
-  // sirve, y conviene decirlo antes de intentar publicar y no despues.
-  const esIdMl = (v: string | null) => !!v && /^ML[A-Z][0-9]+$/.test(v.trim());
   const elegido = valor || (esIdMl(valorActual) ? String(valorActual).trim() : "");
+  const heredadaInvalida = !!valorActual && !esIdMl(valorActual);
 
   const buscar = useCallback(async (texto: string) => {
     const q = texto.trim();
-    if (q.length < 2) { setOpciones([]); return; }
+    if (q.length < 2) { setOpciones([]); setFallo(null); return; }
     setBuscando(true); setFallo(null);
     try {
       const r = await fetch(
-        "https://api.mercadolibre.com/sites/MLU/domain_discovery/search?limit=8&q=" + encodeURIComponent(q)
+        "https://api.mercadolibre.com/sites/MLU/domain_discovery/search?limit=10&q=" + encodeURIComponent(q)
       );
       if (!r.ok) throw new Error("Mercado Libre respondio " + r.status);
       const d = await r.json();
@@ -1179,96 +1253,206 @@ function SelectorCategoria({ titulo, valorActual, valor, onChange }: {
     }
   }, []);
 
-  // Sugerencia inicial a partir del titulo, que es el dato que ya existe.
-  useEffect(() => { void buscar(titulo ?? ""); }, [titulo, buscar]);
-
-  // De la categoria elegida se muestra la ruta completa: el id solo no permite
-  // verificar si es la correcta.
+  // Al abrir se sugiere por el titulo del producto, que es el dato que ya
+  // existe, y el foco va a la busqueda para poder escribir de una.
   useEffect(() => {
-    let cancelado = false;
-    if (!esIdMl(elegido)) { setRuta(null); return; }
-    (async () => {
-      try {
-        const r = await fetch("https://api.mercadolibre.com/categories/" + elegido);
-        if (!r.ok) return;
-        const d = await r.json();
-        const camino = (d?.path_from_root ?? []).map((x: any) => x?.name).filter(Boolean).join(" > ");
-        if (!cancelado) setRuta(camino || d?.name || null);
-      } catch (_) { /* la ruta es una ayuda, no un requisito */ }
-    })();
-    return () => { cancelado = true; };
-  }, [elegido]);
+    if (!abierto) return;
+    busca.current?.focus();
+    if (!consulta.trim()) void buscar(titulo ?? "");
+  }, [abierto]);
 
-  const heredadaInvalida = valorActual && !esIdMl(valorActual);
+  // Cerrar con clic afuera o con Escape. Sin esto la lista queda abierta y
+  // tapando el resto del formulario.
+  useEffect(() => {
+    if (!abierto) return;
+    const afuera = (e: MouseEvent) => {
+      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
+    };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); setAbierto(false); }
+    };
+    document.addEventListener("mousedown", afuera);
+    document.addEventListener("keydown", tecla, true);
+    return () => {
+      document.removeEventListener("mousedown", afuera);
+      document.removeEventListener("keydown", tecla, true);
+    };
+  }, [abierto]);
+
+  const elegir = (id: string) => { onChange(id); setAbierto(false); };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 12, color: T.textMuted }}>
-        Categoria de Mercado Libre
-        {elegido
-          ? <span style={{ color: T.success }}> - {elegido}</span>
-          : <span style={{ color: T.danger }}> - falta</span>}
-      </span>
+    <div ref={caja} style={{ display: "flex", flexDirection: "column", gap: 5, position: "relative" }}>
+      <span style={{ fontSize: 12, color: T.textMuted }}>Categoria de Mercado Libre</span>
+
+      <button onClick={() => setAbierto((v) => !v)} style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        padding: "9px 11px", fontSize: 13, textAlign: "left", cursor: "pointer",
+        background: T.bgCard, color: T.textDark,
+        border: "1px solid " + (elegido ? T.border : T.danger),
+        borderRadius: T.radiusSm,
+      }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {elegido
+            ? (ruta ? ruta : elegido)
+            : <span style={{ color: T.danger }}>Sin categoria - elegi una</span>}
+        </span>
+        <span style={{ fontSize: 11, color: T.textMuted, whiteSpace: "nowrap" }}>
+          {elegido ? elegido + "  v" : "v"}
+        </span>
+      </button>
 
       {heredadaInvalida && !valor && (
         <div style={{ fontSize: 11, color: T.warning, background: T.warningBg, padding: "6px 8px", borderRadius: T.radiusSm }}>
-          "{valorActual}" es una categoria de tu catalogo, no de Mercado Libre. Elegi una de la lista.
+          "{valorActual}" es una categoria de tu catalogo, no de Mercado Libre.
         </div>
       )}
 
-      {elegido && ruta && (
-        <div style={{ fontSize: 11, color: T.textDark }}>{ruta}</div>
-      )}
-
-      <input
-        value={consulta}
-        onChange={(e) => { setConsulta(e.target.value); void buscar(e.target.value); }}
-        placeholder="Busca la categoria: ej. remera, celular, zapatillas"
-        style={{
-          padding: "8px 10px", border: "1px solid " + T.border,
-          borderRadius: T.radiusSm, fontSize: 13, outline: "none",
-        }} />
-
-      {buscando && <div style={{ fontSize: 11, color: T.textMuted }}>Buscando en Mercado Libre...</div>}
-
-      {fallo && (
-        <div style={{ fontSize: 11, color: T.textMuted, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span>{fallo}. Si sabes el id, escribilo:</span>
-          <input value={valor} onChange={(e) => onChange(e.target.value)} placeholder="MLU1234"
-            style={{ padding: "3px 6px", border: "1px solid " + T.border, borderRadius: T.radiusSm, fontSize: 12, width: 110 }} />
-        </div>
-      )}
-
-      {opciones.length > 0 && (
+      {abierto && (
         <div style={{
-          display: "flex", flexDirection: "column", gap: 2,
-          maxHeight: 190, overflowY: "auto",
-          border: "1px solid " + T.borderLight, borderRadius: T.radiusSm,
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 30, marginTop: 4,
+          background: T.bgCard, border: "1px solid " + T.border, borderRadius: T.radiusSm,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.14)", overflow: "hidden",
         }}>
-          {opciones.map((o) => {
-            const activa = o.id === elegido;
-            return (
-              <button key={o.id} onClick={() => onChange(o.id)} style={{
-                textAlign: "left", padding: "7px 10px", fontSize: 12,
-                background: activa ? T.primary : "transparent",
-                color: activa ? "#fff" : T.textDark,
-                border: "none", cursor: "pointer",
-              }}>
-                {o.nombre}
-                <span style={{ opacity: 0.65, marginLeft: 6, fontSize: 11 }}>
-                  {o.dominio ? o.dominio + " - " : ""}{o.id}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+          <input ref={busca}
+            value={consulta}
+            onChange={(e) => { setConsulta(e.target.value); void buscar(e.target.value); }}
+            placeholder="Que es el producto? ej. remera, celular, analgesico"
+            style={{
+              width: "100%", boxSizing: "border-box", padding: "9px 11px", fontSize: 13,
+              border: "none", borderBottom: "1px solid " + T.borderLight, outline: "none",
+            }} />
 
-      {!buscando && !fallo && opciones.length === 0 && consulta.trim().length >= 2 && (
-        <div style={{ fontSize: 11, color: T.textMuted }}>
-          Mercado Libre no sugirio ninguna categoria para "{consulta.trim()}". Proba con otra palabra.
+          <div style={{ maxHeight: 220, overflowY: "auto" }}>
+            {buscando && (
+              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>Buscando...</div>
+            )}
+
+            {!buscando && fallo && (
+              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>
+                {fallo}. Si sabes el id, escribilo y apreta Enter:
+                <input placeholder="MLU1234"
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    if (esIdMl(v)) elegir(v);
+                  }}
+                  style={{ marginTop: 6, padding: "4px 7px", fontSize: 12, width: "100%", boxSizing: "border-box",
+                           border: "1px solid " + T.border, borderRadius: T.radiusSm }} />
+              </div>
+            )}
+
+            {!buscando && !fallo && opciones.length === 0 && (
+              <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>
+                {consulta.trim().length >= 2
+                  ? "Sin resultados para \"" + consulta.trim() + "\". Proba con otra palabra."
+                  : "Escribi que es el producto para ver categorias."}
+              </div>
+            )}
+
+            {!buscando && opciones.map((o) => {
+              const activa = o.id === elegido;
+              return (
+                <button key={o.id} onClick={() => elegir(o.id)} style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  padding: "8px 11px", fontSize: 12, cursor: "pointer", border: "none",
+                  background: activa ? T.primary : "transparent",
+                  color: activa ? "#fff" : T.textDark,
+                }}>
+                  {o.nombre}
+                  <span style={{ opacity: 0.65, marginLeft: 6, fontSize: 11 }}>
+                    {o.dominio ? o.dominio + " - " : ""}{o.id}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Atributos que la categoria elegida exige.
+ *
+ * Es la respuesta concreta a "que falta": Mercado Libre publica, por
+ * categoria, cuales atributos son obligatorios. Decir "faltan datos
+ * obligatorios" sin nombrarlos deja a la persona adivinando.
+ *
+ * Lo que se completa aca se guarda en channel_attrs.extra_attributes, que
+ * publicar-en-ml ya mezcla en el payload; no hace falta tocar la funcion.
+ */
+function AtributosCategoria({ categoria, valores, onChange, onFaltan }: {
+  categoria: string;
+  valores: Record<string, string>;
+  onChange: (id: string, valor: string) => void;
+  onFaltan: (nombres: string[]) => void;
+}) {
+  const [reqs, setReqs] = useState<Array<{ id: string; nombre: string; opciones: string[] }> | null>(null);
+  const [fallo, setFallo] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    setReqs(null); setFallo(false);
+    if (!esIdMl(categoria)) return;
+    (async () => {
+      try {
+        const r = await fetch("https://api.mercadolibre.com/categories/" + categoria + "/attributes");
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json();
+        const lista = (Array.isArray(d) ? d : [])
+          .filter((a: any) => a?.tags?.required)
+          .map((a: any) => ({
+            id: String(a.id),
+            nombre: String(a.name ?? a.id),
+            opciones: (a.values ?? []).map((v: any) => String(v?.name)).filter(Boolean).slice(0, 60),
+          }));
+        if (!cancelado) setReqs(lista);
+      } catch (_) {
+        if (!cancelado) setFallo(true);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [categoria]);
+
+  // El resumen de arriba tiene que poder nombrar estos atributos: si no, la
+  // persona lee "faltan datos" y no sabe cuales.
+  useEffect(() => {
+    if (reqs === null) { onFaltan([]); return; }
+    onFaltan(reqs.filter((a) => !(valores[a.id] ?? "").trim()).map((a) => a.nombre));
+  }, [reqs, valores, onFaltan]);
+
+  if (fallo || reqs === null || reqs.length === 0) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 12, color: T.textMuted }}>
+        Esta categoria exige {reqs.length === 1 ? "este atributo" : "estos atributos"}:
+      </div>
+      {reqs.map((a) => {
+        const v = valores[a.id] ?? "";
+        return (
+          <label key={a.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>
+              {a.nombre}
+              {!v.trim() && <span style={{ color: T.danger }}> - falta</span>}
+            </span>
+            <input list={a.opciones.length ? "opc-" + a.id : undefined}
+              value={v}
+              onChange={(e) => onChange(a.id, e.target.value)}
+              style={{
+                padding: "8px 10px", border: "1px solid " + (v.trim() ? T.border : T.danger),
+                borderRadius: T.radiusSm, fontSize: 13, outline: "none",
+              }} />
+            {a.opciones.length > 0 && (
+              <datalist id={"opc-" + a.id}>
+                {a.opciones.map((o) => <option key={o} value={o} />)}
+              </datalist>
+            )}
+          </label>
+        );
+      })}
     </div>
   );
 }
