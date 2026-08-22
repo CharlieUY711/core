@@ -92,12 +92,10 @@ MercadoPago/PayPal/Resend anything, META, RLS policies, `package.json`,
 `tsconfig.json`, any file under the design-token thread (DEC-007/008).
 
 ## Tests
-No test framework in this repo. Manual verification only — see
-DECISIONS.md's DEC-011 "Testing" subsection for exactly what was checked.
+- build (build): PASS
 
 ## Errors
-None encountered while implementing. `tsc --noEmit` surfaced a
-pre-existing, unrelated `node_modules` gap (documented, not fixed).
+None
 
 ## Decisions
 DEC-011: **IMPLEMENTED (partial, by design)**. See DECISIONS.md for the
