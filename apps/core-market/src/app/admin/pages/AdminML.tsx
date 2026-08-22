@@ -830,6 +830,7 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
   const [guardando, setGuard] = useState(false);
   const [aviso, setAviso]     = useState<string | null>(null);
   const [ruta, setRuta]       = useState<string | null>(null);
+
   // Atributos obligatorios de la categoria. Se arrancan con lo ya guardado en
   // channel_attrs.extra_attributes para no pedir dos veces lo mismo.
   const [atrs, setAtrs] = useState<Record<string, string>>(() => {
@@ -1001,13 +1002,13 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
         if (error) throw new Error(error.message);
       }
 
-      const r = await callPublicar(fila.variant_id);
-      if (r?.ok) { onClose(); onGuardado?.(); }
-      else {
-        const t = traducirErrorMl(r);
-        setAviso(t.accion ? `${t.motivo} — ${t.accion}` : t.motivo);
-        onGuardado?.();
-      }
+      // Los datos ya estan guardados. El intento de publicar puede salir o no,
+      // pero en los dos casos se cierra: el resultado vive en la tabla, en la
+      // columna Ultimo error, y desde ahi se vuelve a entrar con Ver. Dejar el
+      // modal abierto duplicaria el mismo estado en dos lugares.
+      await callPublicar(fila.variant_id);
+      onGuardado?.();
+      onClose();
     } catch (e: any) {
       setAviso(e.message || "No se pudo guardar");
     } finally {
@@ -1117,10 +1118,21 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                         {traduccion.accion ? " — " + traduccion.accion : ""}
                       </div>
                     )}
-                    {traduccion && !traduccion.reconocido && (
-                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
-                        Mercado Libre dijo: {traduccion.crudo}
-                      </div>
+                    {/* El original nunca se oculta: si la traduccion no
+                        acerto, el texto de Mercado Libre es lo unico que
+                        sirve para entender el rechazo. */}
+                    {traduccion && (
+                      <details style={{ marginTop: 4 }}>
+                        <summary style={{ fontSize: 11, color: T.textMuted, cursor: "pointer" }}>
+                          Ver lo que respondió Mercado Libre
+                        </summary>
+                        <pre style={{
+                          fontSize: 10, color: T.textBody, background: T.bgMain,
+                          padding: 8, borderRadius: T.radiusSm, marginTop: 6,
+                          maxHeight: 180, overflow: "auto",
+                          whiteSpace: "pre-wrap", wordBreak: "break-word",
+                        }}>{traduccion.crudo}</pre>
+                      </details>
                     )}
                   </div>
                   {faltantes.map((f) => f.campo === "category_id" ? (
@@ -1155,7 +1167,15 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                         }} />
                     </label>
                   ))}
-                  {aviso && <div style={{ fontSize: 12, color: T.danger }}>{aviso}</div>}
+                  {/* Solo problemas al guardar: si se llego a publicar, el
+                      resultado se ve en la tabla y el modal ya se cerro. */}
+                  {aviso && (
+                    <div style={{
+                      background: T.dangerBg, border: `1px solid ${T.danger}`,
+                      borderRadius: T.radiusSm, padding: "8px 10px",
+                      fontSize: 12, color: T.danger, fontWeight: 600,
+                    }}>{aviso}</div>
+                  )}
                 </div>
               )}
 
@@ -1179,7 +1199,7 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
         }}>
           <Btn label="Cerrar" variant="secondary" disabled={guardando} onClick={onClose} />
           {faltantes.length > 0 && (
-            <Btn label={guardando ? "Guardando…" : (traduccion ? "Guardar y reintentar" : "Guardar y publicar")} variant="primary"
+            <Btn label={guardando ? "Publicando…" : (traduccion ? "Guardar y reintentar" : "Guardar y publicar")} variant="primary"
               disabled={guardando} onClick={guardarYPublicar} />
           )}
           {urlMl && (
