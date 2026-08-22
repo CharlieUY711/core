@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
@@ -177,8 +177,8 @@ const fmtP = (n:number,m="UYU") => m+" "+Number(n).toLocaleString("es-UY");
 const ROJO_SYNC = "#EF4444";
 const VERDE_SYNC = "#16A34A";
 
-function Canal({c,estado,sel,onClick}:{
-  c:CanalUI; estado:EstadoCanal; sel:boolean; onClick:()=>void;
+function Canal({c,estado,sel,ocupado,onClick}:{
+  c:CanalUI; estado:EstadoCanal; sel:boolean; ocupado?:boolean; onClick:()=>void;
 }) {
   const [dn,setDn]=useState(false);
   const borde = estado==="error" ? ROJO_SYNC : estado==="ok" ? VERDE_SYNC : c.color;
@@ -186,7 +186,8 @@ function Canal({c,estado,sel,onClick}:{
                 : estado==="espera" ? c.color : "#fff";
   const texto = estado==="off" ? c.color
               : estado==="espera" ? c.tc : "#fff";
-  const titulo = estado==="error" ? "Con error — clic para ver que corregir"
+  const titulo = ocupado ? "Sincronizando…"
+               : estado==="error" ? "Con error — clic para ver que corregir"
                : estado==="ok"    ? "Publicado"
                : estado==="espera"? "Habilitado, todavia sin publicar"
                : "Sin publicar en este canal";
@@ -200,7 +201,8 @@ function Canal({c,estado,sel,onClick}:{
         outline: sel ? `2px solid ${borde}` : "none", outlineOffset: sel ? 1 : 0,
         boxShadow: estado!=="off" ? "inset 0 2px 5px rgba(0,0,0,.18)" : "0 2px 3px rgba(0,0,0,.08)",
         transform:dn?"translateY(1px) scale(.97)":"none",transition:"all .1s",
-      }}>{c.label}</button>
+        opacity:ocupado?.55:1,
+      }}>{ocupado?"···":c.label}</button>
   );
 }
 
@@ -326,7 +328,15 @@ export default function AdminPublicaciones() {
   const [dirty,  setDirty]  = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const notify=(t:string,ok=true)=>{setToast({text:t,ok});setTimeout(()=>setToast(null),3000);};
+  // Un error tiene que poder leerse: dura mas que una confirmacion, que solo
+  // hay que registrar de reojo. Y se cancela el anterior para que dos avisos
+  // seguidos no se pisen el temporizador.
+  const tToast=useRef<number|undefined>(undefined);
+  const notify=(t:string,ok=true)=>{
+    window.clearTimeout(tToast.current);
+    setToast({text:t,ok});
+    tToast.current=window.setTimeout(()=>setToast(null),ok?3000:9000);
+  };
 
   const reload = useCallback(async()=>{
     setLoad(true);
@@ -394,6 +404,9 @@ export default function AdminPublicaciones() {
   // misma pasada, que es lo que se hace cuando cada uno fallo por su lado.
   const [chips,setChips]=useState<Set<string>>(new Set());
   const [sincro,setSincro]=useState(false);
+  // Chips en vuelo: sin esto la pantalla no cambia nada mientras se publica y
+  // parece que el boton no hizo nada.
+  const [sincronizando,setSincronizando]=useState<Set<string>>(new Set());
   // Lo que falta por articulo, segun la verificacion del servidor.
   const [problemas,setProblemas]=useState<Record<string,ProblemaPublicacion[]>>({});
   // Que canal se estaba mirando cuando se pidieron los problemas: el mismo
@@ -475,11 +488,17 @@ export default function AdminPublicaciones() {
    */
   const sincronizar=async()=>{
     const pares=[...chips].map(k=>{const [id,canal]=k.split("|");return {id,canal};});
-    if(!pares.length){notify("Elegí al menos un canal en la columna Sync",false);return;}
+    if(!pares.length){
+      notify("Primero elegí en qué canal publicar: tocá su botón en la columna Sync",false);
+      return;
+    }
     setSincro(true);
     let ok=0; const fallos:string[]=[];
     for(const {id,canal} of pares){
+      const k=claveChip(id,canal);
+      setSincronizando(p=>new Set(p).add(k));
       const r=await sincronizarCanal(id,canal);
+      setSincronizando(p=>{const n=new Set(p);n.delete(k);return n;});
       if(r.ok){ok++;continue;}
       const nombre=arts.find(a=>a.id===id)?.nombre??id;
       // El motor ya devuelve el motivo redactado: quien lista no sabe traducir
@@ -903,11 +922,31 @@ export default function AdminPublicaciones() {
                     </div>
                   </>
                 )}
-                {problemas[a.id].length===0&&(
-                  <div style={{fontSize:"0.78rem",color:"#374151",marginTop:2}}>
-                    Seleccioná el canal en la columna Sync y usá Sincronizar.
-                  </div>
-                )}
+                {problemas[a.id].length===0&&(()=>{
+                  // Que no falte nada no significa que el ultimo intento haya
+                  // salido bien. Si el canal quedo en error, decirlo: si no, se
+                  // lee "todo bien" arriba de un chip rojo y no cierra.
+                  const canal=canalConProblema[a.id];
+                  const l=(a.canales??[]).find((x:any)=>x.channel===canal);
+                  const err=l?.status==="error"?l?.last_error:null;
+                  return (
+                    <div style={{fontSize:"0.78rem",color:"#374151",marginTop:2}}>
+                      {err
+                        ? <>El intento anterior falló, pero ya no falta ningún dato.
+                            Volvé a tocar el canal y usá Sincronizar.
+                            <details style={{marginTop:5}}>
+                              <summary style={{cursor:"pointer",color:"var(--gray-400)",fontSize:"0.72rem"}}>
+                                Ver el rechazo anterior
+                              </summary>
+                              <pre style={{fontSize:"0.68rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
+                                background:"#fff",border:"1px solid var(--border)",borderRadius:6,
+                                padding:7,marginTop:5,maxHeight:120,overflow:"auto"}}>{String(err)}</pre>
+                            </details>
+                          </>
+                        : "Tocá el canal en la columna Sync y usá Sincronizar."}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -1052,8 +1091,11 @@ export default function AdminPublicaciones() {
             <Accion label="Eliminar"  dis={!has} color="#EF4444"
               onClick={()=>eliminar(activeIds)}/>
             <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
+            {/* Sin chips elegidos el boton no se apaga: se aprieta y dice que
+                falta elegir. Un boton apagado que no explica por que es la
+                misma pregunta -"paso algo?"- sin respuesta. */}
             <Accion label={sincro?"Sincronizando…":"Sincronizar"+(chips.size?" ("+chips.size+")":"")}
-              destacado color={BLUE} dis={sincro||chips.size===0}
+              destacado color={BLUE} dis={sincro}
               onClick={sincronizar}/>
           </div>
 
@@ -1187,10 +1229,16 @@ export default function AdminPublicaciones() {
                               return (
                                 <Canal key={c.key} c={c} estado={est}
                                   sel={chips.has(claveChip(a.id,c.channel))}
-                                  // Un chip en rojo no se selecciona: lo que hace
-                                  // falta ahi es ver que corregir, no reintentar
-                                  // lo mismo y que vuelva a fallar.
-                                  onClick={()=>est==="error"?verProblemas(a,c.channel):togChip(a.id,c.channel)}/>
+                                  ocupado={sincronizando.has(claveChip(a.id,c.channel))}
+                                  // Un chip en rojo hace las dos cosas: queda
+                                  // elegido y abre lo que hay que corregir. Que
+                                  // no se pudiera elegir bloqueaba justo el
+                                  // reintento despues de arreglarlo, y el boton
+                                  // quedaba apagado sin decir por que.
+                                  onClick={()=>{
+                                    togChip(a.id,c.channel);
+                                    if(est==="error")verProblemas(a,c.channel);
+                                  }}/>
                               );
                             })}
                           </div>
