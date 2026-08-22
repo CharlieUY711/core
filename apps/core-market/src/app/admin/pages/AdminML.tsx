@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { traducirErrorMl, resumirErrorMl } from "../utils/mlErrores";
+import { traducirErrorMl, resumirErrorMl, camposAEditar } from "../utils/mlErrores";
 import { supabase } from "../../../utils/supabase/client";
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string;
@@ -153,6 +153,8 @@ export default function AdminML() {
   const [loading,       setLoading]       = useState(true);
   const [credsLoading,  setCredsLoading]  = useState(true);
   const [saving,        setSaving]        = useState<string | null>(null);
+  // Fila cuya vista previa se esta mostrando; null = modal cerrado.
+  const [preview,       setPreview]       = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msg,           setMsg]           = useState<{ text: string; type: "ok" | "err" | "warn" } | null>(null);
 
@@ -431,6 +433,8 @@ export default function AdminML() {
   return (
     <div style={{ fontFamily: T.fontBase, display: "flex", flexDirection: "column", gap: 0 }}>
 
+      {preview && <ModalPreview fila={preview} onClose={() => setPreview(null)} onGuardado={load} />}
+
       {/* Header */}
       <div style={{
         background: T.bgCard, borderRadius: T.radiusLg,
@@ -659,7 +663,7 @@ export default function AdminML() {
               variant="primary" disabled={saving === "all"} onClick={handleProcesarCola} />
           </div>
           <Card>
-            <TableHeader cols={["Producto", "SKU", "Estado", "Último error", "Acciones"]} />
+            <TableHeader cols={["Producto", "SKU", "Estado", "Último error", "Ver", "Acciones"]} />
             <tbody>
               {pendientes.length === 0 ? (
                 <EmptyRow colSpan={5} text="Cola vacía ✓" success />
@@ -685,6 +689,10 @@ export default function AdminML() {
                             </span>
                           ); })()
                       : "—"}
+                  </td>
+                  <td style={{ padding: "10px 16px" }}>
+                    <Btn label="👁 Ver" variant="secondary" size="xs"
+                      disabled={false} onClick={() => setPreview(l)} />
                   </td>
                   <td style={{ padding: "10px 16px" }}>
                     <Btn label="▶ Publicar" variant="primary" size="xs"
@@ -795,6 +803,250 @@ function TabBtn({ label, active, accentColor, hasAlert, onClick }: {
         }} />
       )}
     </button>
+  );
+}
+
+
+/**
+ * Vista previa de una publicacion, sin salir del panel.
+ *
+ * Dos fuentes segun el estado, porque significan cosas distintas:
+ *  - Ya publicado (hay external_id): se trae el item real de la API publica de
+ *    Mercado Libre. Es lo que el comprador ve hoy, no lo que creemos haber
+ *    mandado.
+ *  - Todavia en cola: se arma desde nuestro catalogo via catalog_vidriera, la
+ *    misma puerta publica que usa la tienda. Es "asi se va a publicar".
+ *
+ * El boton de abrir en Mercado Libre usa el permalink que devuelve su API; si
+ * no hay, se cae al buscador por id. Nunca se inventa una URL.
+ */
+function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () => void; onGuardado?: () => void }) {
+  const [datos, setDatos]   = useState<any>(null);
+  const [cargando, setCarg] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
+  const publicado = Boolean(fila?.external_id);
+  // Edicion en linea: lo que falta se corrige aca, sin ir a otra pantalla.
+  const [edit, setEdit]       = useState<Record<string, string>>({});
+  const [guardando, setGuard] = useState(false);
+  const [aviso, setAviso]     = useState<string | null>(null);
+  const faltantes = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setCarg(true); setError(null);
+      try {
+        if (publicado) {
+          const r = await fetch(`https://api.mercadolibre.com/items/${fila.external_id}`);
+          if (!r.ok) throw new Error(`Mercado Libre respondio ${r.status}`);
+          const d = await r.json();
+          if (!cancelado) setDatos({
+            titulo: d.title, precio: d.price, moneda: d.currency_id,
+            stock: d.available_quantity, estado: d.status,
+            imagenes: (d.pictures ?? []).map((p: any) => p.secure_url ?? p.url),
+            permalink: d.permalink, categoria: d.category_id, real: true,
+          });
+        } else {
+          const { data, error } = await supabase.rpc("catalog_vidriera", { p_ids: [fila.variant_id] });
+          if (error) throw new Error(error.message);
+          const p = (data ?? [])[0];
+          if (!p) throw new Error("El producto no esta publicado en la tienda, asi que no hay nada que previsualizar todavia.");
+          if (!cancelado) setDatos({
+            titulo: p.nombre, precio: Number(p.precio), moneda: p.moneda,
+            stock: p.stock, estado: null, descripcion: p.descripcion,
+            imagenes: (p.imagenes ?? []).map((i: any) => i.url ?? i),
+            permalink: null, categoria: fila?.channel_attrs?.category_id ?? null, real: false,
+          });
+        }
+      } catch (e: any) {
+        if (!cancelado) setError(e.message || "No se pudo cargar la vista previa");
+      } finally {
+        if (!cancelado) setCarg(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [fila, publicado]);
+
+  /**
+   * Guarda las correcciones y vuelve a publicar, sin salir del modal.
+   * La categoria vive en channel_attrs del listing; el resto son datos del
+   * producto y van por actualizar_publicacion, el mismo RPC que usa la
+   * pantalla de publicaciones.
+   */
+  const guardarYPublicar = async () => {
+    setGuard(true); setAviso(null);
+    try {
+      const cat = edit["category_id"]?.trim();
+      if (cat) {
+        const attrs = { ...(fila.channel_attrs ?? {}), category_id: cat, category_id_origen: "manual" };
+        const { error } = await supabase
+          .from("catalog_listings").update({ channel_attrs: attrs }).eq("id", fila.listing_id);
+        if (error) throw new Error(error.message);
+      }
+
+      const patch: Record<string, unknown> = { p_variant_id: fila.variant_id };
+      if (edit["title"]?.trim())       patch.p_title       = edit["title"].trim();
+      if (edit["description"]?.trim()) patch.p_description = edit["description"].trim();
+      if (edit["price"]?.trim())       patch.p_price       = Number(edit["price"]);
+      if (edit["stock"]?.trim())       patch.p_stock       = parseInt(edit["stock"], 10);
+      if (Object.keys(patch).length > 1) {
+        const { error } = await supabase.rpc("actualizar_publicacion", patch);
+        if (error) throw new Error(error.message);
+      }
+
+      const r = await callPublicar(fila.variant_id);
+      if (r?.ok) { onClose(); onGuardado?.(); }
+      else {
+        const t = traducirErrorMl(r);
+        setAviso(t.accion ? `${t.motivo} — ${t.accion}` : t.motivo);
+        onGuardado?.();
+      }
+    } catch (e: any) {
+      setAviso(e.message || "No se pudo guardar");
+    } finally {
+      setGuard(false);
+    }
+  };
+
+  const urlMl = datos?.permalink
+    ?? (fila?.external_id ? `https://articulo.mercadolibre.com.uy/${fila.external_id}` : null);
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(8,28,56,.55)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: T.bgCard, borderRadius: T.radiusLg, maxWidth: 620, width: "100%",
+        maxHeight: "85vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(8,28,56,.3)",
+      }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "16px 20px", borderBottom: `1px solid ${T.borderLight}`,
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, color: T.textDark }}>
+              {publicado ? "Publicacion en Mercado Libre" : "Asi se va a publicar"}
+            </div>
+            <div style={{ fontSize: 12, color: T.textMuted }}>
+              {publicado
+                ? `Datos reales de Mercado Libre · ${fila.external_id}`
+                : "Vista previa desde tu catalogo · todavia no esta en Mercado Libre"}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" style={{
+            border: "none", background: "none", fontSize: 22, cursor: "pointer", color: T.textMuted,
+          }}>x</button>
+        </div>
+
+        <div style={{ padding: 20 }}>
+          {cargando && <div style={{ color: T.textMuted }}>Cargando vista previa...</div>}
+
+          {error && !cargando && (
+            <div style={{
+              background: T.dangerBg, color: T.danger, padding: "10px 12px",
+              borderRadius: T.radiusMd, fontSize: 13,
+            }}>{error}</div>
+          )}
+
+          {datos && !cargando && !error && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {datos.imagenes?.length > 0 && (
+                <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+                  {datos.imagenes.slice(0, 6).map((u: string, i: number) => (
+                    <img key={i} src={u} alt="" style={{
+                      width: 92, height: 92, objectFit: "cover", borderRadius: T.radiusMd,
+                      border: `1px solid ${T.borderLight}`, flexShrink: 0,
+                    }} />
+                  ))}
+                </div>
+              )}
+
+              <div style={{ fontSize: 17, fontWeight: 700, color: T.textDark }}>{datos.titulo}</div>
+
+              <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: T.primary }}>
+                  {datos.moneda} {Number(datos.precio ?? 0).toLocaleString("es-UY")}
+                </span>
+                <span style={{ fontSize: 13, color: T.textMuted }}>Stock: {datos.stock ?? 0}</span>
+                {datos.estado && <span style={{ fontSize: 13, color: T.textMuted }}>Estado: {datos.estado}</span>}
+              </div>
+
+              {datos.categoria && (
+                <div style={{ fontSize: 12, color: T.textMuted }}>
+                  Categoria: {datos.categoria}
+                  {fila?.channel_attrs?.category_id_origen === "prediccion_ml" && !publicado && (
+                    <span style={{ color: T.warning }}> · sugerida automaticamente</span>
+                  )}
+                </div>
+              )}
+
+              {datos.descripcion && (
+                <div style={{ fontSize: 13, color: T.textBody, whiteSpace: "pre-wrap" }}>
+                  {String(datos.descripcion).slice(0, 400)}
+                  {String(datos.descripcion).length > 400 ? "..." : ""}
+                </div>
+              )}
+
+              {faltantes.length > 0 && (
+                <div style={{
+                  border: `1px solid ${T.border}`, borderRadius: T.radiusMd, padding: 14,
+                  display: "flex", flexDirection: "column", gap: 10,
+                }}>
+                  <div style={{ fontWeight: 700, color: T.textDark, fontSize: 14 }}>
+                    Datos que Mercado Libre pide
+                  </div>
+                  {faltantes.map((f) => (
+                    <label key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: T.textMuted }}>
+                        {f.etiqueta}
+                        {f.vacio
+                          ? <span style={{ color: T.danger }}> · falta</span>
+                          : <span style={{ color: T.textMuted }}> · actual: {String(f.actual)}</span>}
+                      </span>
+                      <input
+                        value={edit[f.campo] ?? (f.vacio ? "" : String(f.actual ?? ""))}
+                        onChange={(e) => setEdit((p) => ({ ...p, [f.campo]: e.target.value }))}
+                        placeholder={f.campo === "category_id" ? "Ej: MLU1234" : ""}
+                        style={{
+                          padding: "8px 10px", border: `1px solid ${T.border}`,
+                          borderRadius: T.radiusSm, fontSize: 13, outline: "none",
+                        }} />
+                    </label>
+                  ))}
+                  {aviso && <div style={{ fontSize: 12, color: T.danger }}>{aviso}</div>}
+                </div>
+              )}
+
+              {!publicado && (
+                <div style={{
+                  background: T.warningBg, color: T.warning, padding: "8px 12px",
+                  borderRadius: T.radiusMd, fontSize: 12,
+                }}>
+                  Todavia no esta en Mercado Libre. Esto es lo que se enviaria al publicar.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          display: "flex", justifyContent: "flex-end", gap: 8,
+          padding: "14px 20px", borderTop: `1px solid ${T.borderLight}`,
+        }}>
+          <Btn label="Cerrar" variant="secondary" disabled={guardando} onClick={onClose} />
+          {faltantes.length > 0 && (
+            <Btn label={guardando ? "Guardando…" : "Guardar y publicar"} variant="primary"
+              disabled={guardando} onClick={guardarYPublicar} />
+          )}
+          {urlMl && (
+            <a href={urlMl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+              <Btn label="Abrir en Mercado Libre" variant="primary" disabled={false} onClick={() => {}} />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

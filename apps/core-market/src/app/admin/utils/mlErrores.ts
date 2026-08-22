@@ -211,3 +211,69 @@ export function resumirErrorMl(respuesta: any): string {
   const t = traducirErrorMl(respuesta);
   return t.accion ? `${t.motivo} — ${t.accion}` : t.motivo;
 }
+
+
+/**
+ * Campos que Mercado Libre reporta como faltantes, cruzados con lo que la
+ * publicacion tiene realmente cargado.
+ *
+ * ML nombra los campos en su vocabulario (category_id, price...). Esto los
+ * traduce a los campos que la persona puede editar, y marca cuales estan
+ * vacios de verdad segun el dato actual: un campo puede figurar en el error de
+ * ML y estar cargado de nuestro lado, y en ese caso no sirve pedir que lo
+ * complete otra vez.
+ */
+export interface CampoFaltante {
+  /** Clave editable: title | price | stock | description | category_id */
+  campo: string;
+  etiqueta: string;
+  /** Valor actual, si hay. */
+  actual: string | number | null;
+  /** true si de verdad esta vacio de nuestro lado. */
+  vacio: boolean;
+}
+
+const EDITABLES: Record<string, string> = {
+  category_id: "Categoría de Mercado Libre",
+  title:       "Título",
+  price:       "Precio",
+  stock:       "Stock",
+  description: "Descripción",
+};
+
+export function camposAEditar(errorCrudo: any, datos: any): CampoFaltante[] {
+  const t = traducirErrorMl(errorCrudo);
+  const texto = t.crudo;
+
+  // Campos que ML nombro explicitamente entre corchetes.
+  const nombrados = new Set<string>();
+  const m = texto.match(/\[([^\]]+)\]/);
+  if (m) m[1].split(",").map((x) => x.trim()).forEach((x) => nombrados.add(x));
+
+  // family_name aplica a productos de catalogo de ML; para una publicacion
+  // propia lo que hace falta es la categoria, asi que no se pide aparte.
+  nombrados.delete("family_name");
+
+  // Si el motivo es de categoria, se pide aunque ML no la haya nombrado.
+  if (/categor/i.test(t.motivo)) nombrados.add("category_id");
+  if (/atributos/i.test(t.motivo)) nombrados.add("category_id");
+
+  const valorDe = (campo: string) => {
+    switch (campo) {
+      case "category_id": return datos?.categoria ?? null;
+      case "title":       return datos?.titulo ?? null;
+      case "price":       return datos?.precio ?? null;
+      case "stock":       return datos?.stock ?? null;
+      case "description": return datos?.descripcion ?? null;
+      default:            return null;
+    }
+  };
+
+  return [...nombrados]
+    .filter((c) => c in EDITABLES)
+    .map((campo) => {
+      const actual = valorDe(campo);
+      const vacio = actual === null || actual === undefined || actual === "" || actual === 0;
+      return { campo, etiqueta: EDITABLES[campo], actual, vacio };
+    });
+}
