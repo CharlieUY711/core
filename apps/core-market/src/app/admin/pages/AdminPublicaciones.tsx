@@ -412,6 +412,10 @@ export default function AdminPublicaciones() {
   // Que canal se estaba mirando cuando se pidieron los problemas: el mismo
   // articulo puede fallar distinto en cada uno.
   const [canalConProblema,setCanalConProblema]=useState<Record<string,string>>({});
+  // Un faltante y un rechazo se corrigen igual, pero no se cuentan igual: en el
+  // rechazo el dato existe y el canal no lo acepto. Decir "falta el titulo"
+  // sobre un titulo que esta cargado suena a error nuestro.
+  const [origenProblema,setOrigenProblema]=useState<Record<string,"verificacion"|"rechazo">>({});
 
   // Los canales que se ofrecen son los que su motor declara operativos: no una
   // lista fija, ni lo que haya en los datos. Un canal cuyo modulo no esta
@@ -419,6 +423,9 @@ export default function AdminPublicaciones() {
   // llevaria a un error mas adelante.
   const [canales,setCanales]=useState<CanalUI[]>([]);
   const [canalesFuera,setCanalesFuera]=useState<Array<{nombre:string;motivo:string}>>([]);
+  // Nombre presentable por canal: en los textos va "Mercado Libre", no la clave
+  // interna. Lo declara el motor, que es quien sabe como se llama.
+  const [nombreCanal,setNombreCanal]=useState<Record<string,string>>({});
 
   useEffect(()=>{
     let vivo=true;
@@ -426,6 +433,7 @@ export default function AdminPublicaciones() {
       const {disponibles,bloqueados}=await canalesDisponibles();
       if(!vivo)return;
       setCanales(disponibles.map(d=>canalUI(d.channel)));
+      setNombreCanal(Object.fromEntries(disponibles.map(d=>[d.channel,d.nombre])));
       setCanalesFuera(bloqueados.map(b=>({nombre:b.nombre,motivo:b.motivo})));
     })();
     return ()=>{vivo=false;};
@@ -478,6 +486,7 @@ export default function AdminPublicaciones() {
     const ps=await verificarCanal(a.id,canal);
     setProblemas(p=>({...p,[a.id]:ps}));
     setCanalConProblema(p=>({...p,[a.id]:canal}));
+    setOrigenProblema(p=>({...p,[a.id]:"verificacion"}));
   };
 
   /**
@@ -493,26 +502,45 @@ export default function AdminPublicaciones() {
       return;
     }
     setSincro(true);
-    let ok=0; const fallos:string[]=[];
+    let ok=0; const fallos:string[]=[]; let primerFallo:string|null=null;
     for(const {id,canal} of pares){
       const k=claveChip(id,canal);
       setSincronizando(p=>new Set(p).add(k));
       const r=await sincronizarCanal(id,canal);
       setSincronizando(p=>{const n=new Set(p);n.delete(k);return n;});
       if(r.ok){ok++;continue;}
+
       const nombre=arts.find(a=>a.id===id)?.nombre??id;
       // El motor ya devuelve el motivo redactado: quien lista no sabe traducir
       // la jerga de ningun canal, ni tiene por que aprenderla.
       fallos.push(nombre+" · "+canal+": "+(r.motivo??"No se pudo publicar"));
+
+      // Y devuelve tambien QUE corregir, con la misma forma que un faltante.
+      // Asi el rechazo termina en el formulario de siempre, con el campo
+      // editable, en vez de en un aviso que hay que interpretar.
+      if(r.problemas?.length){
+        setProblemas(p=>({...p,[id]:r.problemas!}));
+        setCanalConProblema(p=>({...p,[id]:canal}));
+        setOrigenProblema(p=>({...p,[id]:"rechazo"}));
+        primerFallo=primerFallo??id;
+      }
     }
     setSincro(false);
     setChips(new Set());
     await reload();
+
+    // Se abre el primero que fallo. Dejar el aviso y la fila cerrada obliga a
+    // buscar cual fue y a abrirla a mano para hacer lo que ya sabemos que hay
+    // que hacer.
+    if(primerFallo){
+      const a=arts.find(x=>x.id===primerFallo);
+      if(a&&exp!==a.id){setEForm({...a});setETab(TABS[0]);setExp(a.id);setDirty(false);}
+    }
     if(fallos.length===0) notify("Sincronizado ✓ ("+ok+")");
     // Con un solo fallo se dice cual; con varios se remite a los chips rojos,
     // que ya senializan cual es cual sin llenar el aviso de texto.
-    else if(fallos.length===1) notify(fallos[0],false);
-    else notify(fallos.length+" fallaron. Los chips en rojo indican cuales; hace clic en uno para ver que corregir.",false);
+    else if(fallos.length===1) notify(fallos[0]+(primerFallo?" — abajo está el campo para corregirlo":""),false);
+    else notify(fallos.length+" fallaron. Tocá cada chip en rojo para ver qué corregir.",false);
   };
 
   const togSync=async(a:Art,k:string)=>{
@@ -875,11 +903,16 @@ export default function AdminPublicaciones() {
               }}>
                 <div style={{fontSize:"0.82rem",fontWeight:800,
                   color:problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}}>
-                  {problemas[a.id].length===0
-                    ? "No falta nada para publicar en "+(canalConProblema[a.id]??"este canal")
-                    : problemas[a.id].length===1
-                      ? "Falta una cosa para publicar en "+(canalConProblema[a.id]??"este canal")
-                      : "Faltan "+problemas[a.id].length+" cosas para publicar en "+(canalConProblema[a.id]??"este canal")}
+                  {(()=>{
+                    const n=problemas[a.id].length;
+                    const donde=nombreCanal[canalConProblema[a.id]]??canalConProblema[a.id]??"este canal";
+                    if(n===0)return "No falta nada para publicar en "+donde;
+                    if(origenProblema[a.id]==="rechazo")
+                      return donde+" rechazó "+(n===1?"este dato":"estos "+n+" datos");
+                    return n===1
+                      ? "Falta una cosa para publicar en "+donde
+                      : "Faltan "+n+" cosas para publicar en "+donde;
+                  })()}
                 </div>
                 {problemas[a.id].length>0&&(
                   <>
@@ -889,7 +922,16 @@ export default function AdminPublicaciones() {
                         mitad del trabajo. */}
                     <div style={{display:"grid",gap:"0.55rem",marginTop:"0.6rem"}}>
                       {problemas[a.id].map((x,i)=>{
-                        const val=correcciones[a.id]?.[x.campo]??x.valor??"";
+                        // Un rechazo no trae el valor actual -el canal informa
+                        // que rechazo, no lo que tenemos-, asi que se toma del
+                        // articulo. Sin esto el campo aparece vacio y parece
+                        // que hay que escribirlo de cero.
+                        const propio=x.campo==="title" ? a.nombre
+                                   : x.campo==="price" ? String(a.precio??"")
+                                   : x.campo==="stock" ? String(a.stock??"")
+                                   : x.campo==="description" ? (a.descripcion??"")
+                                   : "";
+                        const val=correcciones[a.id]?.[x.campo]??x.valor??propio;
                         const listId="opc-"+a.id+"-"+x.campo.replace(/[^a-zA-Z0-9]/g,"");
                         return (
                           <label key={i} style={{display:"block"}}>

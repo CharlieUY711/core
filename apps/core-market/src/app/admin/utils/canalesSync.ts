@@ -21,7 +21,7 @@
  * parte del contrato y no un detalle de cada implementación.
  */
 import { supabase } from "../../../utils/supabase/client";
-import { traducirErrorMl } from "./mlErrores";
+import { traducirErrorMl, etiquetaDeCampo } from "./mlErrores";
 
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY      = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -56,6 +56,15 @@ export interface ResultadoSync {
   accion?: string;
   /** Respuesta original del canal. Nunca se oculta, nunca se muestra sola. */
   crudo?: string;
+  /**
+   * Qué hay que corregir, en la MISMA forma que devuelve `verificar`.
+   *
+   * Un rechazo al publicar y un faltante detectado antes son el mismo problema
+   * visto en dos momentos, y tienen que terminar en el mismo formulario, con
+   * el mismo campo editable. Devolver el rechazo como un texto suelto obligaba
+   * a leer un aviso, deducir qué campo era y buscarlo en otra parte.
+   */
+  problemas?: ProblemaPublicacion[];
 }
 
 export interface MotorCanal {
@@ -197,9 +206,21 @@ const motorMercadoLibre: MotorCanal = {
   async publicar(variantId) {
     const r = await invocar("publicar-en-ml", { variantId });
     if (r?.ok) return { ok: true };
-    // La jerga del proveedor se traduce acá y no en la pantalla.
+    // La jerga del proveedor se traduce acá y no en la pantalla, y se convierte
+    // en los campos a corregir para que el rechazo entre por el mismo lugar
+    // que un faltante.
     const t = traducirErrorMl(r);
-    return { ok: false, motivo: t.motivo, accion: t.accion ?? undefined, crudo: t.crudo };
+    return {
+      ok: false,
+      motivo: t.motivo,
+      accion: t.accion ?? undefined,
+      crudo:  t.crudo,
+      problemas: t.campos.map((campo) => ({
+        campo,
+        etiqueta: etiquetaDeCampo(campo),
+        mensaje:  t.detalle,
+      })),
+    };
   },
 };
 

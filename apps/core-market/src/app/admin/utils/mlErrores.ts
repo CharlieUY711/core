@@ -27,6 +27,15 @@ export interface ErrorTraducido {
   crudo: string;
   /** true si se reconocio el caso; false si es el fallback generico. */
   reconocido: boolean;
+  /**
+   * Campos que hay que tocar para resolverlo.
+   *
+   * Es lo que permite que un rechazo termine en el mismo formulario que un
+   * faltante, con el mismo campo editable, en vez de en un aviso suelto que
+   * obliga a deducir donde ir. Una regla que no puede decir que campo es deja
+   * la lista vacia y se cae al aviso, pero eso es la excepcion y se ve.
+   */
+  campos: string[];
 }
 
 /** Extrae los nombres de campo de "[family_name, category_id]". */
@@ -62,6 +71,22 @@ interface Regla {
   traducir: (codigo: string, mensaje: string) => Omit<ErrorTraducido, "crudo" | "reconocido">;
 }
 
+/**
+ * Etiquetas de los campos editables, para poder armar el formulario desde el
+ * error sin que quien lo muestre sepa de que canal viene.
+ */
+const ETIQUETA_CAMPO: Record<string, string> = {
+  title:       "Título",
+  price:       "Precio",
+  stock:       "Stock",
+  description: "Descripción",
+  pictures:    "Imágenes",
+  category_id: "Categoría de Mercado Libre",
+};
+
+export const etiquetaDeCampo = (campo: string) =>
+  ETIQUETA_CAMPO[campo] ?? (campo.startsWith("attr:") ? campo.slice(5) : campo);
+
 const REGLAS: Regla[] = [
   // family_name es el nombre de familia de producto que Mercado Libre pide en
   // los dominios con catalogo. Lo manda publicar-en-ml derivado del titulo, asi
@@ -69,6 +94,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (_c, m) => /family_name/i.test(m),
     traducir: () => ({
+      campos:  ["title"],
       motivo:  "El titulo no alcanza para esta categoria",
       detalle: "Mercado Libre usa el titulo para armar el nombre de producto y el actual no le sirve: suele pasar con titulos genericos o muy cortos.",
       accion:  "Poner un titulo que describa el producto real",
@@ -85,12 +111,14 @@ const REGLAS: Regla[] = [
 
       if (soloCategoria) {
         return {
+          campos:  ["category_id"],
           motivo:  "Falta la categoría",
           detalle: "Mercado Libre exige una categoría para poder publicar, y este producto todavía no tiene una asignada.",
           accion:  "Asignar la categoría de Mercado Libre",
         };
       }
       return {
+        campos:  camposFaltantes(mensaje).filter((c) => c in ETIQUETA_CAMPO),
         motivo:  campos.length ? `Faltan datos: ${campos.join(", ")}` : "Faltan datos obligatorios",
         detalle: "Mercado Libre rechazó la publicación porque el producto no tiene todos los datos que exige.",
         accion:  "Completar esos datos en el producto",
@@ -105,6 +133,10 @@ const REGLAS: Regla[] = [
     traducir: (_c, mensaje) => {
       const campos = camposFaltantes(mensaje);
       return {
+        // Los atributos concretos los nombra la verificacion del canal, que
+        // sabe cuales exige la categoria; aca solo se sabe que hay que
+        // revisarla.
+        campos:  ["category_id"],
         motivo:  "Faltan atributos obligatorios",
         detalle: campos.length
           ? `La categoría elegida exige completar: ${campos.join(", ")}.`
@@ -118,6 +150,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (c, m) => c.includes("category") || /category.*(invalid|not.*leaf|does not exist)/i.test(m),
     traducir: () => ({
+      campos:  ["category_id"],
       motivo:  "Categoría inválida",
       detalle: "La categoría asignada no existe o no admite publicaciones directas en Mercado Libre.",
       accion:  "Elegir otra categoría",
@@ -128,6 +161,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (c, m) => c.includes("price") || /price.*(invalid|required|greater)/i.test(m),
     traducir: () => ({
+      campos:  ["price"],
       motivo:  "Precio rechazado",
       detalle: "Mercado Libre no acepta el precio enviado: puede estar en cero, vacío o fuera del rango permitido para la categoría.",
       accion:  "Revisar el precio del producto",
@@ -138,6 +172,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (c, m) => c.includes("picture") || /picture|image/i.test(m),
     traducir: () => ({
+      campos:  ["pictures"],
       motivo:  "Problema con las imágenes",
       detalle: "Mercado Libre no pudo usar las imágenes: pueden faltar, ser demasiado chicas o no estar accesibles públicamente.",
       accion:  "Revisar las imágenes del producto",
@@ -148,6 +183,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (c, m) => c.includes("title") || /title.*(invalid|length|long)/i.test(m),
     traducir: () => ({
+      campos:  ["title"],
       motivo:  "Título rechazado",
       detalle: "El título no cumple las reglas de Mercado Libre: suele ser por largo o por caracteres no permitidos.",
       accion:  "Acortar o corregir el título",
@@ -159,6 +195,8 @@ const REGLAS: Regla[] = [
     aplica: (c, m, status) =>
       status === 401 || status === 403 || /token|unauthorized|forbidden/i.test(c + " " + m),
     traducir: () => ({
+      // No es un dato del articulo: no hay campo que corregir aca.
+      campos:  [],
       motivo:  "Sesión de Mercado Libre vencida",
       detalle: "La conexión con la cuenta expiró o perdió permisos, así que Mercado Libre rechazó el pedido.",
       accion:  "Reconectar la cuenta de Mercado Libre",
@@ -169,6 +207,7 @@ const REGLAS: Regla[] = [
   {
     aplica: (_c, m, status) => status === 429 || /limit|quota/i.test(m),
     traducir: () => ({
+      campos:  [],
       motivo:  "Límite alcanzado",
       detalle: "Mercado Libre rechazó el pedido por alcanzar un límite de la cuenta o de publicaciones.",
       accion:  "Reintentar más tarde",
@@ -228,6 +267,9 @@ export function traducirErrorMl(respuesta: any): ErrorTraducido {
     motivo:  "Mercado Libre rechazó la publicación",
     detalle: mensaje || "No informó un motivo legible.",
     accion:  null,
+    // Sin regla que lo reconozca no se puede afirmar que campo tocar, y
+    // adivinar uno seria mandar a corregir lo que quiza esta bien.
+    campos:  [],
     crudo,
     reconocido: false,
   };
