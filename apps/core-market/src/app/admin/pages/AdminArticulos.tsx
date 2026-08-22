@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { buscarProductos, fichaPorTitulo, type FichaCanal } from "../utils/canalesSync";
+import { buscarProductos, fichaPorTitulo,
+         type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
@@ -77,7 +78,7 @@ export default function AdminArticulos(
   // todo lo que no es una decision de quien vende -las versiones que existen,
   // la descripcion, las fotos del fabricante, el precio de mercado- es
   // informacion publica del producto y no hay por que hacersela cargar.
-  const [candidatos, setCandidatos] = useState<Array<{id:string;nombre:string;imagen:string|null;rasgos:string[]}>>([]);
+  const [candidatos, setCandidatos] = useState<ProductoEncontrado[]>([]);
   const [buscandoProd, setBuscandoProd] = useState(false);
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
@@ -107,9 +108,10 @@ export default function AdminArticulos(
    * redacto su descripcion o cargo sus fotos, son suyas y valen mas que las
    * del catalogo.
    */
-  const adoptarProducto = async (id: string) => {
+  const adoptarProducto = async (id: string, canal: string) => {
     setBuscandoProd(true);
-    const f = await fichaPorTitulo("", "mercadolibre", id);
+    // Se le pide la ficha al canal que lo conoce, no siempre al mismo.
+    const f = await fichaPorTitulo("", canal, id);
     setBuscandoProd(false);
     if (!f) return;
     setElegido(f);
@@ -332,7 +334,7 @@ export default function AdminArticulos(
                     ¿Cuál de estos es? Elegir uno completa el resto solo.
                   </div>
                   {candidatos.map(c => (
-                    <button key={c.id} onClick={() => adoptarProducto(c.id)}
+                    <button key={c.canal + c.id} onClick={() => adoptarProducto(c.id, c.canal)}
                       style={{ display:"flex", alignItems:"center", gap:9, width:"100%",
                         textAlign:"left", padding:"7px 10px", border:"none", background:"transparent",
                         cursor:"pointer", borderBottom:"1px solid var(--gray-50)" }}>
@@ -344,11 +346,9 @@ export default function AdminArticulos(
                         <span style={{ display:"block", fontSize:"0.8rem", fontWeight:600, color:"#111" }}>
                           {c.nombre}
                         </span>
-                        {c.rasgos.length > 0 && (
-                          <span style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>
-                            {c.rasgos.join(" · ")}
-                          </span>
-                        )}
+                        <span style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>
+                          {[c.rasgos.join(" · "), c.canalNombre].filter(Boolean).join("  —  ")}
+                        </span>
                       </span>
                     </button>
                   ))}

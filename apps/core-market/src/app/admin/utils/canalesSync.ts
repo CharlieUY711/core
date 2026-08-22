@@ -91,6 +91,18 @@ export interface MercadoCanal {
   }>;
 }
 
+/** Una version concreta del producto, tal como la conoce un canal. */
+export interface ProductoEncontrado {
+  id: string;
+  nombre: string;
+  imagen: string | null;
+  /** Lo que la distingue de otra version: capacidad, color, modelo. */
+  rasgos: string[];
+  /** De que canal salio. Se muestra: no es lo mismo de donde viene el dato. */
+  canal: string;
+  canalNombre: string;
+}
+
 /** Datos del producto que el canal ya tiene cargados. */
 export interface FichaCanal {
   productoId: string | null;
@@ -129,6 +141,14 @@ export interface MotorCanal {
    * Devolver null es valido: significa que ese canal no tiene de donde.
    */
   ficha?(variantId: string): Promise<FichaCanal | null>;
+  /**
+   * Versiones del producto que este canal conoce, para un texto.
+   *
+   * Cada canal tiene su catalogo y ninguno los tiene todos: uno puede conocer
+   * una version que el otro no. Por eso se pregunta a todos y se junta, en vez
+   * de elegir una fuente y confiar en que alcanza.
+   */
+  buscarProductos?(texto: string): Promise<ProductoEncontrado[]>;
   /**
    * Guarda una corrección de las que `verificar` pidió.
    *
@@ -289,6 +309,20 @@ const motorMercadoLibre: MotorCanal = {
     return error ? { ok: false, motivo: error.message } : { ok: true };
   },
 
+  async buscarProductos(texto) {
+    try {
+      const d = await invocar("publicar-en-ml", { soloEnriquecer: true, titulo: texto });
+      return (Array.isArray(d?.candidatos) ? d.candidatos : []).map((c: any) => ({
+        id: String(c.id), nombre: String(c.nombre),
+        imagen: c.imagen ?? null,
+        rasgos: Array.isArray(c.rasgos) ? c.rasgos : [],
+        canal: "mercadolibre", canalNombre: "Mercado Libre",
+      }));
+    } catch (_) {
+      return [];
+    }
+  },
+
   async ficha(variantId) {
     try {
       const d = await invocar("publicar-en-ml", { variantId, soloEnriquecer: true });
@@ -416,17 +450,29 @@ export async function fichaPorTitulo(
  * Un titulo como "iPhone 17" no identifica un producto: son varios. Elegir por
  * el primero seria decidir por quien vende algo que solo el sabe.
  */
-export async function buscarProductos(
-  texto: string, channel = "mercadolibre",
-): Promise<Array<{ id: string; nombre: string; imagen: string | null; rasgos: string[] }>> {
+export async function buscarProductos(texto: string): Promise<ProductoEncontrado[]> {
   if (texto.trim().length < 4) return [];
-  if (!motorDe(channel)) return [];
-  try {
-    const d = await invocar("publicar-en-ml", { soloEnriquecer: true, titulo: texto });
-    return Array.isArray(d?.candidatos) ? d.candidatos : [];
-  } catch (_) {
-    return [];
+
+  // A todos los canales que sepan buscar, en paralelo. Ninguno tiene el
+  // catalogo completo, y limitarse a uno es quedarse con lo que ese sepa.
+  const motores = Object.entries(MOTORES).filter(([, m]) => m.buscarProductos);
+  const listas = await Promise.all(motores.map(async ([, m]) => {
+    try { return await m.buscarProductos!(texto); } catch (_) { return []; }
+  }));
+
+  // El mismo producto puede aparecer en dos canales. Se junta por nombre para
+  // no mostrarlo dos veces, conservando de que canales vino.
+  const porNombre = new Map<string, ProductoEncontrado>();
+  for (const p of listas.flat()) {
+    const clave = p.nombre.toLowerCase().replace(/\s+/g, " ").trim();
+    const previo = porNombre.get(clave);
+    if (!previo) { porNombre.set(clave, p); continue; }
+    if (!previo.canalNombre.includes(p.canalNombre)) {
+      previo.canalNombre = previo.canalNombre + " · " + p.canalNombre;
+    }
+    if (!previo.imagen && p.imagen) previo.imagen = p.imagen;
   }
+  return [...porNombre.values()].slice(0, 12);
 }
 
 /**

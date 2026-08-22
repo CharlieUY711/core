@@ -820,18 +820,90 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
  * elija cual es no lo puede hacer nadie mas que quien lo tiene en la mano, asi
  * que se listan y se le pregunta, en vez de adivinar con el primero.
  */
+/**
+ * Palabras que no distinguen un producto de otro.
+ *
+ * "Celular iPhone 17" y "Kit destornilladores para celular iPhone" comparten
+ * "celular" y "iphone": lo unico que los separa es el 17. Sin sacar estas del
+ * medio, cualquier accesorio parece el producto.
+ */
+const PALABRAS_VACIAS = new Set([
+  "celular","celulares","telefono","teléfono","smartphone","movil","móvil",
+  "para","con","sin","de","del","la","el","los","las","y","o","un","una",
+  "nuevo","nueva","usado","usada","original","libre","gb","tb","mb",
+]);
+
+const tokens = (t: string) =>
+  t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+   .split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * Cuanto se parece un resultado a lo que se busco.
+ *
+ * Los numeros mandan: en electronica el modelo casi siempre es un numero, y un
+ * resultado que no lo tiene es otro producto -no una variante-. Se exige que
+ * esten todos, y ademas al menos una palabra con contenido.
+ */
+function pareceElMismo(consulta: string[], nombre: string): boolean {
+  const n = new Set(tokens(nombre));
+  const numeros  = consulta.filter((t) => /^\d+$/.test(t));
+  const palabras = consulta.filter((t) => !/^\d+$/.test(t) && !PALABRAS_VACIAS.has(t));
+
+  // Todos los terminos con contenido tienen que estar. Alcanzar con uno hacia
+  // que "Celular iPhone 17" trajera cualquier accesorio que dijera "iPhone":
+  // lo que se busca es ESE producto, no algo parecido.
+  if (numeros.length && !numeros.every((x) => n.has(x))) return false;
+  if (palabras.length && !palabras.every((x) => n.has(x))) return false;
+  // Sin numeros ni palabras con contenido no hay con que decidir: se acepta y
+  // que elija la persona.
+  return true;
+}
+
+/** Dominio que Mercado Libre le asigna al texto, para no buscar en todo el sitio. */
+async function predecirDominio(siteId: string, texto: string): Promise<string | null> {
+  try {
+    const r = await fetch(
+      `https://api.mercadolibre.com/sites/${siteId}/domain_discovery/search`
+      + `?limit=1&q=${encodeURIComponent(texto)}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (Array.isArray(d) ? d : [])[0]?.domain_id ?? null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function buscarCandidatos(
   token: string, siteId: string, texto: string,
 ): Promise<Array<{ id: string; nombre: string; imagen: string | null; rasgos: string[] }>> {
   const q = texto.trim();
   if (q.length < 3) return [];
   try {
-    const url = `https://api.mercadolibre.com/products/search`
-              + `?status=active&site_id=${encodeURIComponent(siteId)}&q=${encodeURIComponent(q)}`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) return [];
-    const d = await r.json();
-    return (d?.results ?? []).slice(0, 10).map((p: any) => ({
+    // Acotar al dominio evita que un destornillador "para celular iPhone"
+    // compita con el celular.
+    const dominio = await predecirDominio(siteId, q);
+    const base = `https://api.mercadolibre.com/products/search`
+               + `?status=active&site_id=${encodeURIComponent(siteId)}&q=${encodeURIComponent(q)}`;
+
+    let d: any = null;
+    if (dominio) {
+      const r1 = await fetch(`${base}&domain_id=${encodeURIComponent(dominio)}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (r1.ok) d = await r1.json();
+    }
+    // Si el dominio no dio nada -o no se pudo predecir- se busca abierto, pero
+    // el filtro de relevancia sigue aplicando.
+    if (!d?.results?.length) {
+      const r2 = await fetch(base, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r2.ok) return [];
+      d = await r2.json();
+    }
+
+    const consulta = tokens(q);
+    return (d?.results ?? [])
+      .filter((p: any) => pareceElMismo(consulta, String(p?.name ?? "")))
+      .slice(0, 10)
+      .map((p: any) => ({
       id:     String(p?.id ?? ""),
       nombre: String(p?.name ?? ""),
       imagen: p?.pictures?.[0]?.secure_url ?? p?.pictures?.[0]?.url ?? null,
@@ -839,7 +911,8 @@ async function buscarCandidatos(
       rasgos: (p?.attributes ?? [])
         .filter((a: any) => ["INTERNAL_MEMORY","COLOR","MODEL","RAM","CAPACITY"].includes(String(a?.id)))
         .map((a: any) => String(a?.value_name ?? "")).filter(Boolean),
-    })).filter((c: any) => c.id && c.nombre);
+      }))
+      .filter((c: any) => c.id && c.nombre);
   } catch (_) {
     return [];
   }
