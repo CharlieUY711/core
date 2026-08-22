@@ -88,7 +88,10 @@ function Tag({ children }: { children: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function AdminApiVault({ supabase, tenantId, appId, className = '' }: ApiVaultPageProps) {
+// `supabase` se sigue aceptando para no romper a quien ya monta este
+// componente, pero no se usa: el acceso a datos va por el hook, que usa el
+// cliente compartido de la app.
+export default function AdminApiVault({ tenantId, appId, className = '' }: ApiVaultPageProps) {
   const { entries, loading, error, load, add, edit, remove, stats } = useApiVault()
 
   const [search,   setSearch]   = useState('')
@@ -99,7 +102,10 @@ export default function AdminApiVault({ supabase, tenantId, appId, className = '
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [copied,   setCopied]   = useState<string | null>(null)
 
-  useEffect(() => { load(supabase, { tenantId, appId }) }, [supabase, tenantId, appId])
+  // El hook toma sus propias dependencias: usa el cliente compartido y no
+  // recibe filtros. Pasarle argumentos que no espera fue la causa de que el
+  // alta insertara una fila vacia.
+  useEffect(() => { load() }, [])
 
   const platforms = useMemo(
     () => ['all', ...Array.from(new Set(entries.map((e) => e.platform)))],
@@ -130,7 +136,7 @@ export default function AdminApiVault({ supabase, tenantId, appId, className = '
 
   async function handleDelete(id: string) {
     if (!confirm('Eliminar esta credencial?')) return
-    await remove(supabase, id)
+    await remove(id)
     if (detail?.id === id) setDetail(null)
   }
 
@@ -287,8 +293,8 @@ export default function AdminApiVault({ supabase, tenantId, appId, className = '
           onClose={() => { setShowForm(false); setEditing(null) }}
           onSave={async (data) => {
             const ok = editing
-              ? await edit(supabase, editing.id, data)
-              : await add(supabase, { ...data as ApiVaultInsert,
+              ? await edit(editing.id, data)
+              : await add({ ...(data as ApiVaultInsert),
                   tenant_id: tenantId ?? null,
                   tags: [...((data as ApiVaultInsert).tags ?? []), ...(appId ? [appId] : [])] })
             if (ok) { setShowForm(false); setEditing(null) }

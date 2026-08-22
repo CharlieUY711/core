@@ -25,7 +25,7 @@ const TABLE = 'api_vault'
  * fue literalmente lo que aparecio en pantalla al intentar guardar una
  * credencial. Aca se arma un mensaje con lo que el objeto si trae.
  */
-function handleError(error: unknown): ApiVaultResult {
+function handleError<T = never>(error: unknown): ApiVaultResult<T> {
   let msg: string
 
   if (error instanceof Error) {
