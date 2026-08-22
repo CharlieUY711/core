@@ -1,5 +1,7 @@
 {
   "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm --filter core-market build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
