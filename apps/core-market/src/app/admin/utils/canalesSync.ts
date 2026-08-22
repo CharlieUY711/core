@@ -77,6 +77,35 @@ export interface ResultadoSync {
   problemas?: ProblemaPublicacion[];
 }
 
+/** Como se vende hoy ese producto en ese canal. */
+export interface MercadoCanal {
+  /** Precio mas bajo, mediana y mas alto entre las ofertas activas. */
+  min: number; mediana: number; max: number;
+  moneda: string;
+  /** Cuantas ofertas del mismo producto hay. */
+  ofertas: number;
+  /** Las mas baratas primero. Sin identificar a nadie. */
+  competencia: Array<{
+    precio: number; moneda: string; envioGratis: boolean;
+    vendidos: number; condicion: string; ganaLaCompra: boolean;
+  }>;
+}
+
+/** Datos del producto que el canal ya tiene cargados. */
+export interface FichaCanal {
+  productoId: string | null;
+  nombre: string | null;
+  atributos: Array<{ id: string; valor: string }>;
+  imagenes: string[];
+  caracteristicas: string[];
+  descripcion: string | null;
+  /** Descripcion ampliada armada con lo que el canal ya sabe. Se sugiere. */
+  descripcionSugerida: string | null;
+  /** Puntos para usar al vender: caracteristicas y contexto de mercado. */
+  argumentosDeVenta: string[];
+  mercado: MercadoCanal | null;
+}
+
 export interface MotorCanal {
   /** Nombre visible del canal, para los avisos. */
   nombre: string;
@@ -91,6 +120,15 @@ export interface MotorCanal {
   verificar(variantId: string): Promise<ProblemaPublicacion[]>;
   /** Publica o actualiza. */
   publicar(variantId: string): Promise<ResultadoSync>;
+  /**
+   * Lo que el canal ya sabe del producto: atributos, fotos del fabricante,
+   * caracteristicas y a que precio se vende hoy.
+   *
+   * Un codigo de producto o una foto de fabricante no son datos de quien
+   * vende: son del producto. Un motor que pueda averiguarlos evita pedirlos.
+   * Devolver null es valido: significa que ese canal no tiene de donde.
+   */
+  ficha?(variantId: string): Promise<FichaCanal | null>;
   /**
    * Guarda una corrección de las que `verificar` pidió.
    *
@@ -251,6 +289,31 @@ const motorMercadoLibre: MotorCanal = {
     return error ? { ok: false, motivo: error.message } : { ok: true };
   },
 
+  async ficha(variantId) {
+    try {
+      const d = await invocar("publicar-en-ml", { variantId, soloEnriquecer: true });
+      if (!d?.ok || !d?.encontrado) return null;
+      const p = d.precios;
+      return {
+        productoId:      d.producto?.id ?? null,
+        nombre:          d.producto?.nombre ?? null,
+        atributos:       Array.isArray(d.atributos) ? d.atributos : [],
+        imagenes:        Array.isArray(d.imagenes) ? d.imagenes : [],
+        caracteristicas: Array.isArray(d.caracteristicas) ? d.caracteristicas : [],
+        descripcion:     d.descripcion ?? null,
+        descripcionSugerida: d.descripcionSugerida ?? null,
+        argumentosDeVenta:   Array.isArray(d.argumentosDeVenta) ? d.argumentosDeVenta : [],
+        mercado: p ? {
+          min: Number(p.min) || 0, mediana: Number(p.mediana) || 0, max: Number(p.max) || 0,
+          moneda: String(p.moneda ?? ""), ofertas: Number(p.ofertas) || 0,
+          competencia: Array.isArray(d.competencia) ? d.competencia : [],
+        } : null,
+      };
+    } catch (_) {
+      return null;
+    }
+  },
+
   async publicar(variantId) {
     const r = await invocar("publicar-en-ml", { variantId });
     if (r?.ok) return { ok: true };
@@ -307,6 +370,61 @@ export async function canalesDisponibles(): Promise<{
       .map((e) => ({ channel: e.channel, nombre: e.motor.nombre,
                      motivo: e.estado.motivo ?? "No está configurado" })),
   };
+}
+
+/**
+ * Ficha del producto a partir del titulo, sin que exista todavia.
+ *
+ * Es el caso del alta: quien carga un articulo escribe el titulo y ahi mismo
+ * se puede traer todo lo demas. Esperar a que exista la variante llega tarde,
+ * porque para entonces ya escribio a mano lo que podiamos buscar.
+ */
+export async function fichaPorTitulo(titulo: string, channel = "mercadolibre"): Promise<FichaCanal | null> {
+  if (titulo.trim().length < 4) return null;
+  const motor = motorDe(channel);
+  if (!motor) return null;
+  try {
+    const d = await invocar("publicar-en-ml", { soloEnriquecer: true, titulo });
+    if (!d?.ok || !d?.encontrado) return null;
+    const p = d.precios;
+    return {
+      productoId:      d.producto?.id ?? null,
+      nombre:          d.producto?.nombre ?? null,
+      atributos:       Array.isArray(d.atributos) ? d.atributos : [],
+      imagenes:        Array.isArray(d.imagenes) ? d.imagenes : [],
+      caracteristicas: Array.isArray(d.caracteristicas) ? d.caracteristicas : [],
+      descripcion:     d.descripcion ?? null,
+      descripcionSugerida: d.descripcionSugerida ?? null,
+      argumentosDeVenta:   Array.isArray(d.argumentosDeVenta) ? d.argumentosDeVenta : [],
+      mercado: p ? {
+        min: Number(p.min) || 0, mediana: Number(p.mediana) || 0, max: Number(p.max) || 0,
+        moneda: String(p.moneda ?? ""), ofertas: Number(p.ofertas) || 0,
+        competencia: Array.isArray(d.competencia) ? d.competencia : [],
+      } : null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Ficha del producto en cada canal disponible, en paralelo.
+ *
+ * Se pregunta a todos y se devuelve lo que cada uno sepa: comparar el precio de
+ * mercado entre canales es justamente lo que permite decidir con que numero
+ * salir en cada uno. Un canal que no tenga de donde sacarlo devuelve null y no
+ * aparece en la comparativa, pero su precio se puede fijar igual.
+ */
+export async function fichasDeCanales(
+  variantId: string, canales: string[],
+): Promise<Record<string, FichaCanal | null>> {
+  const pares = await Promise.all(canales.map(async (channel) => {
+    const motor = motorDe(channel);
+    if (!motor?.ficha) return [channel, null] as const;
+    try { return [channel, await motor.ficha(variantId)] as const; }
+    catch (_) { return [channel, null] as const; }
+  }));
+  return Object.fromEntries(pares);
 }
 
 /** Guarda una corrección en el canal que la pidió. */

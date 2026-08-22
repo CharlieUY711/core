@@ -36,6 +36,14 @@ interface PublicarBody {
   soloVerificar?: boolean;
   /** Solo busca los datos del producto en el catalogo y los devuelve. */
   soloEnriquecer?: boolean;
+  /**
+   * Titulo a buscar cuando todavia no hay variante.
+   *
+   * Al dar de alta un articulo no existe nada que consultar por id, y es
+   * justo el momento en que estos datos sirven: si llegan despues, la persona
+   * ya escribio a mano lo que podiamos traer.
+   */
+  titulo?: string;
   /** Contexto de precio — todos opcionales, se usan como filtros en resolve_price */
   priceContext?: {
     priceList?: string;
@@ -168,8 +176,14 @@ serve(async (req: Request) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  if (!body.variantId) {
+  // Para buscar datos alcanza con el titulo: al dar de alta todavia no hay
+  // variante, y es justo el momento en que estos datos sirven.
+  const buscaPorTitulo = body.soloEnriquecer === true && !body.variantId;
+  if (!body.variantId && !buscaPorTitulo) {
     return json({ error: "variantId is required" }, 400);
+  }
+  if (buscaPorTitulo && !String(body.titulo ?? "").trim()) {
+    return json({ error: "Falta el título a buscar" }, 400);
   }
 
   // storeId: claim de raiz del JWT primero, luego user_metadata por
@@ -179,6 +193,32 @@ serve(async (req: Request) => {
     ?? null;
   const storeId: string = jwtClaim ?? body.storeId ?? "";
   if (!storeId) return json({ error: "Cannot determine storeId" }, 400);
+
+  if (buscaPorTitulo) {
+    let token: string;
+    try {
+      token = await getMLToken(storeId);
+    } catch (e) {
+      // Sin cuenta conectada no hay a quien preguntarle, pero tampoco es un
+      // error del alta: se responde que no se encontro nada.
+      return json({ ok: true, encontrado: false, motivo: (e as Error).message });
+    }
+    const c = await buscarEnCatalogo(token, ML_SITE, String(body.titulo));
+    if (!c) return json({ ok: true, encontrado: false });
+    return json({
+      ok: true,
+      encontrado: true,
+      producto: { id: c.id, nombre: c.nombre },
+      atributos: [...c.atributos].map(([id, valor]) => ({ id, valor })),
+      imagenes: c.imagenes,
+      caracteristicas: c.caracteristicas,
+      descripcion: c.descripcion,
+      precios: c.precios,
+      competencia: c.competencia,
+      descripcionSugerida: redactarFicha(c),
+      argumentosDeVenta:   argumentosDeFicha(c),
+    });
+  }
 
   /**
    * Registra el fallo en el listing y responde.
@@ -337,6 +377,8 @@ serve(async (req: Request) => {
       descripcion: delCatalogo?.descripcion ?? null,
       precios: delCatalogo?.precios ?? null,
       competencia: delCatalogo?.competencia ?? [],
+      descripcionSugerida: delCatalogo ? redactarFicha(delCatalogo) : null,
+      argumentosDeVenta:   delCatalogo ? argumentosDeFicha(delCatalogo) : [],
     });
   }
 
@@ -875,6 +917,46 @@ async function buscarEnCatalogo(
     return null;
   }
 }
+
+/**
+ * Arma una descripcion ampliada y los argumentos de venta con lo que el
+ * catalogo ya sabe.
+ *
+ * Una vez que alguien definio QUE producto es, el resto es informacion
+ * publica del producto: no tiene sentido hacerselo escribir. Se sugiere, no
+ * se impone: se devuelve aparte para que pueda revisarla y cambiarla antes
+ * de usarla.
+ */
+function redactarFicha(c: NonNullable<Awaited<ReturnType<typeof buscarEnCatalogo>>>) {
+  const partes: string[] = [];
+  if (c.descripcion) partes.push(c.descripcion.trim());
+
+  if (c.caracteristicas.length) {
+    partes.push(c.caracteristicas.map((f) => `• ${f}`).join("\n"));
+  }
+
+  // Los atributos con nombre legible valen como ficha tecnica; los ids
+  // sueltos no le dicen nada a nadie, asi que se omiten.
+  const tecnica = [...c.atributos]
+    .filter(([id]) => /^[A-Z_]+$/.test(id))
+    .slice(0, 12)
+    .map(([id, v]) => `${id.replace(/_/g, " ").toLowerCase()}: ${v}`);
+  if (tecnica.length) partes.push("Ficha tecnica\n" + tecnica.join("\n"));
+
+  return partes.join("\n\n") || null;
+}
+
+function argumentosDeFicha(c: NonNullable<Awaited<ReturnType<typeof buscarEnCatalogo>>>) {
+  const puntos: string[] = [...c.caracteristicas];
+  if (c.precios && c.precios.ofertas > 1) {
+    puntos.push(
+      `Hoy hay ${c.precios.ofertas} ofertas del mismo producto, entre ` +
+      `${c.precios.moneda} ${c.precios.min} y ${c.precios.moneda} ${c.precios.max}.`,
+    );
+  }
+  return puntos.slice(0, 8);
+}
+
 
 interface Problema {
   campo: string;

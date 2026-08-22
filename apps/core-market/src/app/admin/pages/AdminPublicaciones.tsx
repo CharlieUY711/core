@@ -4,7 +4,7 @@ import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
-         type ProblemaPublicacion } from "../utils/canalesSync";
+         fichasDeCanales, type ProblemaPublicacion, type FichaCanal } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
 
 const ACCENT = "var(--brand-madre)";
@@ -167,6 +167,194 @@ const XCOLS = [
 type SK = "precio"|"stock"|"status"|"alta"|null;
 const fmt = (s?:string) => s?new Date(s).toLocaleDateString("es-UY",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
 const fmtP = (n:number,m="UYU") => m+" "+Number(n).toLocaleString("es-UY");
+
+
+/**
+ * Lo que los canales ya saben del producto.
+ *
+ * Una vez que alguien definio QUE producto es, el resto -codigos, fotos del
+ * fabricante, caracteristicas, a que precio se vende hoy- es informacion
+ * publica del producto. Hacersela cargar a mano es pedirle que copie algo que
+ * podemos traer.
+ *
+ * Se muestra por canal y no mezclado: el mismo producto no vale lo mismo ni
+ * tiene la misma competencia en cada uno, y esa es justamente la comparacion
+ * que permite decidir con que precio salir en cada lado.
+ */
+function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, onAplicado }: {
+  variantId: string;
+  canales: CanalUI[];
+  nombreCanal: Record<string,string>;
+  precioActual: number;
+  onAplicado: () => void;
+}) {
+  const [fichas, setFichas] = useState<Record<string, FichaCanal|null>|null>(null);
+  const [objetivo, setObjetivo] = useState<Record<string,string>>({});
+  const [guardando, setGuardando] = useState<string|null>(null);
+  const [aviso, setAviso] = useState<string|null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    setFichas(null);
+    (async () => {
+      const f = await fichasDeCanales(variantId, canales.map(c => c.channel));
+      if (vivo) setFichas(f);
+    })();
+    return () => { vivo = false; };
+  }, [variantId, canales.map(c=>c.channel).join(",")]);
+
+  if (fichas === null) {
+    return <div style={{fontSize:"0.75rem",color:"var(--gray-400)",marginBottom:"0.9rem"}}>
+      Buscando datos del producto en los canales…
+    </div>;
+  }
+
+  const conDatos = Object.entries(fichas).filter(([,f]) => f);
+  if (!conDatos.length) return null;
+
+  // La descripcion sugerida se toma del primer canal que la tenga: es del
+  // producto, no del canal, asi que no tiene sentido repetirla por cada uno.
+  const sugerida = conDatos.map(([,f]) => f!.descripcionSugerida).find(Boolean) ?? null;
+  const argumentos = conDatos.map(([,f]) => f!.argumentosDeVenta).find(a => a?.length) ?? [];
+  const fotos = conDatos.map(([,f]) => f!.imagenes).find(i => i?.length) ?? [];
+
+  const fijarPrecio = async (channel: string) => {
+    const bruto = (objetivo[channel] ?? "").trim();
+    const monto = bruto === "" ? null : Number(bruto);
+    if (bruto !== "" && (!Number.isFinite(monto!) || monto! < 0)) {
+      setAviso("El precio tiene que ser un número."); return;
+    }
+    setGuardando(channel); setAviso(null);
+    const { error } = await supabase.rpc("fijar_precio_canal", {
+      p_variant_id: variantId, p_channel: channel, p_amount: monto, p_currency: "UYU",
+    });
+    setGuardando(null);
+    if (error) { setAviso(error.message); return; }
+    setAviso(monto === null || monto === 0
+      ? "Sin precio propio: vuelve a valer el precio general."
+      : "Precio guardado para ese canal.");
+    onAplicado();
+  };
+
+  const usarDescripcion = async () => {
+    if (!sugerida) return;
+    setGuardando("desc"); setAviso(null);
+    const { error } = await supabase.rpc("actualizar_publicacion", {
+      p_variant_id: variantId, p_description: sugerida,
+    });
+    setGuardando(null);
+    setAviso(error ? error.message : "Descripción actualizada.");
+    if (!error) onAplicado();
+  };
+
+  const th: React.CSSProperties = {textAlign:"right",padding:"3px 6px",fontSize:"0.68rem",
+    color:"var(--gray-400)",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"};
+  const tdc: React.CSSProperties = {textAlign:"right",padding:"4px 6px",fontSize:"0.76rem",color:"#374151"};
+  const money = (n:number,m:string) => (m?m+" ":"") + Number(n).toLocaleString("es-UY");
+
+  return (
+    <div style={{border:"1px solid var(--border)",borderRadius:9,padding:"0.75rem 0.85rem",
+      marginBottom:"0.9rem",background:"#fff"}}>
+      <div style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
+        textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.5rem"}}>
+        Datos del producto, traídos de los canales
+      </div>
+
+      {fotos.length > 0 && (
+        <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:"0.7rem"}}>
+          {fotos.slice(0,8).map((u,i)=>(
+            <img key={i} src={u} alt="" style={{width:56,height:56,objectFit:"cover",
+              borderRadius:6,border:"1px solid var(--border)",flexShrink:0}}/>
+          ))}
+        </div>
+      )}
+
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"0.6rem"}}>
+        <thead>
+          <tr>
+            <th style={{...th,textAlign:"left"}}>Canal</th>
+            <th style={th}>Publicaciones</th>
+            <th style={th}>Mínimo</th>
+            <th style={th}>Mediana</th>
+            <th style={th}>Máximo</th>
+            <th style={{...th,textAlign:"center"}}>Tu precio ahí</th>
+          </tr>
+        </thead>
+        <tbody>
+          {canales.map(c => {
+            const f = fichas[c.channel];
+            const m = f?.mercado;
+            return (
+              <tr key={c.channel} style={{borderTop:"1px solid var(--gray-50)"}}>
+                <td style={{...tdc,textAlign:"left",fontWeight:700}}>
+                  {nombreCanal[c.channel] ?? c.label}
+                </td>
+                {m ? (
+                  <>
+                    <td style={tdc}>{m.ofertas}</td>
+                    <td style={tdc}>{money(m.min,m.moneda)}</td>
+                    <td style={{...tdc,fontWeight:700}}>{money(m.mediana,m.moneda)}</td>
+                    <td style={tdc}>{money(m.max,m.moneda)}</td>
+                  </>
+                ) : (
+                  <td colSpan={4} style={{...tdc,color:"var(--gray-400)"}}>
+                    Sin datos de mercado en este canal
+                  </td>
+                )}
+                <td style={{padding:"3px 6px",textAlign:"center",whiteSpace:"nowrap"}}>
+                  <input value={objetivo[c.channel] ?? ""}
+                    onChange={e=>setObjetivo(p=>({...p,[c.channel]:e.target.value}))}
+                    placeholder={String(precioActual||"")}
+                    style={{width:88,padding:"3px 6px",fontSize:"0.75rem",textAlign:"right",
+                      border:"1px solid var(--border)",borderRadius:5}}/>
+                  <button onClick={()=>fijarPrecio(c.channel)} disabled={guardando===c.channel}
+                    style={{marginLeft:5,padding:"3px 8px",fontSize:"0.7rem",fontWeight:700,
+                      border:"none",borderRadius:5,background:BLUE,color:"#fff",
+                      cursor:guardando===c.channel?"wait":"pointer"}}>
+                    {guardando===c.channel?"…":"Fijar"}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginBottom:"0.6rem"}}>
+        Dejar el precio vacío y fijar quita el precio propio de ese canal: vuelve a valer el general.
+      </div>
+
+      {argumentos.length > 0 && (
+        <details style={{marginBottom:"0.5rem"}}>
+          <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
+            Para vender ({argumentos.length})
+          </summary>
+          <ul style={{margin:"5px 0 0",paddingLeft:17,fontSize:"0.75rem",color:"#374151",lineHeight:1.5}}>
+            {argumentos.map((a,i)=><li key={i} style={{marginBottom:2}}>{a}</li>)}
+          </ul>
+        </details>
+      )}
+
+      {sugerida && (
+        <details>
+          <summary style={{cursor:"pointer",fontSize:"0.75rem",fontWeight:700,color:BLUE}}>
+            Descripción ampliada sugerida
+          </summary>
+          <pre style={{fontSize:"0.72rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
+            background:"var(--gray-25, #FAFBFC)",border:"1px solid var(--border)",borderRadius:6,
+            padding:8,marginTop:6,maxHeight:180,overflow:"auto",fontFamily:"inherit"}}>{sugerida}</pre>
+          <button onClick={usarDescripcion} disabled={guardando==="desc"}
+            style={{marginTop:6,padding:"5px 11px",fontSize:"0.73rem",fontWeight:700,
+              border:"none",borderRadius:6,background:BLUE,color:"#fff",
+              cursor:guardando==="desc"?"wait":"pointer"}}>
+            {guardando==="desc"?"Guardando…":"Usar esta descripción"}
+          </button>
+        </details>
+      )}
+
+      {aviso && <div style={{fontSize:"0.73rem",color:"#374151",marginTop:"0.5rem"}}>{aviso}</div>}
+    </div>
+  );
+}
 
 // ── Chip de canal ─────────────────────────────────────────────────────────
 //
@@ -1088,6 +1276,12 @@ export default function AdminPublicaciones() {
               </div>
               );
             })()}
+
+            {!isNew&&a&&canales.length>0&&(
+              <FichaDelProducto variantId={a.id} canales={canales}
+                nombreCanal={nombreCanal} precioActual={a.precio}
+                onAplicado={reload}/>
+            )}
 
             {/* Canales del articulo: activar o dar de baja sin salir de aca */}
             {!isNew&&a&&(
