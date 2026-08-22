@@ -181,7 +181,14 @@ const REGLAS: Regla[] = [
 
   // Titulo invalido o demasiado largo.
   {
-    aplica: (c, m) => c.includes("title") || /title.*(invalid|length|long)/i.test(m),
+    // Antes bastaba con que apareciera "title" en cualquier parte del mensaje.
+    // Como el resumen del canal concatena codigo, mensaje y causas, un "title"
+    // suelto en cualquiera de los tres se llevaba puesto el diagnostico y
+    // mandaba a corregir un titulo que estaba bien. Ahora tiene que ser el
+    // campo del error, o una frase que hable del titulo.
+    aplica: (c, m) =>
+      /(^|[.\[])title([.\]]|$)/i.test(c) ||
+      /\btitle\b[^|]{0,40}(invalid|length|too long|not allowed|forbidden|blocked)/i.test(m),
     traducir: () => ({
       campos:  ["title"],
       motivo:  "Título rechazado",

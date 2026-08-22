@@ -416,6 +416,10 @@ export default function AdminPublicaciones() {
   // rechazo el dato existe y el canal no lo acepto. Decir "falta el titulo"
   // sobre un titulo que esta cargado suena a error nuestro.
   const [origenProblema,setOrigenProblema]=useState<Record<string,"verificacion"|"rechazo">>({});
+  // Lo que respondio el canal, textual. Se guarda siempre y se muestra siempre
+  // -plegado-: si la traduccion se equivoca, el original es lo unico que
+  // permite darse cuenta. Ocultarlo fue un error de mi parte y esto lo corrige.
+  const [crudoCanal,setCrudoCanal]=useState<Record<string,string>>({});
 
   // Los canales que se ofrecen son los que su motor declara operativos: no una
   // lista fija, ni lo que haya en los datos. Un canal cuyo modulo no esta
@@ -452,6 +456,13 @@ export default function AdminPublicaciones() {
    * unos son del catalogo y otros son atributos que solo existen para ese
    * canal. La pantalla solo junta lo que se escribio.
    */
+  /**
+   * Guarda lo corregido y publica.
+   *
+   * Antes eran dos pasos -guardar y verificar, despues elegir el chip y
+   * sincronizar-, y el segundo habia que descubrirlo. Cuando alguien corrige
+   * un rechazo lo que quiere es publicar; verificar es un medio, no el fin.
+   */
   const guardarCorrecciones=async(a:Art)=>{
     const canal=canalConProblema[a.id];
     const vals=correcciones[a.id]??{};
@@ -463,16 +474,40 @@ export default function AdminPublicaciones() {
       const r=await corregirCampo(a.id,canal,campo,String(valor));
       if(!r.ok)fallos.push((r.motivo??campo));
     }
-    // Se vuelve a preguntar en vez de asumir: la verificacion del canal es la
-    // que manda, y puede aparecer algo nuevo al completar lo anterior.
+    setCorrecciones(p=>({...p,[a.id]:{}}));
+
+    if(fallos.length){
+      setCorrigiendo(false);
+      await reload();
+      notify(fallos[0],false);
+      return;
+    }
+
+    // Guardado sin problemas: se publica. Si al canal todavia le falta algo, lo
+    // dice el mismo camino de siempre y los campos quedan a la vista.
+    const r=await sincronizarCanal(a.id,canal);
+    setCorrigiendo(false);
+
+    if(r.ok){
+      setProblemas(p=>({...p,[a.id]:[]}));
+      await reload();
+      notify("Publicado en "+(nombreCanal[canal]??canal)+" ✓");
+      return;
+    }
+
+    if(r.crudo)setCrudoCanal(p=>({...p,[a.id]:r.crudo!}));
+    if(r.problemas?.length){
+      setProblemas(p=>({...p,[a.id]:r.problemas!}));
+      setOrigenProblema(p=>({...p,[a.id]:"rechazo"}));
+      await reload();
+      return; // lo que hay que hacer ya esta a la vista: no se repite en un aviso
+    }
+    // Sin campo que ofrecer, se vuelve a preguntar que falta antes de rendirse.
     const ps=await verificarCanal(a.id,canal);
     setProblemas(p=>({...p,[a.id]:ps}));
-    setCorrecciones(p=>({...p,[a.id]:{}}));
-    setCorrigiendo(false);
+    setOrigenProblema(p=>({...p,[a.id]:"verificacion"}));
     await reload();
-    if(fallos.length)notify(fallos[0],false);
-    else if(ps.length===0)notify("Listo para publicar. Elegí el canal y usá Sincronizar.");
-    else notify("Guardado. Todavía faltan "+ps.length+".",true);
+    if(ps.length===0)notify(r.motivo??"No se pudo publicar",false);
   };
 
   const togChip=(id:string,canal:string)=>{
@@ -487,6 +522,10 @@ export default function AdminPublicaciones() {
     setProblemas(p=>({...p,[a.id]:ps}));
     setCanalConProblema(p=>({...p,[a.id]:canal}));
     setOrigenProblema(p=>({...p,[a.id]:"verificacion"}));
+    // El rechazo anterior quedo guardado en el listing: se trae para que este
+    // disponible aunque el fallo haya sido en otra sesion.
+    const l=(a.canales??[]).find((x:any)=>x.channel===canal);
+    if(l?.last_error)setCrudoCanal(p=>({...p,[a.id]:String(l.last_error)}));
   };
 
   /**
@@ -524,6 +563,7 @@ export default function AdminPublicaciones() {
         setOrigenProblema(p=>({...p,[id]:"rechazo"}));
         primerFallo=primerFallo??id;
       }
+      if(r.crudo)setCrudoCanal(p=>({...p,[id]:r.crudo!}));
     }
     setSincro(false);
     setChips(new Set());
@@ -972,7 +1012,7 @@ export default function AdminPublicaciones() {
                                 "no cumple las reglas" sin decir cuales deja a
                                 la persona probando de a una. */}
                             {!!x.ayuda?.length&&(
-                              <details style={{marginTop:4}} open={x.campo==="title"}>
+                              <details style={{marginTop:4}}>
                                 <summary style={{cursor:"pointer",fontSize:"0.72rem",color:BLUE,fontWeight:600}}>
                                   Cómo lo pide {nombreCanal[canalConProblema[a.id]]??"el canal"}
                                 </summary>
@@ -986,8 +1026,19 @@ export default function AdminPublicaciones() {
                         );
                       })}
                     </div>
+                    {!!crudoCanal[a.id]&&(
+                      <details style={{marginTop:"0.6rem"}}>
+                        <summary style={{cursor:"pointer",fontSize:"0.72rem",color:"var(--gray-400)"}}>
+                          Respuesta textual de {nombreCanal[canalConProblema[a.id]]??"el canal"}
+                        </summary>
+                        <pre style={{fontSize:"0.68rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
+                          background:"#fff",border:"1px solid var(--border)",borderRadius:6,
+                          padding:7,marginTop:5,maxHeight:130,overflow:"auto"}}>{crudoCanal[a.id]}</pre>
+                      </details>
+                    )}
+
                     <div style={{display:"flex",gap:8,marginTop:"0.7rem"}}>
-                      <Accion label={corrigiendo?"Guardando…":"Guardar y verificar"} destacado color={BLUE}
+                      <Accion label={corrigiendo?"Publicando…":"Guardar y sincronizar"} destacado color={BLUE}
                         dis={corrigiendo} onClick={()=>guardarCorrecciones(a)}/>
                     </div>
                   </>
