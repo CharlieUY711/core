@@ -566,9 +566,20 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
       permitePublicar: cat.settings?.listing_allowed !== false && cat.settings?.status !== "disabled",
       maxTitulo:     Number(cat.settings?.max_title_length ?? 60),
       monedas:       Array.isArray(cat.settings?.currencies) ? cat.settings.currencies : null,
+      // Las opciones permitidas viajan con el requisito: quien tenga que
+      // completarlo necesita elegir un valor valido, no adivinar el que la
+      // categoria acepta. Se acotan para no inflar la respuesta con listas de
+      // cientos de entradas que nadie va a leer.
       requeridos:    (Array.isArray(attrs) ? attrs : [])
         .filter((a: any) => a?.tags?.required)
-        .map((a: any) => ({ id: String(a.id), nombre: String(a.name ?? a.id) })),
+        .map((a: any) => ({
+          id:       String(a.id),
+          nombre:   String(a.name ?? a.id),
+          opciones: (a.values ?? [])
+            .map((v: any) => String(v?.name ?? "")).filter(Boolean).slice(0, 80),
+          // Si la categoria define un tipo, sirve para elegir el control.
+          tipo:     String(a.value_type ?? "string"),
+        })),
     };
     cacheCategoria.set(categoriaId, info);
     return info;
@@ -579,7 +590,16 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
   }
 }
 
-interface Problema { campo: string; etiqueta: string; mensaje: string }
+interface Problema {
+  campo: string;
+  etiqueta: string;
+  mensaje: string;
+  /** Valores que el canal acepta, si los publica. Vacio = texto libre. */
+  opciones?: string[];
+  /** Valor cargado hoy, para no pedir de nuevo lo que ya esta. */
+  valor?: string | null;
+  tipo?: string;
+}
 
 /**
  * Verifica la publicacion contra los requisitos de Mercado Libre ANTES de
@@ -594,13 +614,15 @@ async function verificarAntesDePublicar(
   const categoriaId = String(payload.category_id ?? "").trim();
 
   if (!titulo) {
-    problemas.push({ campo: "title", etiqueta: "Titulo", mensaje: "El producto no tiene titulo" });
+    problemas.push({ campo: "title", etiqueta: "Titulo", mensaje: "El producto no tiene titulo", valor: titulo });
   }
   if (!(Number(payload.price) > 0)) {
-    problemas.push({ campo: "price", etiqueta: "Precio", mensaje: "El precio tiene que ser mayor que cero" });
+    problemas.push({ campo: "price", etiqueta: "Precio", mensaje: "El precio tiene que ser mayor que cero",
+                     valor: String(payload.price ?? ""), tipo: "number" });
   }
   if (!(Number(payload.available_quantity) > 0)) {
-    problemas.push({ campo: "stock", etiqueta: "Stock", mensaje: "No hay unidades disponibles para vender" });
+    problemas.push({ campo: "stock", etiqueta: "Stock", mensaje: "No hay unidades disponibles para vender",
+                     valor: String(payload.available_quantity ?? ""), tipo: "number" });
   }
   if (!Array.isArray(payload.pictures) || (payload.pictures as unknown[]).length === 0) {
     problemas.push({ campo: "pictures", etiqueta: "Imagenes", mensaje: "Mercado Libre necesita al menos una imagen" });
@@ -639,11 +661,13 @@ async function verificarAntesDePublicar(
   }
 
   const puestos = new Set(attrsMl.filter((a) => String(a.value_name ?? "").trim()).map((a) => a.id));
+  const valorDe = new Map(attrsMl.map((a) => [a.id, String(a.value_name ?? "")]));
   for (const r of req.requeridos) {
     if (!puestos.has(r.id)) {
       problemas.push({
         campo: `attr:${r.id}`, etiqueta: r.nombre,
         mensaje: `"${req.nombre}" exige ${r.nombre.toLowerCase()}`,
+        opciones: r.opciones, valor: valorDe.get(r.id) ?? null, tipo: r.tipo,
       });
     }
   }

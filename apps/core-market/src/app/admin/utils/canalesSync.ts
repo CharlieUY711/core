@@ -34,6 +34,18 @@ export interface ProblemaPublicacion {
   etiqueta: string;
   /** Redactado para quien vende, no para quien programó la integración. */
   mensaje: string;
+  /**
+   * Valores que el canal acepta. Vacío o ausente = texto libre.
+   *
+   * Viajan con el problema para que se pueda corregir en el mismo lugar donde
+   * se informa: mandar a alguien a otra pantalla a adivinar qué valor acepta
+   * una categoría es la mitad del trabajo.
+   */
+  opciones?: string[];
+  /** Lo cargado hoy, para no volver a pedir lo que ya está. */
+  valor?: string | null;
+  /** Pista de control: number, boolean, string… */
+  tipo?: string;
 }
 
 export interface ResultadoSync {
@@ -60,6 +72,14 @@ export interface MotorCanal {
   verificar(variantId: string): Promise<ProblemaPublicacion[]>;
   /** Publica o actualiza. */
   publicar(variantId: string): Promise<ResultadoSync>;
+  /**
+   * Guarda una corrección de las que `verificar` pidió.
+   *
+   * El motor sabe dónde vive cada campo: unos son del catálogo y otros son
+   * atributos que sólo tienen sentido para ese canal. Quien muestra el
+   * formulario no tiene por qué saberlo.
+   */
+  corregir(variantId: string, campo: string, valor: string): Promise<{ ok: boolean; motivo?: string }>;
 }
 
 // ─── Un motor concreto ─────────────────────────────────────────────────────
@@ -120,6 +140,60 @@ const motorMercadoLibre: MotorCanal = {
     }
   },
 
+  async corregir(variantId, campo, valor) {
+    const v = valor.trim();
+    // Atributo propio del canal: vive en el listing, no en el catálogo.
+    if (campo.startsWith("attr:")) {
+      const id = campo.slice(5);
+      const { data: fila, error: e1 } = await supabase
+        .from("catalog_listings")
+        .select("id, channel_attrs")
+        .eq("variant_id", variantId).eq("channel", "mercadolibre").maybeSingle();
+      if (e1)   return { ok: false, motivo: e1.message };
+      if (!fila) return { ok: false, motivo: "El producto todavía no está asignado a este canal." };
+
+      const attrs: any = { ...(fila.channel_attrs ?? {}) };
+      const previos: any[] = Array.isArray(attrs.extra_attributes) ? attrs.extra_attributes : [];
+      const resto = previos.filter((a) => a?.id !== id);
+      attrs.extra_attributes = v ? [...resto, { id, value_name: v }] : resto;
+
+      const { error: e2 } = await supabase
+        .from("catalog_listings").update({ channel_attrs: attrs }).eq("id", fila.id);
+      return e2 ? { ok: false, motivo: e2.message } : { ok: true };
+    }
+
+    if (campo === "category_id") {
+      const { data: fila, error: e1 } = await supabase
+        .from("catalog_listings")
+        .select("id, channel_attrs")
+        .eq("variant_id", variantId).eq("channel", "mercadolibre").maybeSingle();
+      if (e1)    return { ok: false, motivo: e1.message };
+      if (!fila) return { ok: false, motivo: "El producto todavía no está asignado a este canal." };
+      const attrs: any = { ...(fila.channel_attrs ?? {}), category_id: v, category_id_origen: "manual" };
+      const { error: e2 } = await supabase
+        .from("catalog_listings").update({ channel_attrs: attrs }).eq("id", fila.id);
+      return e2 ? { ok: false, motivo: e2.message } : { ok: true };
+    }
+
+    // Campos del catálogo: van por el mismo RPC que usa el editor.
+    const patch: Record<string, unknown> = { p_variant_id: variantId };
+    if (campo === "title") patch.p_title = v;
+    if (campo === "price") {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) return { ok: false, motivo: "El precio tiene que ser mayor que cero." };
+      patch.p_price = n;
+    }
+    if (campo === "stock") {
+      const n = parseInt(v, 10);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, motivo: "El stock no puede ser negativo." };
+      patch.p_stock = n;
+    }
+    if (Object.keys(patch).length === 1) return { ok: false, motivo: `No sé cómo guardar "${campo}".` };
+
+    const { error } = await supabase.rpc("actualizar_publicacion", patch);
+    return error ? { ok: false, motivo: error.message } : { ok: true };
+  },
+
   async publicar(variantId) {
     const r = await invocar("publicar-en-ml", { variantId });
     if (r?.ok) return { ok: true };
@@ -164,6 +238,15 @@ export async function canalesDisponibles(): Promise<{
       .map((e) => ({ channel: e.channel, nombre: e.motor.nombre,
                      motivo: e.estado.motivo ?? "No está configurado" })),
   };
+}
+
+/** Guarda una corrección en el canal que la pidió. */
+export async function corregirCampo(
+  variantId: string, channel: string, campo: string, valor: string,
+): Promise<{ ok: boolean; motivo?: string }> {
+  const motor = motorDe(channel);
+  if (!motor) return { ok: false, motivo: `El canal "${channel}" no tiene módulo de sincronización.` };
+  return motor.corregir(variantId, campo, valor);
 }
 
 /** Qué falta para publicar ahí. Sin motor no hay requisitos que pedir. */

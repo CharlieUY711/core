@@ -3,7 +3,7 @@ import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
-import { sincronizarCanal, verificarCanal, canalesDisponibles,
+import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          type ProblemaPublicacion } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
 
@@ -418,7 +418,41 @@ export default function AdminPublicaciones() {
     return ()=>{vivo=false;};
   },[]);
 
+  // Lo tipeado en el panel de correccion, por articulo y campo.
+  const [correcciones,setCorrecciones]=useState<Record<string,Record<string,string>>>({});
+  const [corrigiendo,setCorrigiendo]=useState(false);
+
   const claveChip=(id:string,canal:string)=>id+"|"+canal;
+
+  /**
+   * Guarda lo corregido y vuelve a preguntar que falta.
+   *
+   * Cada campo lo persiste el motor del canal, que es el que sabe donde vive:
+   * unos son del catalogo y otros son atributos que solo existen para ese
+   * canal. La pantalla solo junta lo que se escribio.
+   */
+  const guardarCorrecciones=async(a:Art)=>{
+    const canal=canalConProblema[a.id];
+    const vals=correcciones[a.id]??{};
+    const pares=Object.entries(vals).filter(([,v])=>String(v).trim());
+    if(!canal||!pares.length){notify("No hay nada nuevo para guardar",false);return;}
+    setCorrigiendo(true);
+    const fallos:string[]=[];
+    for(const [campo,valor] of pares){
+      const r=await corregirCampo(a.id,canal,campo,String(valor));
+      if(!r.ok)fallos.push((r.motivo??campo));
+    }
+    // Se vuelve a preguntar en vez de asumir: la verificacion del canal es la
+    // que manda, y puede aparecer algo nuevo al completar lo anterior.
+    const ps=await verificarCanal(a.id,canal);
+    setProblemas(p=>({...p,[a.id]:ps}));
+    setCorrecciones(p=>({...p,[a.id]:{}}));
+    setCorrigiendo(false);
+    await reload();
+    if(fallos.length)notify(fallos[0],false);
+    else if(ps.length===0)notify("Listo para publicar. Elegí el canal y usá Sincronizar.");
+    else notify("Guardado. Todavía faltan "+ps.length+".",true);
+  };
 
   const togChip=(id:string,canal:string)=>{
     setChips(p=>{const n=new Set(p);const k=claveChip(id,canal);n.has(k)?n.delete(k):n.add(k);return n;});
@@ -829,14 +863,45 @@ export default function AdminPublicaciones() {
                       : "Faltan "+problemas[a.id].length+" cosas para publicar en "+(canalConProblema[a.id]??"este canal")}
                 </div>
                 {problemas[a.id].length>0&&(
-                  <ul style={{margin:"6px 0 0",paddingLeft:18,fontSize:"0.78rem",color:"#374151"}}>
-                    {problemas[a.id].map((x,i)=>(
-                      <li key={i} style={{marginBottom:2}}>
-                        {x.mensaje}
-                        {" "}<span style={{color:"var(--gray-400)"}}>({x.etiqueta})</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    {/* Cada faltante se muestra como el campo que hay que
+                        completar, con las opciones que el canal acepta. Listar
+                        el problema y mandar a otra pantalla a resolverlo es la
+                        mitad del trabajo. */}
+                    <div style={{display:"grid",gap:"0.55rem",marginTop:"0.6rem"}}>
+                      {problemas[a.id].map((x,i)=>{
+                        const val=correcciones[a.id]?.[x.campo]??x.valor??"";
+                        const listId="opc-"+a.id+"-"+x.campo.replace(/[^a-zA-Z0-9]/g,"");
+                        return (
+                          <label key={i} style={{display:"block"}}>
+                            <span style={{fontSize:"0.73rem",color:"#374151",fontWeight:600}}>
+                              {x.etiqueta}
+                              <span style={{color:"var(--gray-400)",fontWeight:400}}> · {x.mensaje}</span>
+                            </span>
+                            <input
+                              list={x.opciones?.length?listId:undefined}
+                              type={x.tipo==="number"?"number":"text"}
+                              value={val}
+                              placeholder={x.opciones?.length?"Elegí o escribí…":""}
+                              onChange={e=>setCorrecciones(p=>({
+                                ...p,[a.id]:{...(p[a.id]??{}),[x.campo]:e.target.value},
+                              }))}
+                              style={{...inp,marginTop:3,
+                                borderColor:String(val).trim()?"var(--border)":ROJO_SYNC}}/>
+                            {!!x.opciones?.length&&(
+                              <datalist id={listId}>
+                                {x.opciones.map(o=><option key={o} value={o}/>)}
+                              </datalist>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:"0.7rem"}}>
+                      <Accion label={corrigiendo?"Guardando…":"Guardar y verificar"} destacado color={BLUE}
+                        dis={corrigiendo} onClick={()=>guardarCorrecciones(a)}/>
+                    </div>
+                  </>
                 )}
                 {problemas[a.id].length===0&&(
                   <div style={{fontSize:"0.78rem",color:"#374151",marginTop:2}}>
