@@ -226,25 +226,67 @@ export default function AdminPublicaciones() {
     notify("Archivado");
   };
 
+  /**
+   * Aplica un cambio y devuelve cuantas filas cambiaron de verdad.
+   *
+   * Un update que RLS no permite no devuelve error: afecta cero filas y sale
+   * limpio. Sin `.select()` no hay forma de distinguirlo de un exito, que es
+   * exactamente lo que pasaba: la pantalla decia "Eliminado" y el articulo
+   * seguia ahi al recargar.
+   */
+  const aplicar = async (ids: string[], cambios: Record<string, unknown>) => {
+    const { data, error } = await supabase
+      .from("articulos").update(cambios).in("id", ids).select("id");
+    if (error) throw new Error(error.message);
+    return (data ?? []).length;
+  };
+
   const eliminar = async (id: string) => {
     if (!confirm("¿Eliminar este artículo?")) return;
-    await supabase.from("articulos").update({ deleted_at:new Date().toISOString(), status:"deleted" }).eq("id", id);
-    setArticulos(prev => prev.filter(a => a.id!==id));
-    notify("Eliminado");
+    try {
+      const n = await aplicar([id], { deleted_at: new Date().toISOString(), status: "deleted" });
+      if (n === 0) {
+        notify("No se pudo eliminar: no tenés permiso sobre este artículo", false);
+        return;
+      }
+      notify("Eliminado");
+    } catch (e: any) {
+      notify(e.message || "No se pudo eliminar", false);
+    }
+    // Se recarga del servidor en vez de sacarlo de la lista local: lo que
+    // muestra la pantalla tiene que ser lo que quedo guardado.
+    load();
   };
 
   const accionLote = async (accion: string) => {
     const ids = Array.from(selected);
     if (!ids.length) return;
-    if (accion==="activar")  await supabase.from("articulos").update({status:"active"}).in("id",ids);
-    if (accion==="pausar")   await supabase.from("articulos").update({status:"paused"}).in("id",ids);
-    if (accion==="archivar") await supabase.from("articulos").update({status:"inactive"}).in("id",ids);
-    if (accion==="eliminar") {
-      if (!confirm("¿Eliminar "+ids.length+" artículo(s)?")) return;
-      await supabase.from("articulos").update({deleted_at:new Date().toISOString(),status:"deleted"}).in("id",ids);
+
+    const cambios: Record<string, Record<string, unknown>> = {
+      activar:  { status: "active"   },
+      pausar:   { status: "paused"   },
+      archivar: { status: "inactive" },
+      eliminar: { deleted_at: new Date().toISOString(), status: "deleted" },
+    };
+    const cambio = cambios[accion];
+    if (!cambio) return;
+    if (accion === "eliminar" && !confirm("¿Eliminar " + ids.length + " artículo(s)?")) return;
+
+    try {
+      const n = await aplicar(ids, cambio);
+      if (n === 0) {
+        notify("No se aplicó a ningún artículo: no tenés permiso sobre ellos", false);
+      } else if (n < ids.length) {
+        // Decir "aplicado a 5" cuando cambiaron 2 es peor que no decir nada.
+        notify(`Aplicado a ${n} de ${ids.length}: sobre el resto no tenés permiso`, false);
+      } else {
+        notify("Acción aplicada a " + n + " artículo(s)");
+      }
+    } catch (e: any) {
+      notify(e.message || "No se pudo aplicar la acción", false);
     }
-    notify("Acción aplicada a "+ids.length+" artículo(s)");
-    setSelected(new Set()); load();
+    setSelected(new Set());
+    load();
   };
 
   let filtered = articulos.filter(a => {
