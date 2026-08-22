@@ -333,7 +333,8 @@ export default function AdminML() {
     try {
       const data = await callMlSync({ statuses: ["pending", "error", "active"], limit: 100 });
       if (data.ok) {
-        notify(`Procesados: ${data.processed} | Errores: ${data.error}`, data.error > 0 ? "warn" : "ok");
+        const conError = (data.results ?? []).filter((r: any) => r?.result === "error").length;
+        notify(`Procesados: ${data.processed} · Errores: ${conError}`, conError > 0 ? "warn" : "ok");
         await load();
       } else notify(data.error ?? "Error", "err");
     } catch (err: any) { notify(err.message || "Error", "err"); }
@@ -361,6 +362,33 @@ export default function AdminML() {
         .eq("id", listingId);
       if (error) throw error;
       notify(`Estado → "${status}" ✓`);
+      await load();
+    } catch (err: any) { notify(err.message || "Error", "err"); }
+    finally { setSaving(null); }
+  };
+
+  /**
+   * Publica todo lo que esta en cola.
+   *
+   * Antes este boton llamaba a ml-sync, que filtra por
+   * `.not("external_id","is",null)`: solo actualiza publicaciones que YA
+   * existen en Mercado Libre. Los items en cola nunca se publicaron, asi que
+   * no tienen external_id y ml-sync los saltaba, devolviendo "Procesados: 0"
+   * sin error. La primera publicacion la hace publicar-en-ml.
+   */
+  const handleProcesarCola = async () => {
+    if (pendientes.length === 0) { notify("No hay nada en cola"); return; }
+    setSaving("all");
+    let ok = 0;
+    const fallos: string[] = [];
+    try {
+      for (const l of pendientes) {
+        const data = await callPublicar(l.variant_id);
+        if (data?.ok) ok++;
+        else fallos.push(`${l.sku}: ${data?.error ?? "error desconocido"}`);
+      }
+      if (fallos.length === 0) notify(`Publicados: ${ok}`);
+      else notify(`Publicados: ${ok} · Fallaron ${fallos.length} — ${fallos[0]}`, ok > 0 ? "warn" : "err");
       await load();
     } catch (err: any) { notify(err.message || "Error", "err"); }
     finally { setSaving(null); }
@@ -622,8 +650,8 @@ export default function AdminML() {
       {tab === "ml-pendientes" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Btn label={saving === "all" ? "Sincronizando…" : "▶ Procesar ahora"}
-              variant="primary" disabled={saving === "all"} onClick={handleSyncAll} />
+            <Btn label={saving === "all" ? "Publicando…" : "▶ Procesar ahora"}
+              variant="primary" disabled={saving === "all"} onClick={handleProcesarCola} />
           </div>
           <Card>
             <TableHeader cols={["Producto", "SKU", "Estado", "Último error", "Acciones"]} />
@@ -642,9 +670,9 @@ export default function AdminML() {
                     {l.last_error ?? "—"}
                   </td>
                   <td style={{ padding: "10px 16px" }}>
-                    <Btn label="🔁 Reintentar" variant="danger" size="xs"
-                      disabled={saving === l.listing_id}
-                      onClick={() => handleRetry(l.listing_id)} />
+                    <Btn label="▶ Publicar" variant="primary" size="xs"
+                      disabled={saving === l.variant_id}
+                      onClick={() => handlePublicar(l.variant_id)} />
                   </td>
                 </tr>
               ))}
