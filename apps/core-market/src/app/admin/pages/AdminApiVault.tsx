@@ -545,7 +545,9 @@ function VaultDetail({ entry, onClose, onEdit, onDelete }: VaultDetailProps) {
                 ['Entorno',    <EnvBadge env={entry.env} />],
                 ['Plataforma', entry.platform],
                 ['Tipo',       VAULT_TYPE_LABELS[entry.type]],
-                entry.expires_at ? ['Vencimiento', new Date(entry.expires_at).toLocaleDateString('es-UY')] : null,
+                ['Vencimiento', entry.expires_at
+                  ? new Date(entry.expires_at).toLocaleDateString('es-UY')
+                  : 'Sin vencimiento'],
                 ['Creada', new Date(entry.created_at).toLocaleDateString('es-UY')],
               ].filter(Boolean).map((row) => {
                 const [l, v] = row as [string, React.ReactNode]
