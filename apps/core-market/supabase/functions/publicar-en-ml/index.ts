@@ -176,6 +176,31 @@ serve(async (req: Request) => {
   const storeId: string = jwtClaim ?? body.storeId ?? "";
   if (!storeId) return json({ error: "Cannot determine storeId" }, 400);
 
+  /**
+   * Registra el fallo en el listing y responde.
+   *
+   * Sin esto, todo error anterior a la llamada a Mercado Libre -precio
+   * faltante, variante no encontrada, token- se devolvia al navegador pero no
+   * quedaba en catalog_listings. La tabla mostraba PENDING con la columna de
+   * error vacia, y la persona veia un aviso que se desvanecia sin rastro de
+   * que habia pasado.
+   */
+  const fallar = async (mensaje: string, status: number, extra: Record<string, unknown> = {}) => {
+    try {
+      await upsertListing(supabase, {
+        variant_id:    body.variantId,
+        channel:       CHANNEL,
+        status:        "error",
+        external_id:   null,
+        channel_attrs: {},
+        last_error:    mensaje,
+      });
+    } catch (_) {
+      // Si ni siquiera se puede registrar el error, igual hay que responderlo.
+    }
+    return json({ error: mensaje, ...extra }, status);
+  };
+
   const ctx = body.priceContext ?? {};
   // La cuenta conectada es MLU (Uruguay) y los precios del catalogo estan en
   // UYU. El default anterior era ARS, con lo cual resolve_price no encontraba
@@ -197,16 +222,16 @@ serve(async (req: Request) => {
     .single();
 
   if (varErr || !variant) {
-    return json({ error: "Variant not found", detail: varErr?.message }, 404);
+    return await fallar("No se encontro la variante en el catalogo", 404, { detail: varErr?.message });
   }
 
   const v = variant as unknown as ResolvedVariant;
 
   if (v.item_status === "archived" || v.item_status === "discontinued") {
-    return json({ error: `Item status '${v.item_status}' cannot be published` }, 422);
+    return await fallar(`El producto esta en estado '${v.item_status}' y no se puede publicar`, 422);
   }
   if (v.variant_status !== "active") {
-    return json({ error: `Variant status '${v.variant_status}' cannot be published` }, 422);
+    return await fallar(`La variante esta en estado '${v.variant_status}' y no se puede publicar`, 422);
   }
 
   // -- 3. Leer listing existente --------------------------------------------
@@ -235,13 +260,14 @@ serve(async (req: Request) => {
   );
 
   if (priceErr) {
-    return json({ error: "Price resolution failed", detail: priceErr.message }, 500);
+    return await fallar("No se pudo resolver el precio", 500, { detail: priceErr.message });
   }
   if (!priceRow || (priceRow as ResolvedPrice).amount == null) {
-    return json({
-      error: "No price found",
-      detail: `No catalog_prices row for variant ${body.variantId} channel=${CHANNEL} currency=${currency}`,
-    }, 422);
+    return await fallar(
+      `El producto no tiene precio en ${currency} para Mercado Libre`,
+      422,
+      { detail: `No hay fila en catalog_prices para variant ${body.variantId} channel=${CHANNEL} currency=${currency}` },
+    );
   }
 
   const resolvedPrice = priceRow as ResolvedPrice;
@@ -274,7 +300,7 @@ serve(async (req: Request) => {
     mlToken = await getMLToken(storeId);
   } catch (e) {
     const code = e instanceof MLModuleError ? e.code : "UNKNOWN";
-    return json({ error: "ML token error", code }, 502);
+    return await fallar("No se pudo obtener el token de Mercado Libre", 502, { code });
   }
 
   // -- 8. Construir payload ML ----------------------------------------------

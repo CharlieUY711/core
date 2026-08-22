@@ -829,7 +829,17 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
   const [edit, setEdit]       = useState<Record<string, string>>({});
   const [guardando, setGuard] = useState(false);
   const [aviso, setAviso]     = useState<string | null>(null);
-  const faltantes = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
+  const traduccion = fila?.last_error ? traducirErrorMl(fila.last_error) : null;
+  const detectados  = (!publicado && fila?.last_error) ? camposAEditar(fila.last_error, datos) : [];
+  // Si hubo un error pero no se pudo deducir que campo tocar, igual se ofrecen
+  // los que suelen faltar. Dejar a la persona mirando un aviso sin nada que
+  // hacer es peor que ofrecerle de mas.
+  const faltantes = (!publicado && fila?.last_error && detectados.length === 0)
+    ? [
+        { campo: "category_id", etiqueta: "Categoría de Mercado Libre", actual: datos?.categoria ?? null, vacio: !datos?.categoria },
+        { campo: "price",       etiqueta: "Precio",                     actual: datos?.precio ?? null,    vacio: !datos?.precio },
+      ]
+    : detectados;
 
   useEffect(() => {
     let cancelado = false;
@@ -993,8 +1003,23 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                   border: `1px solid ${T.border}`, borderRadius: T.radiusMd, padding: 14,
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
-                  <div style={{ fontWeight: 700, color: T.textDark, fontSize: 14 }}>
-                    Datos que Mercado Libre pide
+                  <div>
+                    <div style={{ fontWeight: 700, color: T.danger, fontSize: 14 }}>
+                      {traduccion?.motivo ?? "Mercado Libre rechazó la publicación"}
+                    </div>
+                    {traduccion?.detalle && (
+                      <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
+                        {traduccion.detalle}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: T.textDark, marginTop: 6, fontWeight: 600 }}>
+                      {traduccion?.accion ?? "Completá los datos de abajo y volvé a publicar"}
+                    </div>
+                    {traduccion && !traduccion.reconocido && (
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
+                        Mercado Libre dijo: {traduccion.crudo}
+                      </div>
+                    )}
                   </div>
                   {faltantes.map((f) => (
                     <label key={f.campo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -1023,7 +1048,9 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                   background: T.warningBg, color: T.warning, padding: "8px 12px",
                   borderRadius: T.radiusMd, fontSize: 12,
                 }}>
-                  Todavia no esta en Mercado Libre. Esto es lo que se enviaria al publicar.
+                  {fila?.last_error
+                    ? "Corregí lo de arriba y usá Guardar y publicar."
+                    : "Todavía no está en Mercado Libre. Esto es lo que se enviaría al publicar: usá Publicar en la tabla para intentarlo."}
                 </div>
               )}
             </div>
