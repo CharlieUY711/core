@@ -63,6 +63,18 @@ interface Regla {
 }
 
 const REGLAS: Regla[] = [
+  // family_name es el nombre de familia de producto que Mercado Libre pide en
+  // los dominios con catalogo. Lo manda publicar-en-ml derivado del titulo, asi
+  // que si aparece igual es que el titulo esta vacio o quedo demasiado corto.
+  {
+    aplica: (_c, m) => /family_name/i.test(m),
+    traducir: () => ({
+      motivo:  "El titulo no alcanza para esta categoria",
+      detalle: "Mercado Libre usa el titulo para armar el nombre de producto y el actual no le sirve: suele pasar con titulos genericos o muy cortos.",
+      accion:  "Poner un titulo que describa el producto real",
+    }),
+  },
+
   // Campos obligatorios ausentes en el cuerpo del pedido.
   {
     aplica: (c) => c === "body.required_fields",

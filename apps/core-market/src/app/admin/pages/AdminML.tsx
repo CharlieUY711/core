@@ -1270,7 +1270,9 @@ function SelectorCategoria({ titulo, valorActual, valor, ruta, onChange }: {
     setBuscando(true); setFallo(null);
     try {
       const r = await fetch(
-        "https://api.mercadolibre.com/sites/MLU/domain_discovery/search?limit=10&q=" + encodeURIComponent(q)
+        // limit acepta 1..8; con 10 Mercado Libre devuelve 400 y el combo quedaba
+        // mostrando "respondio 400" en vez de las categorias.
+        "https://api.mercadolibre.com/sites/MLU/domain_discovery/search?limit=8&q=" + encodeURIComponent(q)
       );
       if (!r.ok) throw new Error("Mercado Libre respondio " + r.status);
       const d = await r.json();
@@ -1366,15 +1368,8 @@ function SelectorCategoria({ titulo, valorActual, valor, ruta, onChange }: {
 
             {!buscando && fallo && (
               <div style={{ padding: "9px 11px", fontSize: 12, color: T.textMuted }}>
-                {fallo}. Si sabes el id, escribilo y apreta Enter:
-                <input placeholder="MLU1234"
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter") return;
-                    const v = (e.target as HTMLInputElement).value.trim();
-                    if (esIdMl(v)) elegir(v);
-                  }}
-                  style={{ marginTop: 6, padding: "4px 7px", fontSize: 12, width: "100%", boxSizing: "border-box",
-                           border: "1px solid " + T.border, borderRadius: T.radiusSm }} />
+                No se pudieron traer las categorias en este momento. Proba de nuevo
+                escribiendo otra palabra.
               </div>
             )}
 

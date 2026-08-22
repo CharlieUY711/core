@@ -326,6 +326,16 @@ serve(async (req: Request) => {
     listing_type_id: attrs["listing_type_id"] ?? "gold_special",
     condition:      attrs["condition"]      ?? "new",
     ...(categoriaId ? { category_id: categoriaId } : {}),
+    // Mercado Libre exige family_name en los dominios que tienen catalogo
+    // -practicamente todos-, salvo que se publique contra un producto del
+    // catalogo con catalog_product_id. Es el nombre de la familia de producto
+    // y sirve para agrupar variaciones.
+    //
+    // No tiene sentido pedirselo a nadie: el titulo ya lo dice. Se manda
+    // derivado del titulo, y si alguien lo define explicitamente en
+    // channel_attrs manda lo suyo. Sin esto ML rechazaba con
+    // "body.required_fields [family_name]", que no le decia nada al usuario.
+    family_name: String(attrs["family_name"] ?? v.item_title ?? "").trim().slice(0, 60) || undefined,
     ...(pictures.length > 0  ? { pictures }                          : {}),
     ...(v.weight_g           ? { shipping: buildShipping(v, attrs) } : {}),
   };
