@@ -34,6 +34,8 @@ interface PublicarBody {
   storeId?: string;
   /** Solo comprueba requisitos y responde que falta, sin publicar. */
   soloVerificar?: boolean;
+  /** Solo busca los datos del producto en el catalogo y los devuelve. */
+  soloEnriquecer?: boolean;
   /** Contexto de precio — todos opcionales, se usan como filtros en resolve_price */
   priceContext?: {
     priceList?: string;
@@ -318,6 +320,26 @@ serve(async (req: Request) => {
     categoriaPredicha = categoriaId !== null;
   }
 
+  // -- 7b. Datos del fabricante -------------------------------------------
+  // Se busca siempre, no solo cuando falta algo: los codigos, las fotos y las
+  // caracteristicas son del producto y no de quien lo vende. Si no aparece
+  // nada, se sigue igual.
+  const delCatalogo = await buscarEnCatalogo(mlToken, ML_SITE, v.item_title ?? "");
+
+  if (body.soloEnriquecer) {
+    return json({
+      ok: true,
+      encontrado: !!delCatalogo,
+      producto: delCatalogo ? { id: delCatalogo.id, nombre: delCatalogo.nombre } : null,
+      atributos: delCatalogo ? [...delCatalogo.atributos].map(([id, valor]) => ({ id, valor })) : [],
+      imagenes: delCatalogo?.imagenes ?? [],
+      caracteristicas: delCatalogo?.caracteristicas ?? [],
+      descripcion: delCatalogo?.descripcion ?? null,
+      precios: delCatalogo?.precios ?? null,
+      competencia: delCatalogo?.competencia ?? [],
+    });
+  }
+
   const mlPayload: Record<string, unknown> = {
     // title y family_name NO conviven: ver el bloque de abajo.
     description:    v.item_description ?? undefined,
@@ -370,14 +392,29 @@ serve(async (req: Request) => {
 
   // Atributos de variante (talle, color, etc.) → ML attributes array
   const mlAttrs = buildMLAttributes(v.attributes, attrs["extra_attributes"] as unknown[] ?? []);
+
+  // Lo que el catalogo sabe y nosotros no, se completa. Nunca se pisa un valor
+  // cargado: si alguien lo escribio, manda lo suyo.
+  if (delCatalogo) {
+    const yaPuestos = new Set(mlAttrs.map((a) => a.id));
+    for (const [id, valor] of delCatalogo.atributos) {
+      if (!yaPuestos.has(id)) mlAttrs.push({ id, value_name: valor });
+    }
+  }
   if (mlAttrs.length > 0) mlPayload.attributes = mlAttrs;
+
+  // Fotos del fabricante, solo si el producto no tiene propias: las suyas
+  // muestran la unidad real y valen mas que las de catalogo.
+  if (delCatalogo?.imagenes.length && !(mlPayload.pictures as unknown[] | undefined)?.length) {
+    mlPayload.pictures = delCatalogo.imagenes.slice(0, 10).map((url) => ({ source: url }));
+  }
 
   // -- 8b. Verificacion previa ---------------------------------------------
   // Conocer los requisitos de Mercado Libre y comprobarlos aca evita que una
   // publicacion incompleta llegue a ML y vuelva como un rechazo en jerga. El
   // texto que se guarda es el mismo que ve quien vende, y no se gasta una
   // llamada a la API para averiguar algo que ya sabiamos.
-  const problemas = await verificarAntesDePublicar(mlPayload, mlAttrs);
+  const problemas = await verificarAntesDePublicar(mlPayload, mlAttrs, delCatalogo?.atributos ?? null);
   if (problemas.length > 0 && body.soloVerificar) {
     // Verificar no es publicar: se informa que falta sin ensuciar el estado
     // del listing con un error que nadie provoco.
@@ -674,13 +711,18 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
       // completarlo necesita elegir un valor valido, no adivinar el que la
       // categoria acepta. Se acotan para no inflar la respuesta con listas de
       // cientos de entradas que nadie va a leer.
-      // Mercado Libre marca la obligatoriedad de tres formas distintas y las
-      // tres rechazan la publicacion: `required` siempre, `catalog_required`
-      // para publicar en el catalogo, y `conditional_required` segun otros
-      // datos -por ejemplo GTIN-. Mirar solo la primera dejaba pasar
-      // publicaciones que despues rebotaban.
+      // `required` y `catalog_required` se piden siempre, asi que se exigen
+      // antes de publicar.
+      //
+      // `conditional_required` NO: significa obligatorio SEGUN otros datos, y
+      // los de una misma categoria suelen excluirse entre si -en Celulares,
+      // "Codigo universal de producto", "Motivo de GTIN vacio" y "Estado del
+      // reacondicionado" nunca hacen falta los tres juntos-. Pedirlos todos
+      // convierte una publicacion valida en tres campos imposibles de
+      // completar a la vez. Si alguno aplica, el canal lo dice al publicar y
+      // ahi se pide el que corresponde.
       requeridos:    (Array.isArray(attrs) ? attrs : [])
-        .filter((a: any) => a?.tags?.required || a?.tags?.catalog_required || a?.tags?.conditional_required)
+        .filter((a: any) => a?.tags?.required || a?.tags?.catalog_required)
         .map((a: any) => ({
           id:       String(a.id),
           nombre:   String(a.name ?? a.id),
@@ -707,6 +749,133 @@ async function requisitosDeCategoria(categoriaId: string): Promise<any | null> {
   }
 }
 
+/**
+ * Busca el producto en el catalogo de Mercado Libre y trae sus atributos.
+ *
+ * Codigos como el GTIN, la memoria interna o la RAM no son datos que quien
+ * vende tenga a mano: son del producto, no de la publicacion. Pedirselos es
+ * trasladarle un trabajo que podemos hacer nosotros, porque Mercado Libre
+ * mantiene un catalogo con todo eso cargado.
+ *
+ * Requiere el token del vendedor: estos endpoints dejaron de responder sin
+ * autenticar. Si la busqueda falla o no encuentra nada, no pasa nada: se sigue
+ * sin sugerencias. Es una ayuda, no un requisito.
+ */
+async function buscarEnCatalogo(
+  token: string, siteId: string, titulo: string,
+): Promise<{
+  id: string;
+  nombre: string;
+  atributos: Map<string, string>;
+  imagenes: string[];
+  caracteristicas: string[];
+  descripcion: string | null;
+  precios: { min: number; max: number; mediana: number; moneda: string; ofertas: number } | null;
+  competencia: Array<{
+    precio: number; moneda: string; envioGratis: boolean;
+    vendidos: number; condicion: string; ganaLaCompra: boolean;
+  }>;
+} | null> {
+  const q = titulo.trim();
+  if (q.length < 3) return null;
+  try {
+    const url = `https://api.mercadolibre.com/products/search`
+              + `?status=active&site_id=${encodeURIComponent(siteId)}&q=${encodeURIComponent(q)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const primero = (d?.results ?? [])[0];
+    if (!primero?.id) return null;
+
+    // El resultado de la busqueda trae atributos resumidos; la ficha completa
+    // trae los que faltan, que suelen ser justamente los codigos.
+    let atributos: any[] = primero.attributes ?? [];
+    let ficha: any = null;
+    try {
+      const rf = await fetch(`https://api.mercadolibre.com/products/${primero.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (rf.ok) {
+        ficha = await rf.json();
+        if (Array.isArray(ficha?.attributes) && ficha.attributes.length) atributos = ficha.attributes;
+      }
+    } catch (_) { /* alcanza con los del resultado */ }
+
+    const mapa = new Map<string, string>();
+    for (const a of atributos) {
+      const v = String(a?.value_name ?? "").trim();
+      if (a?.id && v) mapa.set(String(a.id), v);
+    }
+
+    // Del catalogo tambien salen las fotos del fabricante y las
+    // caracteristicas principales: enriquecen la publicacion y evitan pedirle
+    // a quien vende que fotografie un producto que ya esta fotografiado.
+    const fuente = ficha ?? primero;
+    const imagenes = (fuente?.pictures ?? [])
+      .map((p: any) => String(p?.secure_url ?? p?.url ?? "")).filter(Boolean);
+    const caracteristicas = (fuente?.main_features ?? [])
+      .map((f: any) => String(f?.text ?? f?.value ?? "")).filter(Boolean);
+    const descripcion = fuente?.short_description?.content
+      ? String(fuente.short_description.content) : null;
+
+    // A que precio se vende hoy el mismo producto. Sirve para decidir con que
+    // numero salir, que es una decision que hoy se toma a ciegas.
+    let precios = null as null | { min: number; max: number; mediana: number; moneda: string; ofertas: number };
+    let competencia: Array<{
+      precio: number; moneda: string; envioGratis: boolean;
+      vendidos: number; condicion: string; ganaLaCompra: boolean;
+    }> = [];
+    try {
+      const ri = await fetch(`https://api.mercadolibre.com/products/${primero.id}/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (ri.ok) {
+        const di = await ri.json();
+
+        // Quien mas lo vende y en que condiciones. No se identifica a nadie:
+        // lo que sirve para decidir es el precio, el envio y cuanto vendieron,
+        // no quien es. Guardar vendedores ajenos seria juntar datos que no
+        // necesitamos.
+        const ganador = String(ficha?.buy_box_winner?.item_id ?? "");
+        competencia = (di?.results ?? [])
+          .map((it: any) => ({
+            precio:       Number(it?.price) || 0,
+            moneda:       String(it?.currency_id ?? ""),
+            envioGratis:  it?.shipping?.free_shipping === true,
+            vendidos:     Number(it?.sold_quantity) || 0,
+            condicion:    String(it?.condition ?? ""),
+            ganaLaCompra: String(it?.id ?? "") === ganador,
+          }))
+          .filter((c: any) => c.precio > 0)
+          .sort((a: any, b: any) => a.precio - b.precio)
+          .slice(0, 8);
+
+        const valores = (di?.results ?? [])
+          .map((it: any) => Number(it?.price))
+          .filter((n: number) => Number.isFinite(n) && n > 0)
+          .sort((x: number, y: number) => x - y);
+        if (valores.length) {
+          const medio = Math.floor(valores.length / 2);
+          precios = {
+            min: valores[0],
+            max: valores[valores.length - 1],
+            mediana: valores.length % 2 ? valores[medio] : (valores[medio - 1] + valores[medio]) / 2,
+            moneda: String((di?.results ?? [])[0]?.currency_id ?? ""),
+            ofertas: valores.length,
+          };
+        }
+      }
+    } catch (_) { /* la comparativa es una ayuda, no un requisito */ }
+
+    return {
+      id: String(primero.id), nombre: String(primero.name ?? q),
+      atributos: mapa, imagenes, caracteristicas, descripcion, precios, competencia,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 interface Problema {
   campo: string;
   etiqueta: string;
@@ -725,6 +894,7 @@ interface Problema {
 async function verificarAntesDePublicar(
   payload: Record<string, unknown>,
   attrsMl: Array<{ id: string; value_name: string }>,
+  delCatalogo?: Map<string, string> | null,
 ): Promise<Problema[]> {
   const problemas: Problema[] = [];
   const titulo = String(payload.title ?? "").trim();
@@ -780,13 +950,15 @@ async function verificarAntesDePublicar(
   const puestos = new Set(attrsMl.filter((a) => String(a.value_name ?? "").trim()).map((a) => a.id));
   const valorDe = new Map(attrsMl.map((a) => [a.id, String(a.value_name ?? "")]));
   for (const r of req.requeridos) {
-    if (!puestos.has(r.id)) {
-      problemas.push({
-        campo: `attr:${r.id}`, etiqueta: r.nombre,
-        mensaje: `"${req.nombre}" exige ${r.nombre.toLowerCase()}`,
-        opciones: r.opciones, valor: valorDe.get(r.id) ?? null, tipo: r.tipo,
-      });
-    }
+    if (puestos.has(r.id)) continue;
+    // Si el catalogo lo tiene, ya no falta: se completa solo.
+    const sugerido = delCatalogo?.get(r.id);
+    if (sugerido) continue;
+    problemas.push({
+      campo: `attr:${r.id}`, etiqueta: r.nombre,
+      mensaje: `"${req.nombre}" exige ${r.nombre.toLowerCase()}`,
+      opciones: r.opciones, valor: valorDe.get(r.id) ?? null, tipo: r.tipo,
+    });
   }
 
   return problemas;

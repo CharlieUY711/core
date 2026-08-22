@@ -419,7 +419,11 @@ export default function AdminPublicaciones() {
   // Lo que respondio el canal, textual. Se guarda siempre y se muestra siempre
   // -plegado-: si la traduccion se equivoca, el original es lo unico que
   // permite darse cuenta. Ocultarlo fue un error de mi parte y esto lo corrige.
-  const [crudoCanal,setCrudoCanal]=useState<Record<string,string>>({});
+  // `delCanal` distingue las palabras del canal de las nuestras: last_error
+  // guarda las dos cosas -el rechazo textual, o el resumen de la verificacion
+  // previa- y presentar lo segundo como "respuesta de Mercado Libre" es
+  // atribuirle a otro lo que escribimos nosotros.
+  const [crudoCanal,setCrudoCanal]=useState<Record<string,{texto:string;delCanal:boolean}>>({});
 
   // Los canales que se ofrecen son los que su motor declara operativos: no una
   // lista fija, ni lo que haya en los datos. Un canal cuyo modulo no esta
@@ -495,7 +499,7 @@ export default function AdminPublicaciones() {
       return;
     }
 
-    if(r.crudo)setCrudoCanal(p=>({...p,[a.id]:r.crudo!}));
+    if(r.crudo)setCrudoCanal(p=>({...p,[a.id]:{texto:r.crudo!,delCanal:true}}));
     if(r.problemas?.length){
       setProblemas(p=>({...p,[a.id]:r.problemas!}));
       setOrigenProblema(p=>({...p,[a.id]:"rechazo"}));
@@ -525,7 +529,9 @@ export default function AdminPublicaciones() {
     // El rechazo anterior quedo guardado en el listing: se trae para que este
     // disponible aunque el fallo haya sido en otra sesion.
     const l=(a.canales??[]).find((x:any)=>x.channel===canal);
-    if(l?.last_error)setCrudoCanal(p=>({...p,[a.id]:String(l.last_error)}));
+    // De last_error no se puede saber quien lo escribio, asi que no se le
+    // atribuye al canal.
+    if(l?.last_error)setCrudoCanal(p=>({...p,[a.id]:{texto:String(l.last_error),delCanal:false}}));
   };
 
   /**
@@ -563,7 +569,7 @@ export default function AdminPublicaciones() {
         setOrigenProblema(p=>({...p,[id]:"rechazo"}));
         primerFallo=primerFallo??id;
       }
-      if(r.crudo)setCrudoCanal(p=>({...p,[id]:r.crudo!}));
+      if(r.crudo)setCrudoCanal(p=>({...p,[id]:{texto:r.crudo!,delCanal:true}}));
     }
     setSincro(false);
     setChips(new Set());
@@ -1038,11 +1044,13 @@ export default function AdminPublicaciones() {
                     {!!crudoCanal[a.id]&&(
                       <details style={{marginTop:"0.6rem"}}>
                         <summary style={{cursor:"pointer",fontSize:"0.72rem",color:"var(--gray-400)"}}>
-                          Respuesta textual de {nombreCanal[canalConProblema[a.id]]??"el canal"}
+                          {crudoCanal[a.id].delCanal
+                            ? "Respuesta textual de "+(nombreCanal[canalConProblema[a.id]]??"el canal")
+                            : "Detalle del último intento"}
                         </summary>
                         <pre style={{fontSize:"0.68rem",whiteSpace:"pre-wrap",wordBreak:"break-word",
                           background:"#fff",border:"1px solid var(--border)",borderRadius:6,
-                          padding:7,marginTop:5,maxHeight:130,overflow:"auto"}}>{crudoCanal[a.id]}</pre>
+                          padding:7,marginTop:5,maxHeight:130,overflow:"auto"}}>{crudoCanal[a.id].texto}</pre>
                       </details>
                     )}
 
