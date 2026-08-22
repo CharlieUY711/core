@@ -433,7 +433,10 @@ export default function AdminML() {
   return (
     <div style={{ fontFamily: T.fontBase, display: "flex", flexDirection: "column", gap: 0 }}>
 
-      {preview && <ModalPreview fila={preview} onClose={() => setPreview(null)} onGuardado={load} />}
+      {preview && (
+        <ModalPreview fila={preview} onClose={() => setPreview(null)}
+          onPublicar={handlePublicar} />
+      )}
 
       {/* Header */}
       <div style={{
@@ -820,7 +823,11 @@ function TabBtn({ label, active, accentColor, hasAlert, onClick }: {
  * El boton de abrir en Mercado Libre usa el permalink que devuelve su API; si
  * no hay, se cae al buscador por id. Nunca se inventa una URL.
  */
-function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () => void; onGuardado?: () => void }) {
+// onGuardado ya no hace falta: publicar lo hace el padre, y su handler recarga.
+function ModalPreview({ fila, onClose, onPublicar }: {
+  fila: any; onClose: () => void;
+  onPublicar?: (variantId: string) => void;
+}) {
   const [datos, setDatos]   = useState<any>(null);
   const [cargando, setCarg] = useState(true);
   const [error, setError]   = useState<string | null>(null);
@@ -1002,13 +1009,12 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
         if (error) throw new Error(error.message);
       }
 
-      // Los datos ya estan guardados. El intento de publicar puede salir o no,
-      // pero en los dos casos se cierra: el resultado vive en la tabla, en la
-      // columna Ultimo error, y desde ahi se vuelve a entrar con Ver. Dejar el
-      // modal abierto duplicaria el mismo estado en dos lugares.
-      await callPublicar(fila.variant_id);
-      onGuardado?.();
+      // Guardar es rapido; publicar tarda porque va contra Mercado Libre. El
+      // modal se cierra apenas termina el guardado y la publicacion la sigue
+      // el padre, que ya sabe avisar y recargar la tabla. Esperar adentro
+      // dejaba el modal congelado varios segundos sin razon.
       onClose();
+      onPublicar?.(fila.variant_id);
     } catch (e: any) {
       setAviso(e.message || "No se pudo guardar");
     } finally {
@@ -1102,15 +1108,25 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: faltanAhora.length ? T.danger : T.success }}>
+                    {/* Decir "no falta nada" cuando Mercado Libre acaba de
+                        rechazar es peor que no decir nada: la persona lee que
+                        esta todo bien y no entiende por que no se publica. */}
+                    <div style={{
+                      fontWeight: 700, fontSize: 14,
+                      color: faltanAhora.length ? T.danger : traduccion ? T.warning : T.success,
+                    }}>
                       {faltanAhora.length
                         ? "Falta " + faltanAhora.join(", ")
-                        : "No falta ningún dato obligatorio"}
+                        : traduccion
+                          ? "Mercado Libre lo rechazó, pero los datos que pide están completos"
+                          : "No falta ningún dato obligatorio"}
                     </div>
                     <div style={{ fontSize: 12, color: T.textBody, marginTop: 2 }}>
                       {faltanAhora.length
                         ? "Completá lo marcado en rojo y guardá."
-                        : "Podés publicar. Si Mercado Libre igual lo rechaza, el motivo va a quedar acá."}
+                        : traduccion
+                          ? "Revisá que la categoría sea la correcta: es la causa más común cuando no falta ningún dato. Si ya lo es, mirá abajo qué respondió Mercado Libre."
+                          : "Podés publicar. Si Mercado Libre igual lo rechaza, el motivo va a quedar acá."}
                     </div>
                     {traduccion && (
                       <div style={{ fontSize: 11, color: T.textMuted, marginTop: 8 }}>
@@ -1184,9 +1200,9 @@ function ModalPreview({ fila, onClose, onGuardado }: { fila: any; onClose: () =>
                   background: T.warningBg, color: T.warning, padding: "8px 12px",
                   borderRadius: T.radiusMd, fontSize: 12,
                 }}>
-                  {fila?.last_error
-                    ? "Corregí lo de arriba y usá Guardar y publicar."
-                    : "Todavía no está en Mercado Libre. Esto es lo que se enviaría al publicar: usá Publicar en la tabla para intentarlo."}
+                  {faltanAhora.length
+                    ? "Completá lo que falta y usá Guardar y publicar."
+                    : "Todavía no está en Mercado Libre. Usá Guardar y publicar para intentarlo; el resultado queda en la tabla."}
                 </div>
               )}
             </div>

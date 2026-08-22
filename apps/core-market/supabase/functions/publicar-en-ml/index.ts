@@ -381,6 +381,24 @@ serve(async (req: Request) => {
   const mlBody = await mlResponse.json().catch(() => ({}));
   const success = mlResponse.status >= 200 && mlResponse.status < 300;
 
+  // `message` de Mercado Libre suele repetir el codigo -"body.required_fields"-
+  // y el detalle util vive en `cause`: que campo falta, que atributo exige la
+  // categoria. Guardar solo `message` dejaba en last_error un texto que no
+  // cambia nunca y no dice nada.
+  const resumenMl = (b: any): string => {
+    const partes: string[] = [];
+    const msg = b?.message ? String(b.message) : "";
+    const causas = Array.isArray(b?.cause) ? b.cause : [];
+    for (const c of causas.slice(0, 4)) {
+      const t = typeof c === "string" ? c : [c?.code, c?.message].filter(Boolean).join(": ");
+      if (t && !partes.includes(t)) partes.push(String(t));
+    }
+    // El mensaje general solo suma si no es el mismo codigo repetido.
+    if (msg && msg !== String(b?.error ?? "") && !partes.includes(msg)) partes.unshift(msg);
+    if (partes.length === 0 && b?.error) partes.push(String(b.error));
+    return partes.join(" | ") || `Mercado Libre respondio ${mlResponse.status} sin detalle`;
+  };
+
   // -- 11. Actualizar listing y log -----------------------------------------
   const newExternalId: string | null = success
     ? (mlBody.id ?? existingListing?.external_id ?? null)
@@ -391,7 +409,7 @@ serve(async (req: Request) => {
     channel:     CHANNEL,
     external_id: newExternalId,
     status:      success ? "active" : "error",
-    last_error:  success ? null : (mlBody.message ?? "Unknown ML error"),
+    last_error:  success ? null : resumenMl(mlBody),
     synced_at:   success ? new Date().toISOString() : undefined,
     channel_attrs: existingListing?.channel_attrs ?? {},
   });
@@ -403,7 +421,7 @@ serve(async (req: Request) => {
     httpStatus:  mlResponse.status,
     payload:     mlPayload,
     response:    mlBody,
-    error:       success ? null : (mlBody.message ?? null),
+    error:       success ? null : resumenMl(mlBody),
   });
 
   if (!success) {

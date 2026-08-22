@@ -173,7 +173,11 @@ export function traducirErrorMl(respuesta: any): ErrorTraducido {
   // `catalog_listings.last_error` guarda solo el texto de ML, sin estructura.
   // Se acepta ese caso para poder traducir tambien lo que ya quedo registrado.
   if (typeof respuesta === "string") {
-    respuesta = { message: respuesta, error: respuesta.split(/[\s·]/)[0] ?? "" };
+    // El codigo se usa para elegir la regla, pero no se suma al crudo: si se
+    // sumara, un last_error como "body.required_fields" se mostraria dos veces
+    // -"body.required_fields . body.required_fields"- que fue exactamente lo
+    // que se vio en pantalla.
+    respuesta = { message: respuesta, error: respuesta.split(/[\s·|]/)[0] ?? "", soloTexto: true };
   }
   const detalle = respuesta?.detail ?? respuesta ?? {};
   const codigo: string = String(detalle?.error ?? respuesta?.error ?? "");
@@ -188,7 +192,9 @@ export function traducirErrorMl(respuesta: any): ErrorTraducido {
         .map(String)
     : [];
 
-  const crudo = [codigo, mensaje, ...causas].filter(Boolean).join(" · ") || "Error desconocido";
+  const crudo = (respuesta?.soloTexto
+    ? mensaje
+    : [codigo, mensaje, ...causas].filter(Boolean).join(" · ")) || "Error desconocido";
   const textoBusqueda = [mensaje, ...causas].join(" ");
 
   for (const regla of REGLAS) {
