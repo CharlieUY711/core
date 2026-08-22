@@ -76,7 +76,7 @@ export default function OrdenPage() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#FAFAFA", fontFamily: "DM Sans, sans-serif" }}>
-      <header style={{ background: isPaid ? "#6BB87A" : "#FF6835", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.5s" }}>
+      <header style={{ background: isPaid ? "color-mix(in srgb, var(--color-success) 70%, white)" : "#FF6835", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background 0.5s" }}>
         <Link to="/" style={{ textDecoration: "none", color: "#fff", fontWeight: 600 }}>← Volver</Link>
         <h1 style={{ margin: 0, color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>
           {isPaid ? "✅ Pago confirmado" : polling ? "⏳ Procesando pago..." : "📋 Orden"}
@@ -109,7 +109,7 @@ export default function OrdenPage() {
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", fontWeight: 700, color: "#444" }}>Resumen</h3>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "#666" }}>Total</span>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: isPaid ? "#6BB87A" : "#FF6835" }}>
+            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: isPaid ? "color-mix(in srgb, var(--color-success) 70%, white)" : "#FF6835" }}>
               {simbolo} {Number(total).toLocaleString("es-UY")}
             </span>
           </div>
@@ -153,7 +153,7 @@ export default function OrdenPage() {
           </div>
         </div>
 
-        <Link to="/" style={{ display: "block", textAlign: "center", padding: "1rem", background: isPaid ? "#6BB87A" : "#FF6835", color: "#fff", textDecoration: "none", borderRadius: "8px", fontWeight: 700, fontSize: "1rem" }}>
+        <Link to="/" style={{ display: "block", textAlign: "center", padding: "1rem", background: isPaid ? "color-mix(in srgb, var(--color-success) 70%, white)" : "#FF6835", color: "#fff", textDecoration: "none", borderRadius: "8px", fontWeight: 700, fontSize: "1rem" }}>
           {isPaid ? "Seguir comprando" : "Volver a la tienda"}
         </Link>
       </div>

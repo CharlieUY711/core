@@ -8,9 +8,9 @@ import EffectsPanel   from "./components/EffectsPanel";
 import HistoryPanel   from "./components/HistoryPanel";
 import { supabase }   from "../../../utils/supabase/client";
 
-const ACCENT = "#FF7A00";
-const BLUE   = "#0F3460";
-const GREEN  = "#1DC878";
+const ACCENT = "var(--brand-madre)";
+const BLUE   = "var(--brand-navy)";
+const GREEN  = "var(--color-success)";
 
 type Tab = "adjust" | "transform" | "effects";
 
@@ -27,7 +27,7 @@ export default function EditorPage() {
     <button onClick={() => setTab(t)} style={{
       flex:1, padding:"7px 4px", background:"none", border:"none",
       borderBottom: tab === t ? `2px solid ${color}` : "2px solid transparent",
-      color: tab === t ? color : "#9CA3AF",
+      color: tab === t ? color : "var(--gray-400)",
       fontSize:"11px", fontWeight: tab === t ? 600 : 400,
       cursor:"pointer", transition:"all .12s"
     }}>{label}</button>
@@ -36,7 +36,7 @@ export default function EditorPage() {
   const topBtn = (label: string, onClick: () => void, color = ACCENT, disabled = false) => (
     <button onClick={onClick} disabled={disabled} style={{
       padding:"5px 14px", background:"none",
-      border:`1.5px solid ${disabled ? "#E5E7EB" : color}`, borderRadius:"7px",
+      border:`1.5px solid ${disabled ? "var(--border)" : color}`, borderRadius:"7px",
       color: disabled ? "#ccc" : color, fontSize:"12px", fontWeight:500,
       cursor: disabled ? "not-allowed" : "pointer",
     }}>{label}</button>
@@ -97,24 +97,24 @@ export default function EditorPage() {
     <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 110px)", minHeight:"500px", fontFamily:"DM Sans, sans-serif" }}>
 
       {/* Barra superior */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 12px", background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:"12px", marginBottom:"6px", gap:"8px" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 12px", background:"#fff", border:"1.5px solid var(--border)", borderRadius:"12px", marginBottom:"6px", gap:"8px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
           <span style={{ fontWeight:700, fontSize:"13px", color:BLUE }}>Editor</span>
-          <span style={{ width:"1px", height:"18px", background:"#E5E7EB" }} />
+          <span style={{ width:"1px", height:"18px", background:"var(--border)" }} />
           {topBtn("Subir imagen", () => document.getElementById("emi-file-input")?.click(), ACCENT)}
           {topBtn("Undo",  () => store.undo(),  BLUE, !store.src)}
           {topBtn("Redo",  () => store.redo(),  BLUE, !store.src)}
-          {topBtn("Reset", () => store.reset(), "#9CA3AF", !store.src)}
+          {topBtn("Reset", () => store.reset(), "var(--gray-400)", !store.src)}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-          {store.src && <span style={{ fontSize:"11px", color:"#9CA3AF" }}>{store.src.width}×{store.src.height}px</span>}
+          {store.src && <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{store.src.width}×{store.src.height}px</span>}
           {store.versionCount > 0 && <span style={{ fontSize:"10px", color:GREEN, fontWeight:600 }}>V{store.versionCount}</span>}
           {(["＋","－","Fit"] as const).map((l,i) => (
             <button key={i} onClick={() => {
               if(i===0) store.set("zoom",Math.min(store.zoom*1.25,5));
               else if(i===1) store.set("zoom",Math.max(store.zoom/1.25,.1));
               else store.set("zoom",1);
-            }} style={{ padding:"3px 7px", border:"0.5px solid #E5E7EB", borderRadius:"5px", background:"#fff", color:"#6B7280", fontSize:"11px", cursor:"pointer" }}>{l}</button>
+            }} style={{ padding:"3px 7px", border:"0.5px solid var(--border)", borderRadius:"5px", background:"#fff", color:"var(--mute)", fontSize:"11px", cursor:"pointer" }}>{l}</button>
           ))}
         </div>
       </div>
@@ -123,9 +123,9 @@ export default function EditorPage() {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 200px 1fr 160px", flex:1, overflow:"hidden", gap:"6px" }}>
 
         {/* Canvas Original */}
-        <div style={{ display:"flex", flexDirection:"column", background:"#F4F5F7", border:"1.5px solid #E5E7EB", borderRadius:"12px", overflow:"hidden" }}>
-          <div style={{ height:"30px", display:"flex", alignItems:"center", justifyContent:"center", borderBottom:"1px solid #E5E7EB", background:"#fff", flexShrink:0 }}>
-            <span style={{ fontSize:"10px", fontWeight:600, color:"#6B7280", padding:"2px 10px", border:"1px solid #E5E7EB", borderRadius:"20px", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+        <div style={{ display:"flex", flexDirection:"column", background:"#F4F5F7", border:"1.5px solid var(--border)", borderRadius:"12px", overflow:"hidden" }}>
+          <div style={{ height:"30px", display:"flex", alignItems:"center", justifyContent:"center", borderBottom:"1px solid var(--border)", background:"#fff", flexShrink:0 }}>
+            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--mute)", padding:"2px 10px", border:"1px solid var(--border)", borderRadius:"20px", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {shortName || "Original"}
             </span>
           </div>
@@ -133,7 +133,7 @@ export default function EditorPage() {
         </div>
 
         {/* Panel menú central */}
-        <aside style={{ background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:"12px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        <aside style={{ background:"#fff", border:"1.5px solid var(--border)", borderRadius:"12px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
           <div style={{ display:"flex", borderBottom:"1px solid #F3F4F6", flexShrink:0 }}>
             {navBtn("adjust","Ajustes",ACCENT)}
             {navBtn("transform","Forma",BLUE)}
@@ -151,8 +151,8 @@ export default function EditorPage() {
 
         {/* Canvas Preview (editado) */}
         <div style={{ display:"flex", flexDirection:"column", background:"#F4F5F7", border:`1.5px solid ${ACCENT}`, borderRadius:"12px", overflow:"hidden" }}>
-          <div style={{ height:"30px", display:"flex", alignItems:"center", justifyContent:"center", borderBottom:"1px solid #E5E7EB", background:"#fff", flexShrink:0 }}>
-            <span style={{ fontSize:"10px", fontWeight:600, color:"#9CA3AF", padding:"2px 10px", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          <div style={{ height:"30px", display:"flex", alignItems:"center", justifyContent:"center", borderBottom:"1px solid var(--border)", background:"#fff", flexShrink:0 }}>
+            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", padding:"2px 10px", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {shortName ? `${shortName} — preview` : "Preview"}
             </span>
           </div>
@@ -171,7 +171,7 @@ export default function EditorPage() {
         </div>
 
         {/* Salida */}
-        <aside style={{ background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:"12px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        <aside style={{ background:"#fff", border:"1.5px solid var(--border)", borderRadius:"12px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
           {/* Botón Grabar */}
           <div style={{ padding:"10px 12px", borderBottom:"1px solid #F3F4F6" }}>
@@ -197,26 +197,26 @@ export default function EditorPage() {
 
           {/* Info exportación */}
           <div style={{ padding:"10px 12px", borderBottom:"1px solid #F3F4F6" }}>
-            <div style={{ fontSize:"10px", fontWeight:600, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"8px" }}>Salida</div>
-            <div style={{ fontSize:"11px", color:"#6B7280", lineHeight:2 }}>
+            <div style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"8px" }}>Salida</div>
+            <div style={{ fontSize:"11px", color:"var(--mute)", lineHeight:2 }}>
               <div>Formato: {store.bgColor === "transparent" ? "PNG" : "JPG"}</div>
               <div>1200×1200px</div>
               {sizeEst && <div>~{sizeEst}</div>}
-              <div style={{ color:"#9CA3AF", fontSize:"10px" }}>render #{renderCount}</div>
+              <div style={{ color:"var(--gray-400)", fontSize:"10px" }}>render #{renderCount}</div>
             </div>
           </div>
 
           {/* Info imagen */}
           <div style={{ padding:"10px 12px" }}>
-            <div style={{ fontSize:"10px", fontWeight:600, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"8px" }}>Info</div>
+            <div style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"8px" }}>Info</div>
             {store.src ? (
-              <div style={{ fontSize:"11px", color:"#6B7280", lineHeight:2 }}>
+              <div style={{ fontSize:"11px", color:"var(--mute)", lineHeight:2 }}>
                 <div>{store.src.width}×{store.src.height}px</div>
                 <div>zoom {Math.round(store.zoom*100)}%</div>
                 {store.filter !== "none" && <div>Filtro: {store.filter}</div>}
                 {store.bgRemoved && <div style={{ color:"#6B3CFF" }}>✦ Sin fondo</div>}
               </div>
-            ) : <span style={{ fontSize:"11px", color:"#9CA3AF" }}>Sin imagen</span>}
+            ) : <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>Sin imagen</span>}
           </div>
         </aside>
       </div>

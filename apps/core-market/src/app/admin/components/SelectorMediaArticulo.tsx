@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import AdminBiblioteca from "../pages/AdminBiblioteca";
 import { supabase } from "../../../utils/supabase/client";
 
-const ACCENT = "#FF7A00";
-const BLUE   = "#0F3460";
+const ACCENT = "var(--brand-madre)";
+const BLUE   = "var(--brand-navy)";
 
 export interface MediaItem {
   id: string;
@@ -110,8 +110,8 @@ export default function SelectorMediaArticulo({
 
   const slotStyle = (filled: boolean, first = false): React.CSSProperties => ({
     width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden",
-    border: first && filled ? `2px solid ${ACCENT}` : `1.5px solid ${filled ? "#E5E7EB" : "#F3F4F6"}`,
-    background: filled ? "#000" : "#F9FAFB",
+    border: first && filled ? `2px solid ${ACCENT}` : `1.5px solid ${filled ? "var(--border)" : "#F3F4F6"}`,
+    background: filled ? "#000" : "var(--gray-50)",
     cursor: "pointer", position: "relative",
     transition: "all .15s",
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -124,7 +124,7 @@ export default function SelectorMediaArticulo({
       <div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
           <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
-            Imágenes <span style={{ color:"#9CA3AF", fontWeight:400 }}>({imagenes.length}/{maxImagenes}) · primera = principal</span>
+            Imágenes <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({imagenes.length}/{maxImagenes}) · primera = principal</span>
           </span>
           {imagenes.length < maxImagenes && (
             <button onClick={() => openModal("imagen")} style={{
@@ -183,7 +183,7 @@ export default function SelectorMediaArticulo({
       <div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
           <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
-            Videos <span style={{ color:"#9CA3AF", fontWeight:400 }}>({videos.length}/{maxVideos}) · máx 30s</span>
+            Videos <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({videos.length}/{maxVideos}) · máx 30s</span>
           </span>
           {videos.length < maxVideos && (
             <button onClick={() => openModal("video")} style={{
@@ -247,13 +247,13 @@ export default function SelectorMediaArticulo({
 
             {/* Header modal */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-              padding:"1rem 1.25rem", borderBottom:"1px solid #E5E7EB" }}>
+              padding:"1rem 1.25rem", borderBottom:"1px solid var(--border)" }}>
               <span style={{ fontWeight:700, fontSize:"1rem", color:"#111" }}>
                 {modalTipo === "imagen" ? "🖼 Seleccionar imágenes" : "🎬 Seleccionar videos"}
                 {replaceIdx !== null && " — reemplazar"}
               </span>
               <button onClick={() => setModalOpen(false)}
-                style={{ background:"none", border:"none", fontSize:"1.25rem", cursor:"pointer", color:"#6B7280" }}>✕</button>
+                style={{ background:"none", border:"none", fontSize:"1.25rem", cursor:"pointer", color:"var(--mute)" }}>✕</button>
             </div>
 
             {/* Biblioteca en modo modal */}

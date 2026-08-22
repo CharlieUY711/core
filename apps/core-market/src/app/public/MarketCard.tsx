@@ -73,11 +73,14 @@ export function MarketCard({ p, context = 'market', onAdd, isInCart = false }: {
   };
 
   return (
-    <div style={{ perspective: 1400, width: '100%' }}>
-      <div style={{ position: 'relative', width: '100%', minHeight: 430, transformStyle: 'preserve-3d', transition: 'transform .55s ease', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+    // core-card-slot es el mismo contenedor que usa SlideCard: asi Market y
+    // Second Hand miden exactamente igual, en vez de que una use aspect-ratio
+    // y la otra un minHeight fijo.
+    <div className="core-card-slot" style={{ perspective: 1400 }}>
+      <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transition: 'transform .55s ease', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
 
         {/* ───── FRENTE ───── */}
-        <div style={{ ...face, position: 'relative' }}>
+        <div style={face}>
           <div style={{ height: 4, background: s.color }} />
           <div style={{ position: 'relative', padding: '14px 14px 0' }}>
             <div onClick={() => setFlipped(true)} title="Ver detalle" style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', backgroundImage: p.img ? undefined : `repeating-linear-gradient(45deg, ${s.g1}, ${s.g1} 10px, ${s.g2} 10px, ${s.g2} 20px)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

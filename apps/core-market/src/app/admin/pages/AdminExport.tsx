@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../../utils/supabase/client";
 
-const ACCENT = "#FF7A00";
-const GREEN  = "#1DC878";
-const BLUE   = "#0F3460";
+const ACCENT = "var(--brand-madre)";
+const GREEN  = "var(--color-success)";
+const BLUE   = "var(--brand-navy)";
 
 interface Filtros {
   tipo: "all"|"market"|"secondhand";
@@ -151,12 +151,12 @@ export default function AdminExport() {
 
   const thB:React.CSSProperties = {
     padding:"0.4rem 0.65rem", textAlign:"left", fontSize:"10px", fontWeight:700,
-    color:"#6B7280", textTransform:"uppercase", letterSpacing:".05em",
+    color:"var(--mute)", textTransform:"uppercase", letterSpacing:".05em",
     borderBottom:"2px solid #F3F4F6", background:"#FAFAFA", whiteSpace:"nowrap",
   };
   const td:React.CSSProperties = {
     padding:"0.4rem 0.65rem", fontSize:"0.78rem", color:"#374151",
-    borderBottom:"1px solid #F9FAFB", verticalAlign:"middle",
+    borderBottom:"1px solid var(--gray-50)", verticalAlign:"middle",
   };
 
   return (
@@ -166,7 +166,7 @@ export default function AdminExport() {
         <div style={{position:"fixed",bottom:"1.5rem",right:"1.5rem",zIndex:9999,
           padding:"0.75rem 1.25rem",borderRadius:10,fontWeight:600,fontSize:"0.875rem",
           background:toast.ok?"#f0fdf4":"#fef2f2",color:toast.ok?"#166534":"#dc2626",
-          border:`1px solid ${toast.ok?"#6BB87A":"#ef4444"}`,
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
           boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
           {toast.text}
         </div>
@@ -175,7 +175,7 @@ export default function AdminExport() {
       {/* FILTROS */}
       <div style={{background:"#fff",borderRadius:12,border:"1px solid #EAECF0",
         padding:"1rem 1.25rem",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
-        <div style={{fontSize:"0.72rem",fontWeight:700,color:"#9CA3AF",
+        <div style={{fontSize:"0.72rem",fontWeight:700,color:"var(--gray-400)",
           textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.75rem"}}>
           Filtros de exportación
         </div>
@@ -183,9 +183,9 @@ export default function AdminExport() {
           gap:"0.75rem",alignItems:"end"}}>
 
           <div>
-            <div style={{fontSize:"10px",color:"#9CA3AF",fontWeight:700,
+            <div style={{fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
               textTransform:"uppercase",marginBottom:3}}>Tipo</div>
-            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid #E5E7EB",
+            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid var(--border)",
               borderRadius:7,fontSize:"0.81rem",outline:"none"}}
               value={filtros.tipo}
               onChange={e=>setFiltros(f=>({...f,tipo:e.target.value as any}))}>
@@ -196,9 +196,9 @@ export default function AdminExport() {
           </div>
 
           <div>
-            <div style={{fontSize:"10px",color:"#9CA3AF",fontWeight:700,
+            <div style={{fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
               textTransform:"uppercase",marginBottom:3}}>Estado</div>
-            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid #E5E7EB",
+            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid var(--border)",
               borderRadius:7,fontSize:"0.81rem",outline:"none"}}
               value={filtros.status}
               onChange={e=>setFiltros(f=>({...f,status:e.target.value as any}))}>
@@ -210,9 +210,9 @@ export default function AdminExport() {
           </div>
 
           <div>
-            <div style={{fontSize:"10px",color:"#9CA3AF",fontWeight:700,
+            <div style={{fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
               textTransform:"uppercase",marginBottom:3}}>Departamento</div>
-            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid #E5E7EB",
+            <select style={{width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid var(--border)",
               borderRadius:7,fontSize:"0.81rem",outline:"none"}}
               value={filtros.departamento_id}
               onChange={e=>setFiltros(f=>({...f,departamento_id:e.target.value}))}>
@@ -239,8 +239,8 @@ export default function AdminExport() {
           }}>{loading?"Cargando...":"Cargar"}</button>
 
           <button onClick={exportCSV} disabled={!preview.length||exporting} style={{
-            padding:"0.5rem 1.25rem",background:preview.length?ACCENT:"#E5E7EB",
-            color:preview.length?"#fff":"#9CA3AF",
+            padding:"0.5rem 1.25rem",background:preview.length?ACCENT:"var(--border)",
+            color:preview.length?"#fff":"var(--gray-400)",
             border:"none",borderRadius:8,fontWeight:700,fontSize:"0.82rem",
             cursor:preview.length?"pointer":"not-allowed",whiteSpace:"nowrap",
           }}>↓ Exportar CSV</button>
@@ -260,7 +260,7 @@ export default function AdminExport() {
               padding:"0.35rem 0.85rem",border:"1px solid #F0F0F0",
               borderLeft:`2.5px solid ${s.c}`,display:"flex",alignItems:"center",gap:"0.5rem"}}>
               <span style={{fontSize:"1.1rem",fontWeight:800,color:s.c,lineHeight:1}}>{s.value}</span>
-              <span style={{fontSize:"0.65rem",color:"#9CA3AF",textTransform:"uppercase",
+              <span style={{fontSize:"0.65rem",color:"var(--gray-400)",textTransform:"uppercase",
                 letterSpacing:".04em",fontWeight:700}}>{s.label}</span>
             </div>
           ))}
@@ -271,7 +271,7 @@ export default function AdminExport() {
       <div style={{background:"#fff",borderRadius:12,border:"1px solid #EAECF0",
         flex:1,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
         {preview.length===0?(
-          <div style={{textAlign:"center",padding:"4rem",color:"#9CA3AF"}}>
+          <div style={{textAlign:"center",padding:"4rem",color:"var(--gray-400)"}}>
             <div style={{fontSize:"3rem",marginBottom:"0.5rem"}}>📤</div>
             <div style={{fontWeight:700,color:"#374151"}}>
               {articulos.length===0?"Aplicá los filtros y presioná Cargar":"Sin resultados con estos filtros"}
@@ -292,8 +292,8 @@ export default function AdminExport() {
               <tbody>
                 {preview.map((r,i)=>(
                   <tr key={i} style={{
-                    background: r._tipo==="padre"?"rgba(15,52,96,.03)":
-                                r._tipo==="variante"?`rgba(255,122,0,.03)`:"#fff",
+                    background: r._tipo==="padre"?"color-mix(in srgb, var(--brand-navy) 3%, transparent)":
+                                r._tipo==="variante"?`color-mix(in srgb, var(--brand-madre) 3%, transparent)`:"#fff",
                     borderLeft: r._tipo==="variante"?`3px solid ${ACCENT}22`:
                                 r._tipo==="padre"?`3px solid ${BLUE}22`:"3px solid transparent",
                   }}>
@@ -310,8 +310,8 @@ export default function AdminExport() {
                     ))}
                     <td style={td}>
                       <span style={{fontSize:"10px",padding:"1px 6px",borderRadius:10,fontWeight:700,
-                        background:r._tipo==="padre"?"rgba(15,52,96,.1)":
-                                   r._tipo==="variante"?"rgba(255,122,0,.1)":"rgba(29,200,120,.1)",
+                        background:r._tipo==="padre"?"color-mix(in srgb, var(--brand-navy) 10%, transparent)":
+                                   r._tipo==="variante"?"color-mix(in srgb, var(--brand-madre) 10%, transparent)":"color-mix(in srgb, var(--color-success) 10%, transparent)",
                         color:r._tipo==="padre"?BLUE:r._tipo==="variante"?ACCENT:GREEN,
                       }}>{r._tipo}</span>
                     </td>

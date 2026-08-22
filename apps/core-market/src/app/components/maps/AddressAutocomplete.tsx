@@ -86,21 +86,21 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
         onFocus={()=>{ setFocused(true); if(suggestions.length) setShowList(true); }}
         onBlur={()=>{ setFocused(false); setTimeout(()=>setShowList(false), 200); }}
         style={{ width:"100%", padding:"0.7rem 2.75rem 0.7rem 2.5rem",
-          border:`1.5px solid ${focused?"#FF7A00":"#E5E7EB"}`,
+          border:`1.5px solid ${focused?"var(--brand-madre)":"var(--border)"}`,
           borderRadius:"10px", fontSize:"0.9rem", outline:"none",
-          background: disabled?"#F9FAFB":"#fff",
-          boxShadow: focused?"0 0 0 3px rgba(255,122,0,0.1)":"none",
+          background: disabled?"var(--gray-50)":"#fff",
+          boxShadow: focused?"0 0 0 3px color-mix(in srgb, var(--brand-madre) 10%, transparent)":"none",
           transition:"all 0.15s", boxSizing:"border-box" }} />
       <button onClick={handleGeolocate} disabled={loading} title="Usar mi ubicación"
         style={{ position:"absolute", right:"10px", top:"50%", transform:"translateY(-50%)",
           background:"transparent", border:"none", cursor:"pointer", fontSize:"1rem",
-          color: loading?"#9CA3AF":"#FF7A00", padding:"4px", transition:"all 0.15s" }}>
+          color: loading?"var(--gray-400)":"var(--brand-madre)", padding:"4px", transition:"all 0.15s" }}>
         {loading ? "⌛" : "🎯"}
       </button>
 
       {showList && suggestions.length > 0 && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:0, zIndex:100,
-          background:"#fff", border:"1.5px solid #E5E7EB", borderRadius:"10px",
+          background:"#fff", border:"1.5px solid var(--border)", borderRadius:"10px",
           boxShadow:"0 8px 24px rgba(0,0,0,0.12)", overflow:"hidden" }}>
           {suggestions.map((item, i) => {
             const main    = item.text || item.place_name.split(",")[0];
@@ -115,7 +115,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
                 <span style={{ fontSize:"0.85rem", flexShrink:0, marginTop:"2px" }}>📍</span>
                 <div>
                   <div style={{ fontWeight:600, color:"#111", fontSize:"0.875rem", lineHeight:1.3 }}>{main}</div>
-                  <div style={{ fontSize:"0.75rem", color:"#9CA3AF", marginTop:"1px" }}>{context}</div>
+                  <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:"1px" }}>{context}</div>
                 </div>
               </div>
             );

@@ -15,14 +15,14 @@ export default function NodeActions({ node, isAdmin, onEdit, onDelete, onAdd, ch
 
   return (
     <div className="node-actions" style={{ display:"flex", gap:"0.3rem", opacity:0, transition:"opacity 0.15s" }}>
-      <Btn color="#6B7280" onClick={onEdit} title="Editar">✏️</Btn>
+      <Btn color="var(--mute)" onClick={onEdit} title="Editar">✏️</Btn>
       {node.type !== "product" && (
-        <Btn color="#6BB87A" onClick={onAdd} title={`+ ${childType}`}>+</Btn>
+        <Btn color="color-mix(in srgb, var(--color-success) 70%, white)" onClick={onAdd} title={`+ ${childType}`}>+</Btn>
       )}
       {delConfirm ? (
         <>
           <Btn color="#EF4444" bg="#EF4444" textColor="#fff" onClick={onDelete}>✓</Btn>
-          <Btn color="#9CA3AF" onClick={() => setDelConfirm(false)}>✕</Btn>
+          <Btn color="var(--gray-400)" onClick={() => setDelConfirm(false)}>✕</Btn>
         </>
       ) : (
         <Btn color="#EF4444" onClick={() => setDelConfirm(true)}>🗑</Btn>

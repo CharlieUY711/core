@@ -1,5 +1,5 @@
 /* =====================================================
-   CORE Storefront — CoreStorefront.tsx
+   CORE Storefront
    CORE Marketplace Builder v1.5
    Frontstore principal: Market + Segunda Mano
    ===================================================== */
@@ -232,7 +232,7 @@ function SlideCard({ p, isOpen, dir, onToggle, onAdd, deptColors, cartItems, isI
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAdd();
-    setLabel('✓ Listo'); setStyle({ background: '#6BB87A' });
+    setLabel('✓ Listo'); setStyle({ background: 'color-mix(in srgb, var(--color-success) 70%, white)' });
     setTimeout(() => { setLabel('Agregar al Carrito'); setStyle({}); }, 1100);
   };
 
@@ -768,7 +768,7 @@ function SlideCard({ p, isOpen, dir, onToggle, onAdd, deptColors, cartItems, isI
                         borderRadius: '8px', 
                         overflow: 'hidden',
                         border: img && selectedImageIndex === idx 
-                          ? '2px solid #6BB87A' 
+                          ? '2px solid color-mix(in srgb, var(--color-success) 70%, white)' 
                           : img 
                             ? '1.5px solid rgba(255,255,255,0.3)' 
                             : SHOW_EMPTY_THUMBNAIL_BORDERS 
@@ -1135,7 +1135,7 @@ function SlideCard({ p, isOpen, dir, onToggle, onAdd, deptColors, cartItems, isI
                     borderRadius: '8px', 
                     overflow: 'hidden',
                     border: img && selectedImageIndex === idx 
-                      ? '2px solid #6BB87A' 
+                      ? '2px solid color-mix(in srgb, var(--color-success) 70%, white)' 
                       : img 
                         ? '1.5px solid rgba(255,255,255,0.3)' 
                         : SHOW_EMPTY_THUMBNAIL_BORDERS 

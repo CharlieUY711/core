@@ -10,7 +10,7 @@ function SyncDropdown({ onSyncML }: { onSyncML: () => void }) {
       }}>Sync ▾</button>
       {open && (
         <div style={{ position:"absolute", top:"110%", left:0, background:"#fff",
-          border:"1.5px solid #E5E7EB", borderRadius:8, zIndex:200,
+          border:"1.5px solid var(--border)", borderRadius:8, zIndex:200,
           boxShadow:"0 4px 16px rgba(0,0,0,.1)", minWidth:120 }}
           onMouseLeave={() => setOpen(false)}>
           <button onClick={() => { onSyncML(); setOpen(false); }} style={{
@@ -21,12 +21,12 @@ function SyncDropdown({ onSyncML }: { onSyncML: () => void }) {
           <button disabled style={{
             display:"block", width:"100%", padding:"0.5rem 1rem", textAlign:"left",
             fontSize:"0.78rem", fontWeight:600, border:"none", background:"none",
-            cursor:"not-allowed", color:"#9CA3AF",
+            cursor:"not-allowed", color:"var(--gray-400)",
           }}>🔵 Meta</button>
           <button disabled style={{
             display:"block", width:"100%", padding:"0.5rem 1rem", textAlign:"left",
             fontSize:"0.78rem", fontWeight:600, border:"none", background:"none",
-            cursor:"not-allowed", color:"#9CA3AF",
+            cursor:"not-allowed", color:"var(--gray-400)",
           }}>🟢 WA</button>
         </div>
       )}
@@ -38,9 +38,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 
-const ACCENT = "#FF7A00";
-const BLUE   = "#0F3460";
-const GREEN  = "#1DC878";
+const ACCENT = "var(--brand-madre)";
+const BLUE   = "var(--brand-navy)";
+const GREEN  = "var(--color-success)";
 
 interface Articulo {
   id: string;
@@ -75,7 +75,7 @@ interface Articulo {
 
 const STATUS_CFG: Record<string, { label: string; bg: string; color: string }> = {
   active:   { label: "Activo",   bg: "#dcfce7", color: "#166534" },
-  draft:    { label: "Borrador", bg: "#F3F4F6", color: "#6B7280" },
+  draft:    { label: "Borrador", bg: "#F3F4F6", color: "var(--mute)" },
   paused:   { label: "Pausado",  bg: "#fef9c3", color: "#854d0e" },
   inactive: { label: "Inactivo", bg: "#fee2e2", color: "#991b1b" },
 };
@@ -279,23 +279,23 @@ export default function AdminPublicaciones() {
 
   const thBase: React.CSSProperties = {
     padding:"0.5rem 0.75rem", textAlign:"left", fontSize:"11px",
-    fontWeight:700, color:"#6B7280", textTransform:"uppercase",
+    fontWeight:700, color:"var(--mute)", textTransform:"uppercase",
     letterSpacing:".05em", borderBottom:"2px solid #F3F4F6",
     background:"#FAFAFA", whiteSpace:"nowrap", userSelect:"none",
   };
   const thSort = (key: SortKey): React.CSSProperties => ({
     ...thBase, cursor:"pointer",
-    color: sortKey===key ? color : "#6B7280",
+    color: sortKey===key ? color : "var(--mute)",
   });
   const td: React.CSSProperties = {
     padding:"0.55rem 0.75rem", fontSize:"0.82rem", color:"#374151",
-    borderBottom:"1px solid #F9FAFB", verticalAlign:"middle",
+    borderBottom:"1px solid var(--gray-50)", verticalAlign:"middle",
   };
   const sortIco = (key: SortKey) =>
     sortKey===key ? (sortDir==="asc"?" ↑":" ↓") : " ↕";
 
   const inpStyle: React.CSSProperties = {
-    width:"100%", padding:"0.4rem 0.6rem", border:"1.5px solid #E5E7EB",
+    width:"100%", padding:"0.4rem 0.6rem", border:"1.5px solid var(--border)",
     borderRadius:6, fontSize:"0.82rem", outline:"none", fontFamily:"DM Sans,sans-serif",
   };
 
@@ -306,7 +306,7 @@ export default function AdminPublicaciones() {
         <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999,
           padding:"0.75rem 1.25rem", borderRadius:10, fontWeight:600, fontSize:"0.875rem",
           background:toast.ok?"#f0fdf4":"#fef2f2", color:toast.ok?"#166534":"#dc2626",
-          border:`1px solid ${toast.ok?"#6BB87A":"#ef4444"}`,
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
           boxShadow:"0 4px 16px rgba(0,0,0,0.1)" }}>
           {toast.text}
         </div>
@@ -316,7 +316,7 @@ export default function AdminPublicaciones() {
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <h1 style={{ fontSize:"1.25rem", fontWeight:800, color:"#111", margin:0 }}>Mis Publicaciones</h1>
-          <p style={{ fontSize:"0.8rem", color:"#6B7280", margin:"2px 0 0" }}>
+          <p style={{ fontSize:"0.8rem", color:"var(--mute)", margin:"2px 0 0" }}>
             {isSH ? "♻️ Second Hand" : "🛍 Market"} · {filtered.length} artículos
           </p>
         </div>
@@ -328,7 +328,7 @@ export default function AdminPublicaciones() {
               flex:1, padding:"0.65rem 0", border:"none", cursor:"pointer",
               fontWeight:800, fontSize:"0.875rem", letterSpacing:".01em",
               background: !isSH ? ACCENT : "#F3F4F6",
-              color: !isSH ? "#fff" : "#9CA3AF",
+              color: !isSH ? "#fff" : "var(--gray-400)",
               boxShadow: !isSH ? "inset 0 2px 4px rgba(0,0,0,.2)" : "none",
               transform: !isSH ? "translateY(1px)" : "translateY(0)",
               transition:"all .12s",
@@ -337,13 +337,13 @@ export default function AdminPublicaciones() {
               flex:1, padding:"0.65rem 0", border:"none", cursor:"pointer",
               fontWeight:800, fontSize:"0.875rem", letterSpacing:".01em",
               background: isSH ? GREEN : "#F3F4F6",
-              color: isSH ? "#fff" : "#9CA3AF",
+              color: isSH ? "#fff" : "var(--gray-400)",
               boxShadow: isSH ? "inset 0 2px 4px rgba(0,0,0,.2)" : "none",
               transform: isSH ? "translateY(1px)" : "translateY(0)",
               transition:"all .12s",
             }}>Second Hand</button>
           </div>
-          <button onClick={() => navigate("/admin/catalog/articulos")} style={{
+          <button onClick={() => navigate("/admin/publicaciones/nueva")} style={{
             padding:"0.6rem 1.25rem", background:color, color:"#fff",
             border:"none", borderRadius:10, fontWeight:700, fontSize:"0.875rem",
             cursor:"pointer", transition:"background .15s",
@@ -362,7 +362,7 @@ export default function AdminPublicaciones() {
           <div key={s.label} style={{ background:"#fff", borderRadius:10, padding:"0.75rem 1rem",
             border:"1px solid #F3F4F6", borderLeft:`3px solid ${s.c}` }}>
             <div style={{ fontSize:"1.4rem", fontWeight:800, color:s.c }}>{s.value}</div>
-            <div style={{ fontSize:"0.72rem", color:"#6B7280" }}>{s.label}</div>
+            <div style={{ fontSize:"0.72rem", color:"var(--mute)" }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -371,7 +371,7 @@ export default function AdminPublicaciones() {
       <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
         {selected.size > 0 && (
           <div style={{ display:"flex", gap:"4px", padding:"0.3rem 0.75rem",
-            background:"rgba(15,52,96,.06)", borderRadius:8, border:`1px solid ${BLUE}`, alignItems:"center" }}>
+            background:"color-mix(in srgb, var(--brand-navy) 6%, transparent)", borderRadius:8, border:`1px solid ${BLUE}`, alignItems:"center" }}>
             <span style={{ fontSize:"0.78rem", color:BLUE, fontWeight:700, marginRight:"4px" }}>
               {selected.size} sel.
             </span>
@@ -381,7 +381,7 @@ export default function AdminPublicaciones() {
             {[
               { id:"activar",  label:"✓ Activar",  c:GREEN },
               { id:"pausar",   label:"⏸ Pausar",   c:"#F59E0B" },
-              { id:"archivar", label:"📦 Archivar", c:"#6B7280" },
+              { id:"archivar", label:"📦 Archivar", c:"var(--mute)" },
               { id:"eliminar", label:"🗑 Eliminar", c:"#EF4444" },
             ].map(ac => (
               <button key={ac.id} onClick={() => accionLote(ac.id)} style={{
@@ -394,13 +394,13 @@ export default function AdminPublicaciones() {
         )}
         <div style={{ marginLeft:"auto", position:"relative" }}>
           <button onClick={() => setShowColPicker(p=>!p)} style={{
-            padding:"0.35rem 0.75rem", border:"1.5px solid #E5E7EB",
-            borderRadius:7, background:"#fff", color:"#6B7280",
+            padding:"0.35rem 0.75rem", border:"1.5px solid var(--border)",
+            borderRadius:7, background:"#fff", color:"var(--mute)",
             fontSize:"0.78rem", cursor:"pointer", fontWeight:600,
           }}>⚙ Columnas</button>
           {showColPicker && (
             <div style={{ position:"absolute", right:0, top:"110%", background:"#fff",
-              border:"1.5px solid #E5E7EB", borderRadius:10, padding:"0.75rem",
+              border:"1.5px solid var(--border)", borderRadius:10, padding:"0.75rem",
               zIndex:100, minWidth:180, boxShadow:"0 4px 16px rgba(0,0,0,.1)" }}
               onMouseLeave={() => setShowColPicker(false)}>
               {ALL_COLS.map(col => (
@@ -424,12 +424,12 @@ export default function AdminPublicaciones() {
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #F3F4F6",
         overflow:"auto", boxShadow:"0 1px 3px rgba(0,0,0,.05)" }}>
         {loading ? (
-          <div style={{ textAlign:"center", padding:"3rem", color:"#9CA3AF" }}>Cargando...</div>
+          <div style={{ textAlign:"center", padding:"3rem", color:"var(--gray-400)" }}>Cargando...</div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"3rem" }}>
             <div style={{ fontSize:"3rem" }}>📦</div>
             <div style={{ fontWeight:700, color:"#374151", marginTop:"0.5rem" }}>Sin publicaciones</div>
-            <button onClick={() => navigate("/admin/catalog/articulos")} style={{
+            <button onClick={() => navigate("/admin/publicaciones/nueva")} style={{
               marginTop:"1rem", padding:"0.6rem 1.25rem", background:color, color:"#fff",
               border:"none", borderRadius:8, fontWeight:700, cursor:"pointer",
             }}>+ Nuevo artículo</button>
@@ -480,7 +480,7 @@ export default function AdminPublicaciones() {
                 return (
                   <>
                     <tr key={a.id} style={{
-                      background: isSel?"rgba(255,122,0,.04)": isExp?"#FAFAFA":"#fff",
+                      background: isSel?"color-mix(in srgb, var(--brand-madre) 4%, transparent)": isExp?"#FAFAFA":"#fff",
                       transition:"background .1s",
                     }}>
                       <td style={td}>
@@ -502,7 +502,7 @@ export default function AdminPublicaciones() {
                       <td style={{ ...td, maxWidth:200 }}>
                         <div style={{ fontWeight:600, color:"#111", overflow:"hidden",
                           textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.nombre}</div>
-                        {a.condicion && <div style={{ fontSize:"10px", color:"#6B7280" }}>{a.condicion}</div>}
+                        {a.condicion && <div style={{ fontSize:"10px", color:"var(--mute)" }}>{a.condicion}</div>}
                       </td>
                       <td style={{ ...td, fontWeight:700, color }}>{fmtPrecio(a.precio,a.moneda)}</td>
                       <td style={{ ...td, textAlign:"center" }}>
@@ -520,8 +520,8 @@ export default function AdminPublicaciones() {
                             const synced  = !!(a as any)["sync_ml"];
                             const syncing = mlSyncing.has(a.id);
                             const hasErr  = !!mlErrors[a.id];
-                            const bg      = syncing ? "#E5E7EB" : hasErr ? "#EF4444" : synced ? "#FFE600" : "transparent";
-                            const border  = syncing ? "#E5E7EB" : hasErr ? "#EF4444" : "#FFE600";
+                            const bg      = syncing ? "var(--border)" : hasErr ? "#EF4444" : synced ? "#FFE600" : "transparent";
+                            const border  = syncing ? "var(--border)" : hasErr ? "#EF4444" : "#FFE600";
                             const tc      = hasErr ? "#fff" : "#333";
                             return (
                               <button
@@ -550,7 +550,7 @@ export default function AdminPublicaciones() {
                       {visibleCols.has("mkt2")      && <td style={{ ...td, textAlign:"center" }}><input type="checkbox" checked={!!a.mkt_promovido} style={{ accentColor:color }} onChange={()=>{}} /></td>}
                       <td style={td}>
                         <button onClick={()=>toggleExpand(a.id)} style={{
-                          background:"none", border:"none", cursor:"pointer", color:"#9CA3AF",
+                          background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)",
                           fontSize:"13px", padding:"2px 4px",
                           transform:isExp?"rotate(180deg)":"rotate(0deg)", transition:"transform .2s",
                         }}>▼</button>
@@ -561,13 +561,13 @@ export default function AdminPublicaciones() {
                     {isExp && (
                       <tr key={a.id+"-exp"}>
                         <td colSpan={99} style={{ padding:0, borderBottom:"2px solid #F3F4F6" }}>
-                          <div style={{ padding:"1.25rem", background:"#F9FAFB",
+                          <div style={{ padding:"1.25rem", background:"var(--gray-50)",
                             display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
 
                             <div>
                               <div style={{ display:"flex", justifyContent:"space-between",
                                 alignItems:"center", marginBottom:"0.75rem" }}>
-                                <span style={{ fontSize:"0.72rem", fontWeight:700, color:"#9CA3AF",
+                                <span style={{ fontSize:"0.72rem", fontWeight:700, color:"var(--gray-400)",
                                   textTransform:"uppercase" }}>Información</span>
                                 {isEd ? (
                                   <div style={{ display:"flex", gap:"6px" }}>
@@ -576,8 +576,8 @@ export default function AdminPublicaciones() {
                                       border:"none", borderRadius:6, fontSize:"0.75rem",
                                       fontWeight:700, cursor:"pointer" }}>Guardar</button>
                                     <button onClick={()=>setEditing(null)} style={{
-                                      padding:"0.25rem 0.75rem", background:"none", color:"#6B7280",
-                                      border:"1px solid #E5E7EB", borderRadius:6,
+                                      padding:"0.25rem 0.75rem", background:"none", color:"var(--mute)",
+                                      border:"1px solid var(--border)", borderRadius:6,
                                       fontSize:"0.75rem", cursor:"pointer" }}>Cancelar</button>
                                   </div>
                                 ) : null}
@@ -586,24 +586,24 @@ export default function AdminPublicaciones() {
                               {isEd ? (
                                 <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
                                   <div>
-                                    <div style={{ fontSize:"10px", color:"#9CA3AF", marginBottom:"2px" }}>Nombre</div>
+                                    <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Nombre</div>
                                     <input style={inpStyle} value={editForm.nombre||""}
                                       onChange={e=>setEditForm(f=>({...f,nombre:e.target.value}))} />
                                   </div>
                                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
                                     <div>
-                                      <div style={{ fontSize:"10px", color:"#9CA3AF", marginBottom:"2px" }}>Precio</div>
+                                      <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Precio</div>
                                       <input type="number" style={inpStyle} value={editForm.precio||""}
                                         onChange={e=>setEditForm(f=>({...f,precio:parseFloat(e.target.value)}))} />
                                     </div>
                                     <div>
-                                      <div style={{ fontSize:"10px", color:"#9CA3AF", marginBottom:"2px" }}>Stock</div>
+                                      <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Stock</div>
                                       <input type="number" style={inpStyle} value={editForm.stock||""}
                                         onChange={e=>setEditForm(f=>({...f,stock:parseInt(e.target.value)}))} />
                                     </div>
                                   </div>
                                   <div>
-                                    <div style={{ fontSize:"10px", color:"#9CA3AF", marginBottom:"2px" }}>Descripción</div>
+                                    <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Descripción</div>
                                     <textarea style={{ ...inpStyle, minHeight:70, resize:"vertical" }}
                                       value={editForm.descripcion||""}
                                       onChange={e=>setEditForm(f=>({...f,descripcion:e.target.value}))} />
@@ -617,7 +617,7 @@ export default function AdminPublicaciones() {
                                   <div><b>Marca:</b> {a.atributos?.marca||"—"}</div>
                                   {a.condicion && <div><b>Condición:</b> {a.condicion}</div>}
                                   {a.descripcion && (
-                                    <div style={{ color:"#6B7280", fontSize:"0.78rem", lineHeight:1.5, marginTop:"0.25rem" }}>
+                                    <div style={{ color:"var(--mute)", fontSize:"0.78rem", lineHeight:1.5, marginTop:"0.25rem" }}>
                                       {a.descripcion.slice(0,220)}{a.descripcion.length>220?"…":""}
                                     </div>
                                   )}
@@ -628,7 +628,7 @@ export default function AdminPublicaciones() {
                             <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
                               {(() => {
                                 const tit: React.CSSProperties = {
-                                  fontSize:"0.7rem", fontWeight:700, color:"#9CA3AF",
+                                  fontSize:"0.7rem", fontWeight:700, color:"var(--gray-400)",
                                   textTransform:"uppercase", letterSpacing:".08em", marginBottom:"0.6rem"
                                 };
                                 const grid3: React.CSSProperties = {
@@ -647,7 +647,7 @@ export default function AdminPublicaciones() {
                                     <div>
                                       <div style={tit}>Acciones</div>
                                       <div style={{ ...grid3, marginBottom:"5px" }}>
-                                        <button onClick={()=>navigate("/admin/catalog/articulos")}
+                                        <button onClick={()=>navigate("/admin/publicaciones/nueva")}
                                           style={btn(color,"#fff",color)}>Nuevo</button>
                                         <button onClick={()=>clonar(a)}
                                           style={btn("#fff",color,color)}>Clonar</button>
@@ -673,7 +673,7 @@ export default function AdminPublicaciones() {
                                           {label:"ML",    c:"#FFE600",tc:"#333", syncKey:"sync_ml"},
                                           {label:"Meta",  c:"#1877F2",tc:"#fff", syncKey:"sync_meta"},
                                           {label:"WA",    c:"#25D366",tc:"#fff", syncKey:"sync_wa"},
-                                          {label:"Custom",c:"#6B7280",tc:"#fff", syncKey:""},
+                                          {label:"Custom",c:"var(--mute)",tc:"#fff", syncKey:""},
                                         ].map(s=>{
                                           const synced = s.syncKey ? !!(a as any)[s.syncKey] : false;
                                           return (
@@ -702,8 +702,8 @@ export default function AdminPublicaciones() {
                                           {label:"Reseñas",     value:a.rating_count||0},
                                         ].map(m=>(
                                           <div key={m.label} style={{background:"#fff",borderRadius:7,
-                                            padding:"0.4rem 0.5rem",border:"1px solid #E5E7EB"}}>
-                                            <div style={{fontSize:"9px",color:"#9CA3AF",textTransform:"uppercase"}}>{m.label}</div>
+                                            padding:"0.4rem 0.5rem",border:"1px solid var(--border)"}}>
+                                            <div style={{fontSize:"9px",color:"var(--gray-400)",textTransform:"uppercase"}}>{m.label}</div>
                                             <div style={{fontWeight:700,color:"#374151",fontSize:"0.85rem"}}>{m.value}</div>
                                           </div>
                                         ))}
@@ -712,12 +712,12 @@ export default function AdminPublicaciones() {
 
                                     {isEd && (
                                       <>
-                                        <hr style={{border:"none",borderTop:"1px solid #E5E7EB",margin:"0"}}/>
+                                        <hr style={{border:"none",borderTop:"1px solid var(--border)",margin:"0"}}/>
                                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
                                           <button onClick={()=>setEditing(null)} style={{
                                             padding:"0.55rem",fontSize:"0.82rem",fontWeight:700,
-                                            border:"1.5px solid #E5E7EB",borderRadius:8,
-                                            background:"#fff",color:"#6B7280",cursor:"pointer"}}>
+                                            border:"1.5px solid var(--border)",borderRadius:8,
+                                            background:"#fff",color:"var(--mute)",cursor:"pointer"}}>
                                             Cancelar
                                           </button>
                                           <button onClick={()=>saveEdit(a.id)} style={{

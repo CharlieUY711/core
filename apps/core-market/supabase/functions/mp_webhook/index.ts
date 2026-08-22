@@ -31,19 +31,25 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: orden } = await supabase
-      .from("ordenes")
-      .select("id, estado")
-      .eq("id", orderId)
-      .single();
+    // Confirmacion por el camino canonico, el mismo que usa paypal-webhook.
+    // confirmar_pago es idempotente por payment_id, bloquea la orden, valida
+    // la transicion pending_payment -> paid y escribe payment_status y estado
+    // a la vez. El update directo que habia aca solo escribia `estado`, que es
+    // la columna que el admin NO lee.
+    const { data: conf, error: confError } = await supabase.rpc("confirmar_pago", {
+      p_order_id:   orderId,
+      p_payment_id: String(paymentId),
+      p_payload:    { provider: "mercadopago", payment_id: String(paymentId) },
+    });
 
-    if (!orden) return new Response("ok", { status: 200 });
-    if (orden.estado === "pagado") return new Response("ok", { status: 200 });
+    if (confError) {
+      console.error("confirmar_pago:", confError.message);
+      // 200 igual: MercadoPago reintenta ante error, y la idempotencia de
+      // confirmar_pago ya cubre el reintento legitimo.
+      return new Response("ok", { status: 200 });
+    }
 
-    await supabase
-      .from("ordenes")
-      .update({ estado: "pagado", mp_payment_id: String(paymentId) })
-      .eq("id", orderId);
+    console.log("confirmar_pago ok:", JSON.stringify(conf));
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

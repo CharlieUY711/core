@@ -40,3 +40,6 @@ lerna-debug.log*
 Thumbs.db
 .vercel
 .env*.local
+
+# Worktrees temporales de agentes
+.claude/

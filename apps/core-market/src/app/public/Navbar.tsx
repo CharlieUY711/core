@@ -11,21 +11,25 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../utils/supabase/client';
 import { fetchDepartamentos, type Departamento } from '../services/departamentosApi';
 
-type Plat = 'mkt' | 'sh' | 'gourmet';
+type Plat = 'mkt' | 'sh';
 
 // ── Skin por plataforma ────────────────────────────────────
 const PLAT: Record<Plat, {
   name: string; color: string; bar: string; field: string; fieldFocus: string;
   divider: string; cta: string; ctaHover: string;
 }> = {
-  mkt:     { name: 'MARKET',  color: '#3D5689', bar: '#0D2B55', field: '#314B6E', fieldFocus: '#3A567C', divider: '#2E7D57', cta: '#3D5689', ctaHover: '#46639B' },
-  sh:      { name: 'SECOND',  color: '#2E7D57', bar: '#2E7D57', field: '#256647', fieldFocus: '#2C7350', divider: '#1F5C40', cta: '#0D2B55', ctaHover: '#143A6B' },
-  gourmet: { name: 'GOURMET', color: '#9B3326', bar: '#9B3326', field: '#822A20', fieldFocus: '#8E2F23', divider: '#6F2117', cta: '#0D2B55', ctaHover: '#143A6B' },
+  // NOTE: fieldFocus/divider/ctaHover for `sh` are hover/focus
+  // shades with no equivalent design-system token (only the mkt platform's
+  // hover state — --brand-madre-hover — is tokenized). Left as literal hex,
+  // see .agent/AUDIT_TOKENS.md "Exceptions" for DEC-007.
+  mkt:     { name: 'MARKET',  color: 'var(--brand-madre)', bar: 'var(--brand-navy)', field: 'var(--brand-navy-field)', fieldFocus: '#3A567C', divider: 'var(--second)', cta: 'var(--brand-madre)', ctaHover: 'var(--brand-madre-hover)' },
+  sh:      { name: 'SECOND',  color: 'var(--second)', bar: 'var(--second)', field: 'var(--second-field)', fieldFocus: '#2C7350', divider: '#1F5C40', cta: 'var(--brand-navy)', ctaHover: '#143A6B' },
 };
-const ORDER: Plat[] = ['mkt', 'sh', 'gourmet'];
+const ORDER: Plat[] = ['mkt', 'sh'];
 
 const T = {
-  white: '#ffffff',
+  white: 'var(--color-text-light)',
+  // No token covers this muted header sub-label blue-grey; see DEC-007.
   sub: '#8FA0BC',
   placeholder: 'rgba(255,255,255,.62)',
   deptText: 'rgba(255,255,255,.85)',
@@ -37,12 +41,12 @@ const T = {
 } as const;
 
 const DOT: Record<string, string> = {
-  tech: '#1C6E86', home: '#A85636', vestimenta: '#7E3A70',
-  entretenimiento: '#C2611F', entret: '#C2611F', servicios: '#50617F',
+  tech: 'var(--tech)', home: 'var(--home)', vestimenta: 'var(--vestimenta)',
+  entretenimiento: 'var(--entret)', entret: 'var(--entret)', servicios: 'var(--servicios)',
 };
 const dotColor = (nombre: string) => {
   const k = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return DOT[k] ?? '#3D5689';
+  return DOT[k] ?? 'var(--brand-madre)';
 };
 
 interface NavbarProps {
@@ -140,7 +144,7 @@ export function Navbar({
 
   return (
     <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, background: skin.bar, transition: 'background 0.35s ease' }}>
-      <style>{`.mk-search::placeholder{ color: var(--mk-ph, #8A8678); opacity: 1; }`}</style>
+      <style>{`.mk-search::placeholder{ color: var(--mk-ph, var(--mute)); opacity: 1; }`}</style>
 
       {/* ── TOP ROW ───────────────────────────────────── */}
       <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', gap: 14, padding: `10px ${T.paddingX}` }}>
@@ -167,8 +171,8 @@ export function Navbar({
         {/* Buscador */}
         <div style={{
           ...elStyle, flex: 1, minWidth: 0,
-          background: '#fff',
-          borderRadius: 9, padding: '0 16px', gap: 12,
+          background: 'var(--card)',
+          borderRadius: 'var(--r-control)', padding: '0 16px', gap: 12,
         }}>
           <input
             type="text"
@@ -178,7 +182,7 @@ export function Navbar({
             onChange={e => onSearchChange(e.target.value)}
             style={{
               width: '100%', border: 'none', background: 'transparent',
-              color: '#1C1B19', fontFamily: T.font, fontSize: '0.95rem', outline: 'none',
+              color: 'var(--ink)', fontFamily: T.font, fontSize: '0.95rem', outline: 'none',
               ['--mk-ph' as any]: skin.color,
             }}
           />
@@ -192,7 +196,7 @@ export function Navbar({
           <Link
             to="/dashboard/ordenes"
             style={{
-              ...elStyle, justifyContent: 'center', gap: 6, background: skin.cta, borderRadius: 9, border: 'none',
+              ...elStyle, justifyContent: 'center', gap: 6, background: skin.cta, borderRadius: 'var(--r-control)', border: 'none',
               color: T.white, textDecoration: 'none', fontFamily: T.font, fontSize: '0.9rem', fontWeight: 700,
               transition: 'background 200ms ease', flexShrink: 0, padding: '0 22px',
             }}
@@ -208,7 +212,7 @@ export function Navbar({
           <button
             onClick={onLoginClick}
             style={{
-              ...elStyle, justifyContent: 'center', background: skin.cta, borderRadius: 9, border: 'none',
+              ...elStyle, justifyContent: 'center', background: skin.cta, borderRadius: 'var(--r-control)', border: 'none',
               color: T.white, cursor: 'pointer', fontFamily: T.font, fontSize: '0.95rem', fontWeight: 700,
               transition: 'background 200ms ease', flexShrink: 0, padding: '0 34px',
             }}
@@ -226,7 +230,7 @@ export function Navbar({
             <path d="M2 3h3l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.2L21 7H6" />
           </svg>
           {cartCount > 0 && (
-            <span style={{ position: 'absolute', top: -4, right: -6, fontSize: 11, background: T.white, color: skin.bar, fontWeight: 700, lineHeight: 1, zIndex: 10, borderRadius: 999, padding: '1px 5px' }}>
+            <span style={{ position: 'absolute', top: -4, right: -6, fontSize: 11, background: T.white, color: skin.bar, fontWeight: 700, lineHeight: 1, zIndex: 10, borderRadius: 'var(--radius-pill)', padding: '1px 5px' }}>
               {cartCount}
             </span>
           )}
@@ -287,7 +291,7 @@ export function Navbar({
                   <div style={{
                     position: 'absolute', top: 40, left: 0, minWidth: 180,
                     background: skin.bar, border: '1px solid rgba(255,255,255,.15)',
-                    borderRadius: 9, zIndex: 400, boxShadow: '0 8px 24px rgba(0,0,0,.2)', overflow: 'hidden',
+                    borderRadius: 'var(--r-control)', zIndex: 400, boxShadow: '0 8px 24px rgba(0,0,0,.2)', overflow: 'hidden',
                   }}>
                     {cats.map(cat => (
                       <div

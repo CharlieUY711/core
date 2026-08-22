@@ -69,10 +69,20 @@ export async function getCarrito(): Promise<CarritoItem[]> {
     (arr || []).forEach((p: any) => { if (!info[p.id]) info[p.id] = { nombre: p.nombre, imagen: firstImg(p) }; });
 
   try {
-    // Tabla canónica
-    const { data: art } = await supabase
-      .from("articulos").select("id, nombre, imagen_principal, imagenes").in("id", ids);
-    addInfo(art);
+    // Catalogo (fuente de verdad). Va por RPC y no por .from() porque las
+    // politicas RLS de catalog_* exigen el claim store_id, que un comprador
+    // anonimo no tiene: catalog_vidriera es la puerta publica.
+    const { data: cat, error: catErr } = await supabase
+      .rpc("catalog_vidriera", { p_currency: "UYU", p_limit: ids.length, p_ids: ids });
+    if (catErr) console.error("getCarrito catalogo:", catErr.message);
+    addInfo(cat);
+    // Compatibilidad: articulos y las tablas legacy, solo para los que falten
+    const faltan = ids.filter(id => !info[id]);
+    if (faltan.length) {
+      const { data: art } = await supabase
+        .from("articulos").select("id, nombre, imagen_principal, imagenes").in("id", faltan);
+      addInfo(art);
+    }
     // Legacy, solo para los que falten
     const missing = ids.filter(id => !info[id]);
     if (missing.length) {

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
         pending: "https://oddyfront.core.com.uy/pending",
       },
       auto_return: "approved",
-      notification_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/mp-webhook`,
+      notification_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/mp_webhook`,
     };
 
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {

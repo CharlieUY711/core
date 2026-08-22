@@ -75,10 +75,10 @@ export default function MisPublicacionesPage() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#FAFAFA", fontFamily: "DM Sans, sans-serif" }}>
-      <header style={{ background: "#6BB87A", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <header style={{ background: "color-mix(in srgb, var(--color-success) 70%, white)", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none", color: "#fff", fontWeight: 600 }}>← Volver</Link>
         <h1 style={{ margin: 0, color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>Mis publicaciones</h1>
-        <button onClick={() => setShowForm(!showForm)} style={{ padding: "0.5rem 1rem", background: "#fff", color: "#6BB87A", border: "none", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => setShowForm(!showForm)} style={{ padding: "0.5rem 1rem", background: "#fff", color: "color-mix(in srgb, var(--color-success) 70%, white)", border: "none", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}>
           {showForm ? "Cancelar" : "+ Nueva publicación"}
         </button>
       </header>
@@ -101,17 +101,17 @@ export default function MisPublicacionesPage() {
                 <div key={f.key}>
                   <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#444", marginBottom: "0.25rem" }}>{f.label}</label>
                   <input type={f.type} value={form[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))} placeholder={f.placeholder}
-                    style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #E5E7EB", fontSize: "1rem", outline: "none", boxSizing: "border-box" }} />
+                    style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "1rem", outline: "none", boxSizing: "border-box" }} />
                 </div>
               ))}
               <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#444", marginBottom: "0.25rem" }}>Condición</label>
                 <select value={form.condicion} onChange={e => setForm(prev => ({ ...prev, condicion: e.target.value }))}
-                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #E5E7EB", fontSize: "1rem", outline: "none" }}>
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "1rem", outline: "none" }}>
                   {["Excelente", "Muy bueno", "Bueno", "Regular", "Aceptable"].map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
-              <button onClick={handlePublicar} disabled={saving} style={{ padding: "0.75rem", background: saving ? "#ccc" : "#6BB87A", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "1rem", cursor: saving ? "not-allowed" : "pointer" }}>
+              <button onClick={handlePublicar} disabled={saving} style={{ padding: "0.75rem", background: saving ? "#ccc" : "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "1rem", cursor: saving ? "not-allowed" : "pointer" }}>
                 {saving ? "Publicando..." : "Publicar"}
               </button>
             </div>
@@ -136,7 +136,7 @@ export default function MisPublicacionesPage() {
               <div style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: 600, background: p.status === "active" ? "#f0fdf4" : "#f1f5f9", color: p.status === "active" ? "#166534" : "#64748b" }}>
                 {p.status === "active" ? "Activo" : "Inactivo"}
               </div>
-              <button onClick={() => handleToggleStatus(p.id, p.status)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid #E5E7EB", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#555" }}>
+              <button onClick={() => handleToggleStatus(p.id, p.status)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid var(--border)", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#555" }}>
                 {p.status === "active" ? "Pausar" : "Activar"}
               </button>
               <button onClick={() => handleEliminar(p.id)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid #ef4444", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#ef4444" }}>

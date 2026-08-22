@@ -45,7 +45,7 @@ export default function DashboardLayout() {
               fontWeight: isActive(item.path) ? 700 : 400,
               background: isActive(item.path) ? "#FF6835" : "#fff",
               color: isActive(item.path) ? "#fff" : "#444",
-              border: "1px solid #E5E7EB",
+              border: "1px solid var(--border)",
               transition: "all 0.2s",
             }}>
               {item.label}

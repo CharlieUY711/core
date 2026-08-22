@@ -69,9 +69,9 @@ export default function AdminProducts() {
       <div style={{ background: "#fff", borderRadius: "12px", overflow: "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
           <thead>
-            <tr style={{ background: "#F9FAFB", borderBottom: "2px solid #E5E7EB" }}>
+            <tr style={{ background: "var(--gray-50)", borderBottom: "2px solid var(--border)" }}>
               {["Producto", "Stock", "Precio", "Status", "ML Status", "Sync", "Acciones"].map(h => (
-                <th key={h} style={{ padding: "0.85rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                <th key={h} style={{ padding: "0.85rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--mute)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -84,7 +84,7 @@ export default function AdminProducts() {
                   {/* Nombre */}
                   <td style={{ padding: "0.85rem 1rem" }}>
                     <div style={{ fontWeight: 600, color: "#111", fontSize: "0.9rem", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                    <div style={{ fontSize: "0.7rem", color: "#9CA3AF", fontFamily: "monospace" }}>{p.id.substring(0, 12)}...</div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--gray-400)", fontFamily: "monospace" }}>{p.id.substring(0, 12)}...</div>
                   </td>
 
                   {/* Stock inline edit */}
@@ -95,7 +95,7 @@ export default function AdminProducts() {
                           style={{ width: "64px", padding: "4px 8px", border: "2px solid #FF6835", borderRadius: "6px", fontSize: "0.85rem", outline: "none" }}
                           onKeyDown={e => e.key === "Enter" && handleFixStock(p.id)} autoFocus />
                         <button onClick={() => handleFixStock(p.id)} disabled={isSaving}
-                          style={{ padding: "4px 8px", background: "#6BB87A", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}>✓</button>
+                          style={{ padding: "4px 8px", background: "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}>✓</button>
                         <button onClick={() => setEditId(null)}
                           style={{ padding: "4px 8px", background: "#f1f5f9", color: "#555", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}>✕</button>
                       </div>
@@ -105,7 +105,7 @@ export default function AdminProducts() {
                           {p.stock}
                         </span>
                         <button onClick={() => { setEditId(p.id); setEditStock(String(p.stock)); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: "0.75rem" }} title="Editar stock">
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", fontSize: "0.75rem" }} title="Editar stock">
                           ✏️
                         </button>
                       </div>
@@ -118,7 +118,7 @@ export default function AdminProducts() {
                       {p.price_ml ? `$U ${Number(p.price_ml).toLocaleString("es-UY")}` : p.price_oddy ? `$U ${Number(p.price_oddy).toLocaleString("es-UY")}` : "—"}
                     </div>
                     {p.price_ml && p.price_oddy && (
-                      <div style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>Oddy: $U {Number(p.price_oddy).toLocaleString("es-UY")}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--gray-400)" }}>Oddy: $U {Number(p.price_oddy).toLocaleString("es-UY")}</div>
                     )}
                   </td>
 
@@ -132,9 +132,9 @@ export default function AdminProducts() {
                     {p.ml_item_id ? (
                       <div>
                         <StatusBadge status={p.ml_status || "unknown"} ml />
-                        <div style={{ fontSize: "0.7rem", color: "#9CA3AF", marginTop: "2px", fontFamily: "monospace" }}>{p.ml_item_id.substring(0, 10)}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--gray-400)", marginTop: "2px", fontFamily: "monospace" }}>{p.ml_item_id.substring(0, 10)}</div>
                       </div>
-                    ) : <span style={{ color: "#9CA3AF", fontSize: "0.8rem" }}>No publicado</span>}
+                    ) : <span style={{ color: "var(--gray-400)", fontSize: "0.8rem" }}>No publicado</span>}
                   </td>
 
                   {/* Sync */}
@@ -150,7 +150,7 @@ export default function AdminProducts() {
                       )}
                       {p.status === "paused" && (
                         <ActionBtn onClick={async () => { setSaving(p.id); await supabase.rpc("admin_update_product", { p_product_id: p.id, p_status: "active" }); await refetch(); setSaving(null); }}
-                          disabled={isSaving} color="#6BB87A" label="Activar" />
+                          disabled={isSaving} color="color-mix(in srgb, var(--color-success) 70%, white)" label="Activar" />
                       )}
                       {p.status === "active" && !p.ml_item_id && (
                         <ActionBtn onClick={() => handlePublishML(p.id)} disabled={isSaving} color="#F59E0B" label="→ ML" />
@@ -158,7 +158,7 @@ export default function AdminProducts() {
                       {p.sync_status === "error" && (
                         <ActionBtn onClick={() => handlePublishML(p.id)} disabled={isSaving} color="#EF4444" label="Reintentar" />
                       )}
-                      {isSaving && <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>⏳</span>}
+                      {isSaving && <span style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>⏳</span>}
                     </div>
                   </td>
                 </tr>
@@ -168,7 +168,7 @@ export default function AdminProducts() {
         </table>
 
         {products.length === 0 && (
-          <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>
+          <div style={{ padding: "4rem", textAlign: "center", color: "var(--gray-400)" }}>
             Sin productos
           </div>
         )}
@@ -199,14 +199,14 @@ function SyncBadge({ status, lastSync }: { status: string; lastSync: string }) {
     error:   { bg: "#fef2f2", color: "#dc2626", label: "✕ Error" },
     pending: { bg: "#fffbeb", color: "#92400e", label: "⏳ Pendiente" },
   };
-  const s = map[status] || { bg: "#f1f5f9", color: "#9CA3AF", label: "—" };
+  const s = map[status] || { bg: "#f1f5f9", color: "var(--gray-400)", label: "—" };
   return (
     <div>
       <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 700, background: s.bg, color: s.color }}>
         {s.label}
       </span>
       {lastSync && (
-        <div style={{ fontSize: "0.7rem", color: "#9CA3AF", marginTop: "2px" }}>
+        <div style={{ fontSize: "0.7rem", color: "var(--gray-400)", marginTop: "2px" }}>
           {new Date(lastSync).toLocaleDateString("es-UY")}
         </div>
       )}

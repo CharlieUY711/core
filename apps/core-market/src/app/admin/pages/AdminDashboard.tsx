@@ -7,7 +7,7 @@ export default function AdminDashboard() {
 
   const cards = [
     { label: "Órdenes totales",    value: stats?.total_orders || 0,      color: "#FF6835" },
-    { label: "Órdenes pagadas",    value: stats?.paid_orders || 0,       color: "#6BB87A" },
+    { label: "Órdenes pagadas",    value: stats?.paid_orders || 0,       color: "color-mix(in srgb, var(--color-success) 70%, white)" },
     { label: "Órdenes pendientes", value: stats?.pending_orders || 0,    color: "#F59E0B" },
     { label: "Revenue $U",         value: `$U ${Number(stats?.revenue_uyu || 0).toLocaleString("es-UY")}`, color: "#3B82F6" },
     { label: "Productos activos",  value: stats?.active_products || 0,   color: "#8B5CF6" },

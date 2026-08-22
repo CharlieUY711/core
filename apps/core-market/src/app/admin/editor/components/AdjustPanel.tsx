@@ -14,9 +14,9 @@ const SLIDERS: { key: SliderKey; label: string; min: number; max: number }[] = [
 ];
 
 const GROUPS = [
-  { title:"Luz",     keys:["brightness","contrast","exposure"] as SliderKey[],  color:"#FF7A00" },
-  { title:"Color",   keys:["saturation","temperature","tint"]  as SliderKey[],  color:"#0F3460" },
-  { title:"Detalle", keys:["sharpness","blur"]                 as SliderKey[],  color:"#1DC878" },
+  { title:"Luz",     keys:["brightness","contrast","exposure"] as SliderKey[],  color:"var(--brand-madre)" },
+  { title:"Color",   keys:["saturation","temperature","tint"]  as SliderKey[],  color:"var(--brand-navy)" },
+  { title:"Detalle", keys:["sharpness","blur"]                 as SliderKey[],  color:"var(--color-success)" },
 ];
 
 function pct(val: number, min: number, max: number) {
@@ -48,7 +48,7 @@ export default function AdjustPanel() {
           width: 13px;
           height: 13px;
           border-radius: 50%;
-          border: 2px solid #fff;
+          border: 2px solid var(--color-text-light);
           box-shadow: 0 0 0 1px currentColor;
           cursor: pointer;
         }
@@ -56,7 +56,7 @@ export default function AdjustPanel() {
           width: 13px;
           height: 13px;
           border-radius: 50%;
-          border: 2px solid #fff;
+          border: 2px solid var(--color-text-light);
           cursor: pointer;
         }
       `}</style>
@@ -68,10 +68,10 @@ export default function AdjustPanel() {
           {SLIDERS.filter(s => g.keys.includes(s.key)).map(sl => {
             const val = store[sl.key] as number;
             const p   = pct(val, sl.min, sl.max);
-            const track = `linear-gradient(to right, ${g.color} ${p}%, #E5E7EB ${p}%)`;
+            const track = `linear-gradient(to right, ${g.color} ${p}%, var(--border) ${p}%)`;
             return (
               <div key={sl.key} style={{ marginBottom:"8px" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:"11px", color:"#6B7280", marginBottom:"4px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:"11px", color:"var(--mute)", marginBottom:"4px" }}>
                   <span>{sl.label}</span>
                   <span style={{ fontWeight:600, color:g.color, minWidth:"28px", textAlign:"right", fontVariantNumeric:"tabular-nums" }}>
                     {val}

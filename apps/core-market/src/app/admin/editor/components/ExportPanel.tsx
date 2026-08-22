@@ -36,11 +36,11 @@ export default function ExportPanel() {
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:"11px", color:"var(--color-text-secondary)", marginBottom:"3px" }}>
           <span>Calidad</span><span id="emi-q-val" style={{ fontWeight:500, color:"var(--color-text-primary)" }}>90</span>
         </div>
-        <input ref={qualRef} type="range" min="1" max="100" defaultValue="90" style={{ width:"100%", height:"3px", accentColor:"#FF7A00" }}
+        <input ref={qualRef} type="range" min="1" max="100" defaultValue="90" style={{ width:"100%", height:"3px", accentColor:"var(--brand-madre)" }}
           onChange={e => { const el = document.getElementById("emi-q-val"); if(el) el.textContent = e.target.value; }} />
       </div>
       <button onClick={exportImg} disabled={!store.src}
-        style={{ width:"100%", padding:"8px", background: store.src ? "#FF7A00" : "#ccc",
+        style={{ width:"100%", padding:"8px", background: store.src ? "var(--brand-madre)" : "#ccc",
           color:"#fff", border:"none", borderRadius:"8px", fontSize:"12px", fontWeight:500,
           cursor: store.src ? "pointer" : "not-allowed" }}>
         ⬇ Exportar

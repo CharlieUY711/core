@@ -3,8 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import { useMediaLibrary, MediaTipo, MediaItem } from "../../hooks/useMediaLibrary";
 
-const ACCENT = "#FF7A00";
-const BLUE   = "#0F3460";
+const ACCENT = "var(--brand-madre)";
+const BLUE   = "var(--brand-navy)";
 
 function fmtSize(b: number): string {
   if (!b) return "?";
@@ -203,7 +203,7 @@ export default function AdminBiblioteca({
   const selDocs = items.filter(i => selected.has(i.id) && i.tipo === "documento").length;
 
   const inp: React.CSSProperties = {
-    padding:"0.5rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px",
+    padding:"0.5rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px",
     fontSize:"0.85rem", outline:"none", background:"#fff", color:"#111",
   };
 
@@ -215,7 +215,7 @@ export default function AdminBiblioteca({
           padding:"0.75rem 1.25rem", borderRadius:"10px", fontWeight:600, fontSize:"0.875rem",
           background: toast.ok ? "#f0fdf4" : "#fef2f2",
           color: toast.ok ? "#166534" : "#dc2626",
-          border:`1px solid ${toast.ok?"#6BB87A":"#ef4444"}`,
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
           boxShadow:"0 4px 16px rgba(0,0,0,0.1)" }}>
           {toast.text}
         </div>
@@ -233,19 +233,19 @@ export default function AdminBiblioteca({
             <div key={s.label} style={{ background:"#fff", borderRadius:10, padding:"0.6rem 0.85rem",
               borderLeft:`3px solid ${s.color}`, border:`1px solid #F3F4F6` }}>
               <div style={{ fontSize:"1.25rem", fontWeight:800, color:s.color }}>{s.value}</div>
-              <div style={{ fontSize:"0.72rem", color:"#9CA3AF" }}>{s.label}</div>
+              <div style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>{s.label}</div>
             </div>
           ))}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:0, borderBottom:"1.5px solid #E5E7EB", alignItems:"center" }}>
+      <div style={{ display:"flex", gap:0, borderBottom:"1.5px solid var(--border)", alignItems:"center" }}>
         {(["biblioteca","subir"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding:"0.6rem 1.25rem", background:"none", border:"none",
             borderBottom: tab===t ? `2.5px solid ${ACCENT}` : "2.5px solid transparent",
-            color: tab===t ? ACCENT : "#6B7280",
+            color: tab===t ? ACCENT : "var(--mute)",
             fontWeight: tab===t ? 700 : 400,
             fontSize:"0.875rem", cursor:"pointer", marginBottom:"-1.5px",
           }}>
@@ -276,9 +276,9 @@ export default function AdminBiblioteca({
               {(["all","imagen","video","documento"] as const).map(t => (
                 <button key={t} onClick={() => setFilterTipo(t)} style={{
                   padding:"0.4rem 0.65rem", borderRadius:7, fontSize:"0.78rem",
-                  border:`1.5px solid ${filterTipo===t ? ACCENT : "#E5E7EB"}`,
-                  background: filterTipo===t ? `rgba(255,122,0,.08)` : "#fff",
-                  color: filterTipo===t ? ACCENT : "#6B7280",
+                  border:`1.5px solid ${filterTipo===t ? ACCENT : "var(--border)"}`,
+                  background: filterTipo===t ? `color-mix(in srgb, var(--brand-madre) 8%, transparent)` : "#fff",
+                  color: filterTipo===t ? ACCENT : "var(--mute)",
                   fontWeight: filterTipo===t ? 700 : 400, cursor:"pointer",
                 }}>
                   {t==="all"?"Todo":t==="imagen"?"🖼":t==="video"?"🎬":"📄"}
@@ -291,9 +291,9 @@ export default function AdminBiblioteca({
               {(["all","articulo","documento","venta"] as const).map(c => (
                 <button key={c} onClick={() => setFilterCat(c)} style={{
                   padding:"0.4rem 0.65rem", borderRadius:7, fontSize:"0.78rem",
-                  border:`1.5px solid ${filterCat===c ? BLUE : "#E5E7EB"}`,
-                  background: filterCat===c ? `rgba(15,52,96,.08)` : "#fff",
-                  color: filterCat===c ? BLUE : "#6B7280",
+                  border:`1.5px solid ${filterCat===c ? BLUE : "var(--border)"}`,
+                  background: filterCat===c ? `color-mix(in srgb, var(--brand-navy) 8%, transparent)` : "#fff",
+                  color: filterCat===c ? BLUE : "var(--mute)",
                   fontWeight: filterCat===c ? 700 : 400, cursor:"pointer",
                 }}>
                   {c==="all"?"Todas":c==="articulo"?"🛍 Art.":c==="documento"?"📄 Doc":"💰 Venta"}
@@ -308,12 +308,12 @@ export default function AdminBiblioteca({
               border:"none", borderRadius:8, fontWeight:700, fontSize:"0.82rem", cursor:"pointer" }}>
               ⬆ Subir
             </button>
-            <button onClick={reload} style={{ ...inp, cursor:"pointer", color:"#6B7280", padding:"0.45rem 0.6rem" }}>↻</button>
+            <button onClick={reload} style={{ ...inp, cursor:"pointer", color:"var(--mute)", padding:"0.45rem 0.6rem" }}>↻</button>
           </div>
 
           {/* Selección info en modal */}
           {mode === "modal" && (
-            <div style={{ fontSize:"0.78rem", color:"#6B7280", display:"flex", gap:"1rem" }}>
+            <div style={{ fontSize:"0.78rem", color:"var(--mute)", display:"flex", gap:"1rem" }}>
               <span>🖼 {selImgs}/{maxImages}</span>
               <span>🎬 {selVids}/{maxVideos}</span>
               {selDocs > 0 && <span>📄 {selDocs}</span>}
@@ -322,11 +322,11 @@ export default function AdminBiblioteca({
 
           {/* Grid */}
           {loading ? (
-            <div style={{ textAlign:"center", padding:"3rem", color:"#9CA3AF" }}>Cargando...</div>
+            <div style={{ textAlign:"center", padding:"3rem", color:"var(--gray-400)" }}>Cargando...</div>
           ) : items.length === 0 ? (
             <div style={{ textAlign:"center", padding:"3rem" }}>
               <div style={{ fontSize:"3rem" }}>🗂</div>
-              <div style={{ color:"#9CA3AF", marginTop:"0.5rem" }}>Biblioteca vacía</div>
+              <div style={{ color:"var(--gray-400)", marginTop:"0.5rem" }}>Biblioteca vacía</div>
             </div>
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))", gap:"0.6rem" }}>
@@ -338,19 +338,19 @@ export default function AdminBiblioteca({
                   <div key={item.id}
                     onClick={() => mode === "modal" ? toggleSelect(item) : setPreview(item)}
                     style={{
-                      border:`2px solid ${isSel ? ACCENT : "#E5E7EB"}`, borderRadius:10,
+                      border:`2px solid ${isSel ? ACCENT : "var(--border)"}`, borderRadius:10,
                       overflow:"hidden", cursor:"pointer", background:"#fff", position:"relative",
-                      boxShadow: isSel ? `0 0 0 3px rgba(255,122,0,.15)` : "0 1px 3px rgba(0,0,0,.05)",
+                      boxShadow: isSel ? `0 0 0 3px color-mix(in srgb, var(--brand-madre) 15%, transparent)` : "0 1px 3px rgba(0,0,0,.05)",
                       transition:"all .15s",
                     }}>
 
                     {/* Thumbnail */}
-                    <div style={{ height:100, background:"#F9FAFB", display:"flex",
+                    <div style={{ height:100, background:"var(--gray-50)", display:"flex",
                       alignItems:"center", justifyContent:"center", overflow:"hidden", position:"relative" }}>
                       {isDoc ? (
                         <div style={{ textAlign:"center" }}>
                           <div style={{ fontSize:"2.5rem" }}>📄</div>
-                          <div style={{ fontSize:"8px", color:"#9CA3AF", marginTop:"2px" }}>
+                          <div style={{ fontSize:"8px", color:"var(--gray-400)", marginTop:"2px" }}>
                             {item.nombre.split(".").pop()?.toUpperCase()}
                           </div>
                         </div>
@@ -388,14 +388,14 @@ export default function AdminBiblioteca({
                         overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                         {item.nombre}
                       </div>
-                      <div style={{ fontSize:"9px", color:"#9CA3AF" }}>
+                      <div style={{ fontSize:"9px", color:"var(--gray-400)" }}>
                         {fmtSize(item.size_bytes)} · {fmtDate(item.created_at)}
                       </div>
                       {item.etiquetas?.length > 0 && (
                         <div style={{ display:"flex", flexWrap:"wrap", gap:"2px", marginTop:"2px" }}>
                           {item.etiquetas.slice(0,2).map(t => (
                             <span key={t} style={{ fontSize:"8px", padding:"1px 4px",
-                              background:`rgba(15,52,96,.08)`, color:BLUE, borderRadius:3 }}>
+                              background:`color-mix(in srgb, var(--brand-navy) 8%, transparent)`, color:BLUE, borderRadius:3 }}>
                               #{t}
                             </span>
                           ))}
@@ -406,7 +406,7 @@ export default function AdminBiblioteca({
                     {/* Acciones */}
                     <div style={{ display:"flex", borderTop:"1px solid #F3F4F6" }}>
                       <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(item.url||""); notify("URL copiada"); }}
-                        style={{ flex:1, padding:"0.3rem", background:"none", border:"none", cursor:"pointer", fontSize:"10px", color:"#6B7280" }}>
+                        style={{ flex:1, padding:"0.3rem", background:"none", border:"none", cursor:"pointer", fontSize:"10px", color:"var(--mute)" }}>
                         📋
                       </button>
                       {isDoc && (
@@ -429,7 +429,7 @@ export default function AdminBiblioteca({
           {/* Confirmar selección modal */}
           {mode === "modal" && selected.size > 0 && (
             <div style={{ position:"sticky", bottom:0, background:"#fff", padding:"0.75rem",
-              borderTop:"1px solid #E5E7EB", display:"flex", gap:"0.75rem", alignItems:"center" }}>
+              borderTop:"1px solid var(--border)", display:"flex", gap:"0.75rem", alignItems:"center" }}>
               <span style={{ fontSize:"0.85rem", color:"#374151", flex:1 }}>
                 {selImgs>0 && `${selImgs} imagen(es) `}
                 {selVids>0 && `${selVids} video(s) `}
@@ -437,8 +437,8 @@ export default function AdminBiblioteca({
                 seleccionado(s)
               </span>
               <button onClick={() => setSelected(new Set())} style={{
-                padding:"0.45rem 0.9rem", background:"none", border:"1.5px solid #E5E7EB",
-                borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"#6B7280" }}>
+                padding:"0.45rem 0.9rem", background:"none", border:"1.5px solid var(--border)",
+                borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"var(--mute)" }}>
                 Limpiar
               </button>
               <button onClick={() => onSelect?.(items.filter(i => selected.has(i.id)))} style={{
@@ -457,10 +457,10 @@ export default function AdminBiblioteca({
           <div
             onClick={() => inputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = ACCENT; }}
-            onDragLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
-            onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = "#E5E7EB"; handleFiles(e.dataTransfer.files); }}
-            style={{ border:"2px dashed #E5E7EB", borderRadius:12, padding:"2rem",
-              textAlign:"center", cursor:"pointer", color:"#9CA3AF", transition:"border-color .2s" }}>
+            onDragLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
+            onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--border)"; handleFiles(e.dataTransfer.files); }}
+            style={{ border:"2px dashed var(--border)", borderRadius:12, padding:"2rem",
+              textAlign:"center", cursor:"pointer", color:"var(--gray-400)", transition:"border-color .2s" }}>
             <div style={{ fontSize:"2.5rem", marginBottom:"0.5rem" }}>⬆</div>
             <div style={{ fontWeight:600, color:"#374151", marginBottom:"0.25rem" }}>
               Arrastrá archivos o hacé click
@@ -476,9 +476,9 @@ export default function AdminBiblioteca({
                 {(["articulo","documento","otro"] as const).map(c => (
                   <button key={c} onClick={() => setUploadCat(c)} style={{
                     flex:1, padding:"0.4rem", borderRadius:7, fontSize:"0.75rem",
-                    border:`1.5px solid ${uploadCat===c ? ACCENT : "#E5E7EB"}`,
-                    background: uploadCat===c ? `rgba(255,122,0,.08)` : "#fff",
-                    color: uploadCat===c ? ACCENT : "#6B7280",
+                    border:`1.5px solid ${uploadCat===c ? ACCENT : "var(--border)"}`,
+                    background: uploadCat===c ? `color-mix(in srgb, var(--brand-madre) 8%, transparent)` : "#fff",
+                    color: uploadCat===c ? ACCENT : "var(--mute)",
                     fontWeight: uploadCat===c ? 700 : 400, cursor:"pointer",
                   }}>
                     {c==="articulo"?"🛍 Art.":c==="documento"?"📄 Doc":"📎 Otro"}
@@ -488,7 +488,7 @@ export default function AdminBiblioteca({
             </div>
             <div style={{ flex:2, minWidth:200 }}>
               <div style={{ fontSize:"0.75rem", fontWeight:700, color:"#374151", marginBottom:"4px" }}>
-                Etiquetas <span style={{ fontWeight:400, color:"#9CA3AF" }}>(separadas por coma)</span>
+                Etiquetas <span style={{ fontWeight:400, color:"var(--gray-400)" }}>(separadas por coma)</span>
               </div>
               <input value={uploadTags} onChange={e => setUploadTags(e.target.value)}
                 placeholder="verano, electro, oferta"
@@ -500,20 +500,20 @@ export default function AdminBiblioteca({
           {uploads.length > 0 && (
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
               {uploads.map((u, i) => (
-                <div key={i} style={{ background:"#F9FAFB", borderRadius:8,
-                  padding:"0.55rem 0.75rem", border:"1px solid #E5E7EB" }}>
+                <div key={i} style={{ background:"var(--gray-50)", borderRadius:8,
+                  padding:"0.55rem 0.75rem", border:"1px solid var(--border)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
                     <span style={{ fontSize:"0.82rem", fontWeight:500, color:"#374151",
                       maxWidth:"70%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                       {u.file.name}
                     </span>
                     <span style={{ fontSize:"0.75rem", color:
-                      u.status==="done" ? "#16a34a" : u.status==="failed" ? "#dc2626" : "#6B7280" }}>
+                      u.status==="done" ? "#16a34a" : u.status==="failed" ? "#dc2626" : "var(--mute)" }}>
                       {u.status==="done"?"✓ Listo":u.status==="failed"?"✗ Error":
                        u.status==="uploading"?`${u.progress}%`:"En cola"}
                     </span>
                   </div>
-                  <div style={{ height:3, background:"#E5E7EB", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ height:3, background:"var(--border)", borderRadius:2, overflow:"hidden" }}>
                     <div style={{ height:"100%", borderRadius:2, transition:"width .3s",
                       width:`${u.progress}%`,
                       background: u.status==="failed"?"#ef4444":u.status==="done"?"#22c55e":ACCENT }} />
@@ -522,8 +522,8 @@ export default function AdminBiblioteca({
                 </div>
               ))}
               <button onClick={() => { setUploads([]); setTab("biblioteca"); }}
-                style={{ padding:"0.45rem", background:"none", border:"1.5px solid #E5E7EB",
-                  borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"#6B7280" }}>
+                style={{ padding:"0.45rem", background:"none", border:"1.5px solid var(--border)",
+                  borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"var(--mute)" }}>
                 Limpiar lista
               </button>
             </div>
@@ -540,7 +540,7 @@ export default function AdminBiblioteca({
             maxWidth:800, width:"100%", maxHeight:"85vh", display:"flex", flexDirection:"column" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-              padding:"0.75rem 1rem", borderBottom:"1px solid #E5E7EB" }}>
+              padding:"0.75rem 1rem", borderBottom:"1px solid var(--border)" }}>
               <span style={{ fontWeight:700, fontSize:"0.9rem", color:"#111" }}>{preview.nombre}</span>
               <div style={{ display:"flex", gap:"0.5rem" }}>
                 {preview.tipo === "documento" && (
@@ -551,16 +551,16 @@ export default function AdminBiblioteca({
                   </button>
                 )}
                 <button onClick={() => { navigator.clipboard.writeText(preview.url||""); notify("URL copiada"); }}
-                  style={{ padding:"0.35rem 0.75rem", background:"none", border:"1.5px solid #E5E7EB",
-                    borderRadius:7, fontSize:"0.8rem", cursor:"pointer", color:"#6B7280" }}>
+                  style={{ padding:"0.35rem 0.75rem", background:"none", border:"1.5px solid var(--border)",
+                    borderRadius:7, fontSize:"0.8rem", cursor:"pointer", color:"var(--mute)" }}>
                   📋 Copiar URL
                 </button>
                 <button onClick={() => setPreview(null)}
-                  style={{ background:"none", border:"none", fontSize:"1.25rem", cursor:"pointer", color:"#6B7280" }}>✕</button>
+                  style={{ background:"none", border:"none", fontSize:"1.25rem", cursor:"pointer", color:"var(--mute)" }}>✕</button>
               </div>
             </div>
             <div style={{ flex:1, overflow:"auto", padding:"1rem", display:"flex",
-              alignItems:"center", justifyContent:"center", background:"#F9FAFB", minHeight:300 }}>
+              alignItems:"center", justifyContent:"center", background:"var(--gray-50)", minHeight:300 }}>
               {preview.tipo === "imagen" && (
                 <img src={preview.url} alt={preview.nombre}
                   style={{ maxWidth:"100%", maxHeight:"60vh", borderRadius:8, objectFit:"contain" }} />
@@ -573,8 +573,8 @@ export default function AdminBiblioteca({
                   style={{ width:"100%", height:"60vh", border:"none", borderRadius:8 }} />
               )}
             </div>
-            <div style={{ padding:"0.6rem 1rem", borderTop:"1px solid #E5E7EB",
-              display:"flex", gap:"1rem", fontSize:"0.78rem", color:"#9CA3AF" }}>
+            <div style={{ padding:"0.6rem 1rem", borderTop:"1px solid var(--border)",
+              display:"flex", gap:"1rem", fontSize:"0.78rem", color:"var(--gray-400)" }}>
               <span>{fmtSize(preview.size_bytes)}</span>
               <span>{fmtDate(preview.created_at)}</span>
               <span>{preview.categoria}</span>

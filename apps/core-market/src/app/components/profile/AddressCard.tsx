@@ -11,7 +11,7 @@ export default function AddressCard({ address, onDefault, onEdit, onDelete }: Pr
   const [del, setDel] = useState(false);
   return (
     <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ border:`1.5px solid ${address.isDefault?"#FF7A00":hov?"#CBD5E1":"#E5E7EB"}`,
+      style={{ border:`1.5px solid ${address.isDefault?"var(--brand-madre)":hov?"#CBD5E1":"var(--border)"}`,
         borderRadius:"14px", overflow:"hidden", background:"#fff",
         boxShadow:hov?"0 4px 16px rgba(0,0,0,0.08)":"0 1px 3px rgba(0,0,0,0.05)", transition:"all 0.2s" }}>
       {address.lat && address.lng
@@ -22,11 +22,11 @@ export default function AddressCard({ address, onDefault, onEdit, onDelete }: Pr
         <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.35rem" }}>
           <span>{ICONS[address.label]||"📌"}</span>
           <span style={{ fontWeight:700, fontSize:"0.9rem" }}>{address.label}</span>
-          {address.isDefault && <span style={{ marginLeft:"auto", padding:"2px 8px", borderRadius:"20px", fontSize:"0.65rem", fontWeight:700, background:"#FF7A00", color:"#fff" }}>Predeterminada</span>}
+          {address.isDefault && <span style={{ marginLeft:"auto", padding:"2px 8px", borderRadius:"20px", fontSize:"0.65rem", fontWeight:700, background:"var(--brand-madre)", color:"#fff" }}>Predeterminada</span>}
         </div>
-        <div style={{ color:"#6B7280", fontSize:"0.8rem" }}>{address.street}{address.city?`, ${address.city}`:""}</div>
+        <div style={{ color:"var(--mute)", fontSize:"0.8rem" }}>{address.street}{address.city?`, ${address.city}`:""}</div>
         <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.75rem" }}>
-          {!address.isDefault && <button onClick={()=>onDefault(address.id)} style={{ flex:1, padding:"5px 0", background:"rgba(255,122,0,0.08)", color:"#FF7A00", border:"1px solid rgba(255,122,0,0.3)", borderRadius:"7px", cursor:"pointer", fontSize:"0.72rem", fontWeight:700 }}>Predeterminar</button>}
+          {!address.isDefault && <button onClick={()=>onDefault(address.id)} style={{ flex:1, padding:"5px 0", background:"color-mix(in srgb, var(--brand-madre) 8%, transparent)", color:"var(--brand-madre)", border:"1px solid color-mix(in srgb, var(--brand-madre) 30%, transparent)", borderRadius:"7px", cursor:"pointer", fontSize:"0.72rem", fontWeight:700 }}>Predeterminar</button>}
           <button onClick={()=>onEdit(address.id)} style={{ flex:1, padding:"5px 0", background:"rgba(59,130,246,0.08)", color:"#3B82F6", border:"1px solid rgba(59,130,246,0.3)", borderRadius:"7px", cursor:"pointer", fontSize:"0.72rem", fontWeight:700 }}>✏️ Editar</button>
           {del ? (
             <>

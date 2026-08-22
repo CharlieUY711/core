@@ -87,7 +87,7 @@ const CatalogNodeRow = memo(({ node, isAdmin, onAdd, onEdit, onDelete, onToggle,
       }}>
         <button onClick={() => setOpen(o => !o)} style={{ background:"none", border:"none",
           cursor: hasChildren ? "pointer" : "default",
-          color: hasChildren ? "#6B7280" : "transparent", fontSize:"0.75rem", width:"16px", flexShrink:0 }}>
+          color: hasChildren ? "var(--mute)" : "transparent", fontSize:"0.75rem", width:"16px", flexShrink:0 }}>
           {hasChildren ? (open ? "▼" : "▶") : "·"}
         </button>
         <span style={{ fontSize:"0.95rem", flexShrink:0 }}>{NODE_ICONS[node.type] || "📌"}</span>
@@ -95,38 +95,38 @@ const CatalogNodeRow = memo(({ node, isAdmin, onAdd, onEdit, onDelete, onToggle,
         {editMode ? (
           <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
             onKeyDown={e => { if(e.key==="Enter") handleEdit(); if(e.key==="Escape") setEditMode(false); }}
-            style={{ flex:1, padding:"2px 6px", border:"1px solid #FF7A00", borderRadius:"4px", fontSize:"0.875rem", outline:"none" }} />
+            style={{ flex:1, padding:"2px 6px", border:"1px solid var(--brand-madre)", borderRadius:"4px", fontSize:"0.875rem", outline:"none" }} />
         ) : (
           <span onDoubleClick={() => isAdmin && setEditMode(true)} style={{
             flex:1, fontSize:"0.875rem",
             fontWeight: depth===0 ? 700 : depth===1 ? 600 : 400,
-            color: node.is_active ? "#111" : "#9CA3AF",
+            color: node.is_active ? "#111" : "var(--gray-400)",
             textDecoration: node.is_active ? "none" : "line-through",
             cursor: isAdmin ? "text" : "default" }}>
             {node.name}
           </span>
         )}
-        {hasChildren && <span style={{ fontSize:"0.7rem", color:"#9CA3AF", flexShrink:0 }}>{node.children.length}</span>}
+        {hasChildren && <span style={{ fontSize:"0.7rem", color:"var(--gray-400)", flexShrink:0 }}>{node.children.length}</span>}
         {isAdmin && (
           <div style={{ display:"flex", gap:"0.3rem", flexShrink:0, marginLeft:"auto" }}>
             {editMode ? (
               <>
-                <button onClick={handleEdit} disabled={saving} style={btn("#6BB87A")}>✓</button>
-                <button onClick={() => setEditMode(false)} style={btn("#9CA3AF")}>✕</button>
+                <button onClick={handleEdit} disabled={saving} style={btn("color-mix(in srgb, var(--color-success) 70%, white)")}>✓</button>
+                <button onClick={() => setEditMode(false)} style={btn("var(--gray-400)")}>✕</button>
               </>
             ) : (
               <>
                 <button onClick={() => { setEditMode(true); setEditName(node.name); }} style={btn("#3B82F6")}>✏️</button>
                 {node.type !== "product" && (
-                  <button onClick={() => setAddMode(a => !a)} style={btn("#6BB87A")}>+ {NODE_LABELS[childType]?.substring(0,4)}</button>
+                  <button onClick={() => setAddMode(a => !a)} style={btn("color-mix(in srgb, var(--color-success) 70%, white)")}>+ {NODE_LABELS[childType]?.substring(0,4)}</button>
                 )}
-                <button onClick={() => onToggle(node.id, node.is_active)} style={btn(node.is_active ? "#F59E0B" : "#6BB87A")}>
+                <button onClick={() => onToggle(node.id, node.is_active)} style={btn(node.is_active ? "#F59E0B" : "color-mix(in srgb, var(--color-success) 70%, white)")}>
                   {node.is_active ? "⏸" : "▶"}
                 </button>
                 {delConfirm ? (
                   <>
                     <button onClick={handleDelete} disabled={saving} style={{...btn("#EF4444"), background:"#EF4444", color:"#fff"}}>Confirmar</button>
-                    <button onClick={() => setDelConfirm(false)} style={btn("#9CA3AF")}>✕</button>
+                    <button onClick={() => setDelConfirm(false)} style={btn("var(--gray-400)")}>✕</button>
                   </>
                 ) : (
                   <button onClick={() => setDelConfirm(true)} style={btn("#EF4444")}>🗑</button>
@@ -143,9 +143,9 @@ const CatalogNodeRow = memo(({ node, isAdmin, onAdd, onEdit, onDelete, onToggle,
           <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
             placeholder={`Nuevo ${NODE_LABELS[childType]}...`}
             onKeyDown={e => { if(e.key==="Enter") handleAdd(); if(e.key==="Escape"){setAddMode(false);setNewName("");} }}
-            style={{ flex:1, padding:"0.3rem 0.6rem", border:"1px solid #FF7A00", borderRadius:"5px", fontSize:"0.85rem", outline:"none" }} />
+            style={{ flex:1, padding:"0.3rem 0.6rem", border:"1px solid var(--brand-madre)", borderRadius:"5px", fontSize:"0.85rem", outline:"none" }} />
           <button onClick={handleAdd} disabled={saving||!newName.trim()}
-            style={{ padding:"0.3rem 0.75rem", background:saving?"#ccc":"#FF7A00", color:"#fff", border:"none", borderRadius:"5px", cursor:"pointer", fontSize:"0.8rem", fontWeight:700 }}>
+            style={{ padding:"0.3rem 0.75rem", background:saving?"#ccc":"var(--brand-madre)", color:"#fff", border:"none", borderRadius:"5px", cursor:"pointer", fontSize:"0.8rem", fontWeight:700 }}>
             {saving?"...":"Agregar"}
           </button>
           <button onClick={()=>{setAddMode(false);setNewName("");}}
@@ -153,7 +153,7 @@ const CatalogNodeRow = memo(({ node, isAdmin, onAdd, onEdit, onDelete, onToggle,
         </div>
       )}
       {open && hasChildren && (
-        <div style={{ borderLeft:`2px solid ${depth===0?"#FF7A00":depth===1?"#6BB87A":"#E5E7EB"}`, marginLeft:`${depth * INDENT + 24}px` }}>
+        <div style={{ borderLeft:`2px solid ${depth===0?"var(--brand-madre)":depth===1?"color-mix(in srgb, var(--color-success) 70%, white)":"var(--border)"}`, marginLeft:`${depth * INDENT + 24}px` }}>
           <CatalogTree nodes={node.children} isAdmin={isAdmin}
             onAdd={onAdd} onEdit={onEdit} onDelete={onDelete} onToggle={onToggle} depth={depth + 1} />
         </div>

@@ -517,7 +517,7 @@ export default function AdminCargaMasiva() {
 
         .cm-card {
           width: 100%; max-width: 640px;
-          background: #fff;
+          background: var(--card);
           border: 1px solid var(--color-border);
           border-radius: var(--radius-lg);
           box-shadow: var(--shadow-card);
@@ -550,7 +550,7 @@ export default function AdminCargaMasiva() {
           letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-400);
         }
         .cm-input, .cm-select {
-          background: #fff; border: 1px solid var(--color-border);
+          background: var(--card); border: 1px solid var(--color-border);
           border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3);
           color: var(--color-text-dark); font-family: var(--font-base);
           font-size: 14px; outline: none; width: 100%;

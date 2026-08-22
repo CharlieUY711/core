@@ -119,15 +119,15 @@ export default function AdminProfile() {
         <div style={{ position:"relative", flexShrink:0 }}>
           <div onClick={() => inputRef.current?.click()}
             style={{ width:"80px", height:"80px", borderRadius:"50%", cursor:"pointer", overflow:"hidden",
-              background: avatar ? "transparent" : "linear-gradient(135deg,#FF7A00,#FF4500)",
+              background: avatar ? "transparent" : "linear-gradient(135deg,var(--brand-madre),#FF4500)",
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:"1.75rem", fontWeight:700, color:"#fff",
-              border:"3px solid #fff", boxShadow:"0 4px 12px rgba(255,122,0,0.3)" }}>
+              border:"3px solid #fff", boxShadow:"0 4px 12px color-mix(in srgb, var(--brand-madre) 30%, transparent)" }}>
             {avatar ? <img src={avatar} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : initials}
           </div>
           <div onClick={() => inputRef.current?.click()}
             style={{ position:"absolute", bottom:0, right:0, width:"24px", height:"24px", borderRadius:"50%",
-              background:"#FF7A00", display:"flex", alignItems:"center", justifyContent:"center",
+              background:"var(--brand-madre)", display:"flex", alignItems:"center", justifyContent:"center",
               cursor:"pointer", border:"2px solid #fff", fontSize:"0.7rem" }}>✏️</div>
           <input ref={inputRef} type="file" accept="image/*" onChange={handleAvatar} style={{ display:"none" }} />
         </div>
@@ -135,16 +135,16 @@ export default function AdminProfile() {
           <div style={{ fontSize:"1.25rem", fontWeight:800, color:"#111" }}>
             {profile.nombre || user?.email?.split("@")[0] || "Usuario"}
           </div>
-          <div style={{ color:"#9CA3AF", fontSize:"0.875rem", marginTop:"2px" }}>{user?.email}</div>
+          <div style={{ color:"var(--gray-400)", fontSize:"0.875rem", marginTop:"2px" }}>{user?.email}</div>
           <div style={{ marginTop:"0.5rem" }}>
             <span style={{ padding:"3px 10px", borderRadius:"20px", fontSize:"0.72rem", fontWeight:700,
-              background:"rgba(255,122,0,0.1)", color:"#FF7A00" }}>
+              background:"color-mix(in srgb, var(--brand-madre) 10%, transparent)", color:"var(--brand-madre)" }}>
               {user?.user_metadata?.role === "admin" ? "👑 Administrador" : "👤 Usuario"}
             </span>
           </div>
         </div>
         <button onClick={handleSave} disabled={saving}
-          style={{ padding:"0.6rem 1.5rem", background: saved?"#6BB87A":saving?"#ccc":"#FF7A00",
+          style={{ padding:"0.6rem 1.5rem", background: saved?"color-mix(in srgb, var(--color-success) 70%, white)":saving?"#ccc":"var(--brand-madre)",
             color:"#fff", border:"none", borderRadius:"10px", fontWeight:700,
             cursor: saving?"not-allowed":"pointer", fontSize:"0.875rem", transition:"all 0.2s",
             whiteSpace:"nowrap" }}>
@@ -158,7 +158,7 @@ export default function AdminProfile() {
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex:1, padding:"0.6rem 1rem", borderRadius:"8px", border:"none", cursor:"pointer",
             fontWeight: tab===t.id ? 700 : 400, fontSize:"0.85rem",
-            background: tab===t.id ? "#FF7A00" : "transparent",
+            background: tab===t.id ? "var(--brand-madre)" : "transparent",
             color: tab===t.id ? "#fff" : "#666", transition:"all 0.15s",
           }}>
             {t.icon} {t.label}
@@ -227,7 +227,7 @@ function AddressesTab({ addresses, onChange }: { addresses: Address[]; onChange:
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <SectionTitle title="Mis direcciones" subtitle="Gestioná tus ubicaciones de entrega" />
         <button onClick={() => setAdding(true)}
-          style={{ padding:"0.5rem 1rem", background:"#FF7A00", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700, fontSize:"0.85rem" }}>
+          style={{ padding:"0.5rem 1rem", background:"var(--brand-madre)", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700, fontSize:"0.85rem" }}>
           + Agregar dirección
         </button>
       </div>
@@ -249,25 +249,25 @@ function AddressesTab({ addresses, onChange }: { addresses: Address[]; onChange:
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
           {addresses.map(addr => (
-            <div key={addr.id} style={{ border:"1.5px solid #E5E7EB", borderRadius:"12px", padding:"1rem 1.25rem",
+            <div key={addr.id} style={{ border:"1.5px solid var(--border)", borderRadius:"12px", padding:"1rem 1.25rem",
               display:"flex", alignItems:"center", gap:"1rem",
-              borderColor: addr.isDefault ? "#FF7A00" : "#E5E7EB",
+              borderColor: addr.isDefault ? "var(--brand-madre)" : "var(--border)",
               background: addr.isDefault ? "#FFF8F5" : "#fff" }}>
-              <div style={{ width:"40px", height:"40px", borderRadius:"10px", background: addr.isDefault ? "rgba(255,122,0,0.1)" : "#F3F4F6",
+              <div style={{ width:"40px", height:"40px", borderRadius:"10px", background: addr.isDefault ? "color-mix(in srgb, var(--brand-madre) 10%, transparent)" : "#F3F4F6",
                 display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.25rem", flexShrink:0 }}>
                 {addr.label === "Casa" ? "🏠" : addr.label === "Trabajo" ? "💼" : "📌"}
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
                   <span style={{ fontWeight:700, fontSize:"0.9rem", color:"#111" }}>{addr.label}</span>
-                  {addr.isDefault && <span style={{ padding:"2px 8px", borderRadius:"20px", fontSize:"0.68rem", fontWeight:700, background:"#FF7A00", color:"#fff" }}>Predeterminada</span>}
+                  {addr.isDefault && <span style={{ padding:"2px 8px", borderRadius:"20px", fontSize:"0.68rem", fontWeight:700, background:"var(--brand-madre)", color:"#fff" }}>Predeterminada</span>}
                 </div>
-                <div style={{ color:"#6B7280", fontSize:"0.82rem", marginTop:"2px" }}>{addr.street}{addr.city ? `, ${addr.city}` : ""}{addr.zip ? ` (${addr.zip})` : ""}</div>
+                <div style={{ color:"var(--mute)", fontSize:"0.82rem", marginTop:"2px" }}>{addr.street}{addr.city ? `, ${addr.city}` : ""}{addr.zip ? ` (${addr.zip})` : ""}</div>
               </div>
               <div style={{ display:"flex", gap:"0.4rem", flexShrink:0 }}>
                 {!addr.isDefault && (
                   <button onClick={() => handleDefault(addr.id)}
-                    style={{ padding:"4px 10px", background:"transparent", border:"1px solid #FF7A00", color:"#FF7A00", borderRadius:"6px", cursor:"pointer", fontSize:"0.72rem", fontWeight:600 }}>
+                    style={{ padding:"4px 10px", background:"transparent", border:"1px solid var(--brand-madre)", color:"var(--brand-madre)", borderRadius:"6px", cursor:"pointer", fontSize:"0.72rem", fontWeight:600 }}>
                     Predeterminar
                   </button>
                 )}
@@ -313,21 +313,21 @@ function ContactsTab({ contacts, onChange }: { contacts: Contact[]; onChange: (c
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <SectionTitle title="Mis contactos" subtitle="Cómo podemos contactarte" />
         <button onClick={() => setAdding(true)}
-          style={{ padding:"0.5rem 1rem", background:"#FF7A00", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700, fontSize:"0.85rem" }}>
+          style={{ padding:"0.5rem 1rem", background:"var(--brand-madre)", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700, fontSize:"0.85rem" }}>
           + Agregar contacto
         </button>
       </div>
 
       {adding && (
-        <div style={{ background:"#FFF8F5", border:"2px solid #FF7A00", borderRadius:"12px", padding:"1.25rem", display:"flex", gap:"0.75rem", flexWrap:"wrap" }}>
+        <div style={{ background:"#FFF8F5", border:"2px solid var(--brand-madre)", borderRadius:"12px", padding:"1.25rem", display:"flex", gap:"0.75rem", flexWrap:"wrap" }}>
           <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value as any}))}
-            style={{ padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.875rem" }}>
+            style={{ padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.875rem" }}>
             {Object.entries(CONTACT_LABELS).map(([k,v])=><option key={k} value={k}>{CONTACT_ICONS[k]} {v}</option>)}
           </select>
           <input value={form.value} onChange={e=>setForm(p=>({...p,value:e.target.value}))} placeholder="Ej: +598 99 123 456"
-            style={{ flex:1, minWidth:"180px", padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.875rem", outline:"none" }} />
-          <button onClick={handleAdd} style={{ padding:"0.6rem 1.25rem", background:"#FF7A00", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700 }}>Agregar</button>
-          <button onClick={() => setAdding(false)} style={{ padding:"0.6rem 0.75rem", background:"transparent", border:"1px solid #E5E7EB", borderRadius:"8px", cursor:"pointer" }}>✕</button>
+            style={{ flex:1, minWidth:"180px", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.875rem", outline:"none" }} />
+          <button onClick={handleAdd} style={{ padding:"0.6rem 1.25rem", background:"var(--brand-madre)", color:"#fff", border:"none", borderRadius:"8px", cursor:"pointer", fontWeight:700 }}>Agregar</button>
+          <button onClick={() => setAdding(false)} style={{ padding:"0.6rem 0.75rem", background:"transparent", border:"1px solid var(--border)", borderRadius:"8px", cursor:"pointer" }}>✕</button>
         </div>
       )}
 
@@ -337,20 +337,20 @@ function ContactsTab({ contacts, onChange }: { contacts: Contact[]; onChange: (c
         <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
           {contacts.map(c => (
             <div key={c.id} style={{ display:"flex", alignItems:"center", gap:"1rem", padding:"0.875rem 1.25rem",
-              border:`1.5px solid ${c.preferred ? "#FF7A00" : "#E5E7EB"}`, borderRadius:"12px",
+              border:`1.5px solid ${c.preferred ? "var(--brand-madre)" : "var(--border)"}`, borderRadius:"12px",
               background: c.preferred ? "#FFF8F5" : "#fff" }}>
-              <div style={{ width:"36px", height:"36px", borderRadius:"10px", background: c.preferred ? "rgba(255,122,0,0.1)" : "#F3F4F6",
+              <div style={{ width:"36px", height:"36px", borderRadius:"10px", background: c.preferred ? "color-mix(in srgb, var(--brand-madre) 10%, transparent)" : "#F3F4F6",
                 display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.1rem", flexShrink:0 }}>
                 {CONTACT_ICONS[c.type]}
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:"0.75rem", color:"#9CA3AF", fontWeight:600 }}>{CONTACT_LABELS[c.type]}</div>
+                <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", fontWeight:600 }}>{CONTACT_LABELS[c.type]}</div>
                 <div style={{ fontWeight:600, color:"#111", fontSize:"0.9rem" }}>{c.value}</div>
               </div>
-              {c.preferred && <span style={{ padding:"2px 8px", borderRadius:"20px", fontSize:"0.68rem", fontWeight:700, background:"#FF7A00", color:"#fff" }}>Preferido</span>}
+              {c.preferred && <span style={{ padding:"2px 8px", borderRadius:"20px", fontSize:"0.68rem", fontWeight:700, background:"var(--brand-madre)", color:"#fff" }}>Preferido</span>}
               <div style={{ display:"flex", gap:"0.4rem" }}>
                 {!c.preferred && <button onClick={() => handlePreferred(c.id)}
-                  style={{ padding:"4px 10px", background:"transparent", border:"1px solid #FF7A00", color:"#FF7A00", borderRadius:"6px", cursor:"pointer", fontSize:"0.72rem", fontWeight:600 }}>Preferir</button>}
+                  style={{ padding:"4px 10px", background:"transparent", border:"1px solid var(--brand-madre)", color:"var(--brand-madre)", borderRadius:"6px", cursor:"pointer", fontSize:"0.72rem", fontWeight:600 }}>Preferir</button>}
                 {delId===c.id ? (
                   <>
                     <button onClick={() => handleDelete(c.id)} style={{ padding:"4px 10px", background:"#EF4444", color:"#fff", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"0.72rem", fontWeight:700 }}>Confirmar</button>
@@ -375,18 +375,18 @@ function PreferencesTab({ profile, onChange }: { profile: ProfileData; onChange:
       <SectionTitle title="Preferencias" subtitle="Personalizá tu experiencia" />
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
         <div>
-          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Método de contacto preferido</label>
+          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Método de contacto preferido</label>
           <select value={profile.prefContactMethod} onChange={e=>onChange({ prefContactMethod:e.target.value })}
-            style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.875rem" }}>
+            style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.875rem" }}>
             <option value="whatsapp">💬 WhatsApp</option>
             <option value="phone">📞 Teléfono</option>
             <option value="email">📧 Email</option>
           </select>
         </div>
         <div>
-          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Horario preferido</label>
+          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Horario preferido</label>
           <select value={profile.prefSchedule} onChange={e=>onChange({ prefSchedule:e.target.value })}
-            style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.875rem" }}>
+            style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.875rem" }}>
             <option value="mañana">🌅 Mañana (9-12h)</option>
             <option value="tarde">☀️ Tarde (12-18h)</option>
             <option value="noche">🌙 Noche (18-21h)</option>
@@ -395,10 +395,10 @@ function PreferencesTab({ profile, onChange }: { profile: ProfileData; onChange:
         </div>
       </div>
       <div>
-        <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Notas adicionales</label>
+        <label style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Notas adicionales</label>
         <textarea value={profile.notes} onChange={e=>onChange({ notes:e.target.value })} rows={4}
           placeholder="Ej: Preferir contacto por WhatsApp después de las 18h..."
-          style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.875rem", outline:"none", resize:"vertical", fontFamily:"inherit", boxSizing:"border-box" }} />
+          style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.875rem", outline:"none", resize:"vertical", fontFamily:"inherit", boxSizing:"border-box" }} />
       </div>
     </div>
   );
@@ -409,7 +409,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
   return (
     <div>
       <div style={{ fontWeight:700, fontSize:"1rem", color:"#111" }}>{title}</div>
-      <div style={{ color:"#9CA3AF", fontSize:"0.8rem", marginTop:"2px" }}>{subtitle}</div>
+      <div style={{ color:"var(--gray-400)", fontSize:"0.8rem", marginTop:"2px" }}>{subtitle}</div>
     </div>
   );
 }
@@ -420,23 +420,23 @@ function InputField({ label, value, onChange, placeholder, disabled }: {
 }) {
   return (
     <div>
-      <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>{label}</label>
+      <label style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>{label}</label>
       <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-        style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid #E5E7EB", borderRadius:"8px",
-          fontSize:"0.875rem", outline:"none", background: disabled?"#F9FAFB":"#fff",
-          color: disabled?"#9CA3AF":"#111", boxSizing:"border-box", transition:"border-color 0.15s" }}
-        onFocus={e=>{ if(!disabled) e.target.style.borderColor="#FF7A00"; }}
-        onBlur={e=>{ e.target.style.borderColor="#E5E7EB"; }} />
+        style={{ width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)", borderRadius:"8px",
+          fontSize:"0.875rem", outline:"none", background: disabled?"var(--gray-50)":"#fff",
+          color: disabled?"var(--gray-400)":"#111", boxSizing:"border-box", transition:"border-color 0.15s" }}
+        onFocus={e=>{ if(!disabled) e.target.style.borderColor="var(--brand-madre)"; }}
+        onBlur={e=>{ e.target.style.borderColor="var(--border)"; }} />
     </div>
   );
 }
 
 function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
-    <div style={{ padding:"3rem", textAlign:"center", background:"#FAFAFA", borderRadius:"12px", border:"1.5px dashed #E5E7EB" }}>
+    <div style={{ padding:"3rem", textAlign:"center", background:"#FAFAFA", borderRadius:"12px", border:"1.5px dashed var(--border)" }}>
       <div style={{ fontSize:"2.5rem", marginBottom:"0.75rem" }}>{icon}</div>
       <div style={{ fontWeight:700, color:"#374151", marginBottom:"0.25rem" }}>{title}</div>
-      <div style={{ color:"#9CA3AF", fontSize:"0.85rem" }}>{subtitle}</div>
+      <div style={{ color:"var(--gray-400)", fontSize:"0.85rem" }}>{subtitle}</div>
     </div>
   );
 }
@@ -494,8 +494,8 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
   });
 
   return (
-    <div style={{ background:"#FFF8F5", border:"2px solid #FF7A00", borderRadius:"14px", overflow:"hidden" }}>
-      <div style={{ padding:"0.875rem 1.25rem", borderBottom:"1px solid #FFE0CC", fontWeight:700, color:"#FF7A00", fontSize:"0.9rem" }}>
+    <div style={{ background:"#FFF8F5", border:"2px solid var(--brand-madre)", borderRadius:"14px", overflow:"hidden" }}>
+      <div style={{ padding:"0.875rem 1.25rem", borderBottom:"1px solid #FFE0CC", fontWeight:700, color:"var(--brand-madre)", fontSize:"0.9rem" }}>
         {editId ? "✏️ Editar dirección" : "📍 Nueva dirección"}
       </div>
 
@@ -506,13 +506,13 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
 
           {/* Etiqueta */}
           <div>
-            <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Etiqueta</label>
+            <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Etiqueta</label>
             <div style={{ display:"flex", gap:"0.5rem" }}>
               {["Casa","Trabajo"].map(l => (
                 <button key={l} onClick={()=>setForm((p:any)=>({...p,label:l}))}
-                  style={{ padding:"0.45rem 1rem", border:`1.5px solid ${form.label===l?"#FF7A00":"#E5E7EB"}`,
-                    background: form.label===l?"rgba(255,122,0,0.08)":"#fff",
-                    color: form.label===l?"#FF7A00":"#6B7280",
+                  style={{ padding:"0.45rem 1rem", border:`1.5px solid ${form.label===l?"var(--brand-madre)":"var(--border)"}`,
+                    background: form.label===l?"color-mix(in srgb, var(--brand-madre) 8%, transparent)":"#fff",
+                    color: form.label===l?"var(--brand-madre)":"var(--mute)",
                     borderRadius:"8px", cursor:"pointer", fontWeight:form.label===l?700:400, fontSize:"0.82rem" }}>
                   {l==="Casa"?"🏠":"💼"} {l}
                 </button>
@@ -520,21 +520,21 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
               <input
                 value={!["Casa","Trabajo"].includes(form.label) ? form.label : ""}
                 onChange={e => setForm((p:any) => ({...p, label: e.target.value || "Otro"}))}
-                onFocus={e => { setForm((p:any) => ({...p, label: e.target.value || ""})); e.target.style.borderColor="#FF7A00"; }}
-                onBlur={e => { if(!e.target.value) setForm((p:any)=>({...p,label:"Otro"})); e.target.style.borderColor="#E5E7EB"; }}
+                onFocus={e => { setForm((p:any) => ({...p, label: e.target.value || ""})); e.target.style.borderColor="var(--brand-madre)"; }}
+                onBlur={e => { if(!e.target.value) setForm((p:any)=>({...p,label:"Otro"})); e.target.style.borderColor="var(--border)"; }}
                 placeholder="📌 Otro (ej: Casa de playa)"
                 style={{ flex:1, padding:"0.45rem 0.75rem",
-                  border:`1.5px solid ${!["Casa","Trabajo"].includes(form.label)?"#FF7A00":"#E5E7EB"}`,
-                  background: !["Casa","Trabajo"].includes(form.label)?"rgba(255,122,0,0.08)":"#fff",
+                  border:`1.5px solid ${!["Casa","Trabajo"].includes(form.label)?"var(--brand-madre)":"var(--border)"}`,
+                  background: !["Casa","Trabajo"].includes(form.label)?"color-mix(in srgb, var(--brand-madre) 8%, transparent)":"#fff",
                   borderRadius:"8px", fontSize:"0.82rem", outline:"none",
-                  color: !["Casa","Trabajo"].includes(form.label)?"#FF7A00":"#6B7280" }} />
+                  color: !["Casa","Trabajo"].includes(form.label)?"var(--brand-madre)":"var(--mute)" }} />
             </div>
           </div>
 
           {/* Dirección */}
           <div>
-            <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>
-              Calle <span style={{color:"#9CA3AF",fontWeight:400}}>(buscá o mové el mapa →)</span>
+            <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>
+              Calle <span style={{color:"var(--gray-400)",fontWeight:400}}>(buscá o mové el mapa →)</span>
             </label>
             <AddressAutocomplete
               value={form.street}
@@ -562,13 +562,13 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
           {/* Nro puerta + Esquina */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem" }}>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Nº de puerta</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Nº de puerta</label>
               <input value={form.doorNumber} onChange={e=>setForm((p:any)=>({...p,doorNumber:e.target.value}))}
                 placeholder="Ej: 1267"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
                 onBlur={async e => {
-                  e.target.style.borderColor="#E5E7EB";
+                  e.target.style.borderColor="var(--border)";
                   const num = e.target.value.trim();
                   if (!num || !form.street) return;
                   const streetBase = form.street.split(",")[0].replace(/\d+/g,"").trim();
@@ -596,61 +596,61 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
                 }} />
             </div>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Esquina / entre calles</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Esquina / entre calles</label>
               <input value={form.corner} onChange={e=>setForm((p:any)=>({...p,corner:e.target.value}))}
                 placeholder="Auto-detectada"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
-                onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+                onBlur={e=>e.target.style.borderColor="var(--border)"} />
             </div>
           </div>
 
           {/* Apto + Ciudad */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem" }}>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Nº de apartamento</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Nº de apartamento</label>
               <input value={form.apartment} onChange={e=>setForm((p:any)=>({...p,apartment:e.target.value}))}
                 placeholder="Ej: Apto 302"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
-                onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+                onBlur={e=>e.target.style.borderColor="var(--border)"} />
             </div>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Ciudad</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Ciudad</label>
               <input value={form.city} onChange={e=>setForm((p:any)=>({...p,city:e.target.value}))}
                 placeholder="Ej: Montevideo"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
-                onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+                onBlur={e=>e.target.style.borderColor="var(--border)"} />
             </div>
           </div>
 
           {/* CP + Indicaciones */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:"0.6rem" }}>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Código postal</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Código postal</label>
               <input value={form.zip} onChange={e=>setForm((p:any)=>({...p,zip:e.target.value}))}
                 placeholder="Ej: 11300"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
-                onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+                onBlur={e=>e.target.style.borderColor="var(--border)"} />
             </div>
             <div>
-              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"#6B7280", display:"block", marginBottom:"4px" }}>Indicaciones de entrega</label>
+              <label style={{ fontSize:"0.72rem", fontWeight:600, color:"var(--mute)", display:"block", marginBottom:"4px" }}>Indicaciones de entrega</label>
               <input value={form.indicaciones} onChange={e=>setForm((p:any)=>({...p,indicaciones:e.target.value}))}
                 placeholder="Ej: Timbre roto, llamar al llegar"
-                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid #E5E7EB", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
-                onFocus={e=>e.target.style.borderColor="#FF7A00"}
-                onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+                style={{ width:"100%", padding:"0.55rem 0.7rem", border:"1.5px solid var(--border)", borderRadius:"8px", fontSize:"0.85rem", outline:"none", boxSizing:"border-box" }}
+                onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+                onBlur={e=>e.target.style.borderColor="var(--border)"} />
             </div>
           </div>
 
           {/* Estado validación */}
           {hasCoords ? (
-            <div style={{ padding:"0.5rem 0.75rem", background:"#f0fdf4", border:"1px solid #6BB87A",
+            <div style={{ padding:"0.5rem 0.75rem", background:"#f0fdf4", border:"1px solid color-mix(in srgb, var(--color-success) 70%, white)",
               borderRadius:"8px", fontSize:"0.78rem", color:"#166534", display:"flex", gap:"0.5rem", alignItems:"center" }}>
               ✅ Validada · {form.lat?.toFixed(4)}, {form.lng?.toFixed(4)}
-              {form.corner && <span style={{color:"#6B7280"}}>· {form.corner}</span>}
+              {form.corner && <span style={{color:"var(--mute)"}}>· {form.corner}</span>}
             </div>
           ) : (
             <div style={{ padding:"0.5rem 0.75rem", background:"#fffbeb", border:"1px solid #FCD34D",
@@ -662,13 +662,13 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
           {/* Botones */}
           <div style={{ display:"flex", gap:"0.5rem", justifyContent:"flex-end" }}>
             <button onClick={onCancel}
-              style={{ padding:"0.55rem 1rem", background:"transparent", border:"1.5px solid #E5E7EB",
-                borderRadius:"8px", cursor:"pointer", fontSize:"0.85rem", color:"#6B7280" }}>
+              style={{ padding:"0.55rem 1rem", background:"transparent", border:"1.5px solid var(--border)",
+                borderRadius:"8px", cursor:"pointer", fontSize:"0.85rem", color:"var(--mute)" }}>
               Cancelar
             </button>
             <button onClick={onSubmit} disabled={!form.street?.trim()}
               style={{ padding:"0.55rem 1.25rem",
-                background: !form.street?.trim() ? "#ccc" : "#FF7A00",
+                background: !form.street?.trim() ? "#ccc" : "var(--brand-madre)",
                 color:"#fff", border:"none", borderRadius:"8px",
                 cursor: !form.street?.trim() ? "not-allowed" : "pointer",
                 fontWeight:700, fontSize:"0.85rem" }}>
@@ -679,7 +679,7 @@ function AddressForm({ form, setForm, editId, onCancel, onSubmit }: any) {
 
         {/* ── Mapa siempre visible ── */}
         <div style={{ borderLeft:"1px solid #FFE0CC", display:"flex", flexDirection:"column", minHeight:"400px" }}>
-          <div style={{ padding:"0.6rem 1rem", fontSize:"0.75rem", fontWeight:600, color:"#9CA3AF",
+          <div style={{ padding:"0.6rem 1rem", fontSize:"0.75rem", fontWeight:600, color:"var(--gray-400)",
             borderBottom:"1px solid #FFE0CC", background:"rgba(255,255,255,0.5)",
             display:"flex", alignItems:"center", gap:"0.4rem" }}>
             🗺️ {hasCoords ? "Ajustá el pin o hacé click en el mapa" : "Detectando tu ubicación..."}

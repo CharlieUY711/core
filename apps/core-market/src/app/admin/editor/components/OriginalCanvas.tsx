@@ -18,7 +18,7 @@ export default function OriginalCanvas() {
   return (
     <div
       style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:"12px", position:"relative" }}
-      onDragOver={e => { e.preventDefault(); e.currentTarget.style.outline = "2px dashed #FF7A00"; }}
+      onDragOver={e => { e.preventDefault(); e.currentTarget.style.outline = "2px dashed var(--brand-madre)"; }}
       onDragLeave={e => { e.currentTarget.style.outline = ""; }}
       onDrop={e => { e.preventDefault(); e.currentTarget.style.outline = ""; const f = e.dataTransfer.files[0]; if (f?.type.startsWith("image/")) loadFile(f); }}
     >
@@ -30,7 +30,7 @@ export default function OriginalCanvas() {
             style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", borderRadius:"6px", display:"block" }}
           />
           {store.versionCount > 0 && (
-            <div style={{ position:"absolute", top:"8px", right:"8px", background:"#1DC878", color:"#fff", fontSize:"10px", fontWeight:700, padding:"2px 8px", borderRadius:"20px" }}>
+            <div style={{ position:"absolute", top:"8px", right:"8px", background:"var(--color-success)", color:"#fff", fontSize:"10px", fontWeight:700, padding:"2px 8px", borderRadius:"20px" }}>
               V{store.versionCount}
             </div>
           )}
@@ -46,7 +46,7 @@ export default function OriginalCanvas() {
             Arrastra o hace click<br/>para cargar una imagen
           </p>
           <button
-            style={{ background:"#FF7A00", color:"#fff", border:"none", borderRadius:"8px", padding:"8px 20px", fontSize:"13px", fontWeight:500, cursor:"pointer" }}
+            style={{ background:"var(--brand-madre)", color:"#fff", border:"none", borderRadius:"8px", padding:"8px 20px", fontSize:"13px", fontWeight:500, cursor:"pointer" }}
             onClick={e => { e.stopPropagation(); document.getElementById("emi-file-input")?.click(); }}>
             Subir imagen
           </button>

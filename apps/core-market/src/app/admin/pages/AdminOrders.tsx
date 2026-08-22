@@ -36,9 +36,9 @@ export default function AdminOrders() {
       {/* Filtros */}
       <div style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.5rem", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#6B7280", marginBottom: "4px" }}>Estado</label>
+          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Estado</label>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid #E5E7EB", borderRadius: "6px", fontSize: "0.85rem", background: "#fff" }}>
+            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem", background: "#fff" }}>
             <option value="all">Todos</option>
             <option value="paid">Pagado</option>
             <option value="pending_payment">Pendiente</option>
@@ -48,22 +48,22 @@ export default function AdminOrders() {
           </select>
         </div>
         <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#6B7280", marginBottom: "4px" }}>Desde</label>
+          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Desde</label>
           <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid #E5E7EB", borderRadius: "6px", fontSize: "0.85rem" }} />
+            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem" }} />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#6B7280", marginBottom: "4px" }}>Hasta</label>
+          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Hasta</label>
           <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid #E5E7EB", borderRadius: "6px", fontSize: "0.85rem" }} />
+            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem" }} />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#6B7280", marginBottom: "4px" }}>Buscar ID</label>
+          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Buscar ID</label>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="abc12345..."
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid #E5E7EB", borderRadius: "6px", fontSize: "0.85rem", width: "160px" }} />
+            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem", width: "160px" }} />
         </div>
         <button onClick={() => { setFilterStatus("all"); setFilterFrom(""); setFilterTo(""); setSearch(""); }}
-          style={{ padding: "0.5rem 0.75rem", background: "transparent", border: "1px solid #E5E7EB", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", color: "#888" }}>
+          style={{ padding: "0.5rem 0.75rem", background: "transparent", border: "1px solid var(--border)", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", color: "#888" }}>
           Limpiar
         </button>
         <div style={{ marginLeft: "auto", background: "#f0fdf4", padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 700, color: "#166534" }}>
@@ -75,9 +75,9 @@ export default function AdminOrders() {
       <div style={{ background: "#fff", borderRadius: "12px", overflow: "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
           <thead>
-            <tr style={{ background: "#F9FAFB", borderBottom: "2px solid #E5E7EB" }}>
+            <tr style={{ background: "var(--gray-50)", borderBottom: "2px solid var(--border)" }}>
               {["ID Orden", "Fecha", "Total", "Estado pago", "Items", "Origen", ""].map(h => (
-                <th key={h} style={{ padding: "0.85rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                <th key={h} style={{ padding: "0.85rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--mute)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -92,7 +92,7 @@ export default function AdminOrders() {
                 </td>
                 <td style={{ padding: "0.85rem 1rem", fontSize: "0.8rem", color: "#666" }}>
                   {new Date(o.created_at).toLocaleDateString("es-UY")}
-                  <div style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>{new Date(o.created_at).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--gray-400)" }}>{new Date(o.created_at).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}</div>
                 </td>
                 <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#111" }}>
                   {o.currency === "USD" ? "U$S" : "$U"} {Number(o.total || 0).toLocaleString("es-UY")}
@@ -115,7 +115,7 @@ export default function AdminOrders() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div style={{ padding: "4rem", textAlign: "center", color: "#9CA3AF" }}>Sin órdenes para los filtros seleccionados</div>
+          <div style={{ padding: "4rem", textAlign: "center", color: "var(--gray-400)" }}>Sin órdenes para los filtros seleccionados</div>
         )}
       </div>
 
@@ -142,7 +142,7 @@ export default function AdminOrders() {
                 { label: "PayPal Order ID", value: selected.paypal_order_id || "—", mono: true },
               ].map(row => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #F3F4F6" }}>
-                  <span style={{ color: "#6B7280", fontSize: "0.85rem" }}>{row.label}</span>
+                  <span style={{ color: "var(--mute)", fontSize: "0.85rem" }}>{row.label}</span>
                   <span style={{ fontWeight: 600, fontSize: "0.85rem", fontFamily: row.mono ? "monospace" : undefined, color: "#111", maxWidth: "260px", textAlign: "right", wordBreak: "break-all" }}>
                     {String(row.value)}
                   </span>
@@ -174,7 +174,7 @@ function PaymentBadge({ status }: { status: string }) {
     cancelled:       { bg: "#f1f5f9", color: "#64748b", label: "🚫 Cancelado" },
     refunded:        { bg: "#f0f9ff", color: "#0369a1", label: "↩️ Reembolsado" },
   };
-  const s = map[status] || { bg: "#f1f5f9", color: "#9CA3AF", label: status };
+  const s = map[status] || { bg: "#f1f5f9", color: "var(--gray-400)", label: status };
   return <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</span>;
 }
 

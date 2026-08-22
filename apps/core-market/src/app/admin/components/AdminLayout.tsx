@@ -34,8 +34,7 @@ const adminSections = [
     key: "gestion",
     section: "Gestión",
     items: [
-      { path: "/admin/catalog",   label: "Catálogo",
-        children: [{ path: "/admin/catalog/articulos", label: "Artículos" }] },
+      { path: "/admin/catalog",   label: "Catálogo" },
       { path: "/admin/analytics", label: "Analytics" },
     ],
   },
@@ -195,8 +194,7 @@ function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; loc
                     <Link to={item.path} style={linkStyle(active)}>
                       {item.label}
                     </Link>
-                    {"children" in item && item.children && active &&
-                      item.children.map((child: any) => (
+                    {active && (item as {children?:{path:string;label:string}[]}).children?.map((child: any) => (
                         <Link key={child.path} to={child.path} style={{
                           display: "flex", alignItems: "center",
                           padding: "0.4rem 1.5rem 0.4rem 2.8rem",

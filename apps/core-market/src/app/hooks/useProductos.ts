@@ -134,14 +134,14 @@ export function useProductos() {
         });
         setDeptColors(colors);
 
-        // Cargar desde articulos (tabla canónica)
-        const { data: artData } = await supabase
-          .from('articulos')
-          .select('*')
-          .eq('status', 'active')
-          .is('deleted_at', null)
-          .order('ranking_score', { ascending: false })
-          .limit(100);
+        // Vidriera publica sobre catalog_*. Va por RPC y no por .from() porque
+        // las politicas RLS de catalog_* exigen el claim store_id, que un
+        // visitante anonimo no tiene: catalog_vidriera es la unica puerta
+        // abierta al publico y decide que se expone.
+        const { data: artData, error: vidErr } = await supabase
+          .rpc('catalog_vidriera', { p_currency: 'UYU', p_limit: 100 });
+
+        if (vidErr) console.error('[vidriera]', vidErr.message);
 
         const arts = artData || [];
         const artMarket = arts.filter((a: any) => a.tipo === 'market');

@@ -793,13 +793,18 @@ body {
   display: grid;
   gap: 20px;
   width: 100%;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
 }
 
-/* Card slot: defines dimensions (width:height = 2:3, i.e. 1.5× taller) - 70% height */
+/* Card slot: unica fuente de las dimensiones de tarjeta. Market y Second Hand
+   usan este mismo contenedor, asi que miden identico por construccion.
+   La proporcion la fija el contenido mas alto (la ficha de Market: imagen 1:1
+   + titulo + precio + rating + selector + boton). Con 5 columnas el ancho baja
+   a ~227px y hace falta ~414px de alto; con 2/2.1 el boton Comprar quedaba
+   recortado. Si cambia la cantidad de columnas, este es el numero a recalcular. */
 .core-card-slot {
-  aspect-ratio: 2 / 2.1;
+  aspect-ratio: 2 / 3.7;
   position: relative;
   scroll-snap-align: start;
   scroll-margin-top: 130px;

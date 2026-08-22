@@ -31,7 +31,7 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
       onClick={onClick}
       style={{
         background:"#fff",
-        border:"1px solid #E5E7EB",
+        border:"1px solid var(--border)",
         borderRadius:14,
         overflow:"hidden",
         cursor: onClick ? "pointer" : "default",
@@ -44,7 +44,7 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
       onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 3px rgba(0,0,0,.06)")}
     >
       {/* Imagen */}
-      <div style={{ position:"relative", background:"#F9FAFB",
+      <div style={{ position:"relative", background:"var(--gray-50)",
         paddingBottom: compact ? "75%" : "100%", overflow:"hidden" }}>
         {p.imagen_principal ? (
           <img src={p.imagen_principal} alt={p.nombre}
@@ -65,7 +65,7 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
           display:"flex", flexDirection:"column", gap:4 }}>
           {p.tipo === "secondhand" && <SecondHandBadge />}
           {desc && (
-            <span style={{ background:"#FF7A00", color:"#fff",
+            <span style={{ background:"var(--brand-madre)", color:"#fff",
               padding:"2px 8px", borderRadius:999, fontSize:11, fontWeight:700 }}>
               -{desc}% OFF
             </span>
@@ -74,7 +74,7 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
 
         {p.envio_gratis && (
           <div style={{ position:"absolute", bottom:8, left:8,
-            background:"rgba(29,200,120,.9)", color:"#fff",
+            background:"color-mix(in srgb, var(--color-success) 90%, transparent)", color:"#fff",
             padding:"2px 7px", borderRadius:999, fontSize:10, fontWeight:700 }}>
             Envío gratis
           </div>
@@ -95,7 +95,7 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
 
         {/* Condición para secondhand */}
         {p.tipo === "secondhand" && p.condicion && (
-          <span style={{ fontSize:11, color:"#6B7280",
+          <span style={{ fontSize:11, color:"var(--mute)",
             background:"#F3F4F6", padding:"1px 7px",
             borderRadius:999, alignSelf:"flex-start" }}>
             {p.condicion}
@@ -120,8 +120,8 @@ export default function ProductCard({ producto: p, onClick, compact = false }: P
         {/* Rating */}
         {p.rating_promedio && p.rating_promedio > 0 && (
           <div style={{ display:"flex", alignItems:"center", gap:4,
-            fontSize:11, color:"#6B7280" }}>
-            <span style={{ color:"#FF7A00" }}>{"★".repeat(Math.round(p.rating_promedio))}</span>
+            fontSize:11, color:"var(--mute)" }}>
+            <span style={{ color:"var(--brand-madre)" }}>{"★".repeat(Math.round(p.rating_promedio))}</span>
             <span>{p.rating_promedio.toFixed(1)}</span>
             {p.rating_count && <span>({p.rating_count})</span>}
           </div>

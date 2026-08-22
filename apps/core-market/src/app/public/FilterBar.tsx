@@ -1,15 +1,14 @@
 // ═══════════════════════════════════════════════════════════
 // MARKET — FilterBar.tsx  (barra horizontal de filtros)
-// Una sola línea: Filtros · Market / Second / Gourmet · Ordenar por
+// Una sola línea: Filtros · Market / Second · Ordenar por
 // ═══════════════════════════════════════════════════════════
 import { useState } from 'react';
 
-type PlatKey = 'market' | 'second' | 'gourmet';
+type PlatKey = 'market' | 'second';
 
 const PLATS: { key: PlatKey; label: string; color: string }[] = [
   { key: 'market',  label: 'Market',  color: '#3D5689' },
   { key: 'second',  label: 'Second',  color: '#2E7D57' },
-  { key: 'gourmet', label: 'Gourmet', color: '#9B3326' },
 ];
 
 function Check({ checked, color }: { checked: boolean; color: string }) {
@@ -23,7 +22,7 @@ function Check({ checked, color }: { checked: boolean; color: string }) {
 }
 
 export function FilterBar({ onChange }: { onChange?: (sel: Record<PlatKey, boolean>) => void }) {
-  const [sel, setSel] = useState<Record<PlatKey, boolean>>({ market: true, second: true, gourmet: true });
+  const [sel, setSel] = useState<Record<PlatKey, boolean>>({ market: true, second: true });
   const toggle = (k: PlatKey) => {
     const next = { ...sel, [k]: !sel[k] };
     setSel(next);

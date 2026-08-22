@@ -55,7 +55,7 @@ export default function DashboardPublicaciones() {
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#222" }}>Mis publicaciones</h2>
-        <button onClick={() => setShowForm(!showForm)} style={{ padding: "0.5rem 1rem", background: "#6BB87A", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => setShowForm(!showForm)} style={{ padding: "0.5rem 1rem", background: "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}>
           {showForm ? "Cancelar" : "+ Nueva"}
         </button>
       </div>
@@ -74,17 +74,17 @@ export default function DashboardPublicaciones() {
               <div key={f.key}>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#444", marginBottom: "0.25rem" }}>{f.label}</label>
                 <input type={f.type} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
-                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #E5E7EB", fontSize: "1rem", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "1rem", outline: "none", boxSizing: "border-box" }} />
               </div>
             ))}
             <div>
               <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#444", marginBottom: "0.25rem" }}>Condición</label>
               <select value={form.condicion} onChange={e => setForm(p => ({ ...p, condicion: e.target.value }))}
-                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #E5E7EB", fontSize: "1rem" }}>
+                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "1rem" }}>
                 {["Excelente", "Muy bueno", "Bueno", "Regular", "Aceptable"].map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <button onClick={handlePublicar} disabled={saving} style={{ padding: "0.75rem", background: saving ? "#ccc" : "#6BB87A", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
+            <button onClick={handlePublicar} disabled={saving} style={{ padding: "0.75rem", background: saving ? "#ccc" : "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
               {saving ? "Publicando..." : "Publicar"}
             </button>
           </div>
@@ -106,7 +106,7 @@ export default function DashboardPublicaciones() {
           <div style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: 600, background: p.status === "active" ? "#f0fdf4" : "#f1f5f9", color: p.status === "active" ? "#166534" : "#64748b" }}>
             {p.status === "active" ? "Activo" : "Inactivo"}
           </div>
-          <button onClick={() => toggleStatus(p.id, p.status)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid #E5E7EB", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#555" }}>
+          <button onClick={() => toggleStatus(p.id, p.status)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid var(--border)", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#555" }}>
             {p.status === "active" ? "Pausar" : "Activar"}
           </button>
           <button onClick={() => eliminar(p.id)} style={{ padding: "0.4rem 0.75rem", background: "transparent", border: "1.5px solid #ef4444", borderRadius: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#ef4444" }}>

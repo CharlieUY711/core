@@ -2,20 +2,41 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
+import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
+import AdminArticulos from "./AdminArticulos";
 
-const ACCENT = "#FF7A00";
-const GREEN  = "#1DC878";
-const BLUE   = "#0F3460";
+const ACCENT = "var(--brand-madre)";
+const GREEN  = "var(--color-success)";
+const BLUE   = "var(--brand-navy)";
 
 const TABS = ["Información","Multimedia","Moneda y Precio","Detalles","Inventario","Vista previa"];
+// Pestañas cuyos campos aún no tienen destino en catalog_*: se avisa en el
+// formulario en vez de descartar lo que el usuario escribe sin decir nada.
+const PENDIENTES = ["Multimedia","Detalles","Vista previa"];
 const CONDICIONES = ["Nuevo","Excelente","Muy bueno","Bueno","Regular","Para reparar"];
 const MONEDAS = ["UYU","USD","EUR"];
+// `key` es la propiedad sintética que la UI ya renderiza; `channel` es el
+// valor real de catalog_listings.channel. El adaptador deriva una de la otra,
+// así el render de la tabla no cambia.
 const CANALES = [
-  {key:"sync_ml",  label:"ML",   color:"#F5C518", tc:"#333"},
-  {key:"sync_meta",label:"Meta", color:"#1877F2", tc:"#fff"},
-  {key:"sync_wa",  label:"WA",   color:"#25D366", tc:"#fff"},
-  {key:"sync_web", label:"Web",  color:"#6B7280", tc:"#fff"},
+  {key:"sync_ml",  channel:"mercadolibre", label:"ML",   color:"#F5C518", tc:"#333"},
+  {key:"sync_meta",channel:"meta",         label:"Meta", color:"#1877F2", tc:"#fff"},
+  {key:"sync_wa",  channel:"whatsapp",     label:"WA",   color:"#25D366", tc:"#fff"},
+  {key:"sync_web", channel:"web",          label:"Web",  color:"var(--mute)", tc:"#fff"},
 ];
+
+// Market y Second Hand NO son canales de distribucion: son el tipo del
+// articulo (nuevo o usado) y son excluyentes entre si. Viven aca solo para que
+// toArt y clonar puedan resolver a que lista pertenece cada publicacion.
+const CANALES_BASE = [
+  {key:"sync_market", channel:"market",     label:"Market",      color:ACCENT, tc:"#fff"},
+  {key:"sync_second", channel:"secondhand", label:"Second Hand", color:GREEN,  tc:"#fff"},
+];
+const TODOS_CANALES = [...CANALES_BASE, ...CANALES];
+
+/** Un canal cuenta como activo salvo que se lo haya dado de baja. */
+const canalActivo = (p:Publicacion, channel:string) =>
+  p.channels.some(c => c.channel === channel && c.status !== "delisted");
 
 interface Art {
   id:string; nombre:string; tipo:"market"|"secondhand"; status:string;
@@ -30,18 +51,50 @@ interface Art {
   stock_ilimitado?:boolean; envio_tipo?:string; envio_gratis?:boolean;
   peso_kg?:number; garantia_tipo?:string; garantia_meses?:number;
   sync_ml?:boolean; sync_meta?:boolean; sync_wa?:boolean; sync_web?:boolean;
+  // Añadidos por la migración a catalog_*: `id` es el variant_id, y estos dos
+  // conservan lo que la forma plana de Art no puede representar.
+  item_id?:string; canales?:Publicacion["channels"];
+  sync_market?:boolean; sync_second?:boolean;
 }
 
-const EMPTY: Partial<Art> = {
-  nombre:"", descripcion:"", precio:0, moneda:"UYU", stock:1,
-  stock_ilimitado:false, imagenes:[], videos:[], atributos:{},
-  envio_tipo:"retiro", envio_gratis:false, status:"draft",
-  sync_ml:false, sync_meta:false, sync_wa:false, sync_web:false,
-};
+/**
+ * catalog_* -> la forma que la tabla ya sabe dibujar.
+ *
+ * `tipo` deja de ser una columna y pasa a ser lo que siempre debió ser: la
+ * presencia de un listing en el canal 'market' o 'secondhand'.
+ */
+function toArt(p:Publicacion):Art {
+  return {
+    id:          p.variant_id,
+    item_id:     p.item_id,
+    nombre:      p.title,
+    descripcion: p.description ?? undefined,
+    sku:         p.sku ?? undefined,
+    tipo:        canalActivo(p,"secondhand") && !canalActivo(p,"market") ? "secondhand" : "market",
+    status:      p.item_status,
+    precio:      p.master_price ?? 0,
+    moneda:      p.master_currency,
+    stock:       p.total_available,
+    created_at:  p.created_at,
+    published_at:p.item_status === "active" ? p.updated_at : undefined,
+    canales:     p.channels,
+    sync_market: canalActivo(p,"market"),
+    sync_second: canalActivo(p,"secondhand"),
+    sync_ml:     canalActivo(p,"mercadolibre"),
+    sync_meta:   canalActivo(p,"meta"),
+    sync_wa:     canalActivo(p,"whatsapp"),
+    sync_web:    canalActivo(p,"web"),
+  };
+}
 
+// Valores reales del enum catalog_item_status: draft | active | archived |
+// discontinued. `paused` e `inactive` quedan por compatibilidad de render con
+// datos viejos, pero ya no se escriben.
 const S: Record<string,{label:string;bg:string;color:string}> = {
-  active:  {label:"Activo",   bg:"#dcfce7",color:"#166534"},
-  draft:   {label:"Borrador", bg:"#F3F4F6", color:"#6B7280"},
+  active:      {label:"Activo",       bg:"#dcfce7", color:"#166534"},
+  draft:       {label:"Borrador",     bg:"#F3F4F6", color:"var(--mute)"},
+  archived:    {label:"Archivado",    bg:"#F3F4F6", color:"var(--mute)"},
+  discontinued:{label:"Discontinuado",bg:"#fee2e2", color:"#991b1b"},
   paused:  {label:"Pausado",  bg:"#fef9c3", color:"#854d0e"},
   inactive:{label:"Inactivo", bg:"#fee2e2", color:"#991b1b"},
 };
@@ -92,7 +145,7 @@ function Drop({label,items,dis=false}:{
       }}>{label} <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
       {open&&(
         <div style={{position:"absolute",top:"100%",left:0,background:"#fff",
-          border:"1.5px solid #E5E7EB",borderRadius:10,padding:"0.3rem",
+          border:"1.5px solid var(--border)",borderRadius:10,padding:"0.3rem",
           zIndex:300,minWidth:180,boxShadow:"0 8px 28px rgba(0,0,0,.13)"}}>
           {items.map((it,i)=>it.sep?(
             <div key={i} style={{borderTop:"1px solid #F0F0F0",margin:"0.2rem 0"}}/>
@@ -115,7 +168,7 @@ function Drop({label,items,dis=false}:{
 
 
 function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>void;color:string;lbl:any;inp:any}) {
-  const GREEN = "#1DC878";
+  const GREEN = "var(--color-success)";
   const precios: any[] = (form.atributos?.precios)||[];
   const setPrecios = (ps:any[]) => {
     const nf = {...form, atributos:{...(form.atributos||{}),precios:ps}};
@@ -136,7 +189,7 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
     setPrecios(ps);
   };
   const rows = precios.length>0 ? precios : [{precio:form.precio||0,oferta:form.precio_original||0,pct:0,fecha_ini:"",hora_ini:"",fecha_fin:"",hora_fin:"",etiqueta:"Principal"}];
-  const s8:React.CSSProperties = {fontSize:"8px",color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",display:"block",marginBottom:2};
+  const s8:React.CSSProperties = {fontSize:"8px",color:"var(--gray-400)",fontWeight:700,textTransform:"uppercase",display:"block",marginBottom:2};
   const ic:React.CSSProperties = {...inp,padding:"0.3rem 0.4rem",fontSize:"0.78rem"};
   // Placeholder watermark style inyectado globalmente una sola vez
   const placeholderStyle = `input::placeholder,textarea::placeholder{color:#D1D5DB!important;font-style:italic;font-size:0.72rem}`;
@@ -190,6 +243,9 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
 
 export default function AdminPublicaciones() {
   const {isSH, setTopStats} = useShop();
+  // El alta se muestra dentro de esta misma pantalla: el usuario no pierde
+  // de vista su lista ni los filtros que tenia puestos.
+  const [showWizard,setShowWizard]=useState(false);
   const [arts,   setArts]   = useState<Art[]>([]);
   const [deptos, setDeptos] = useState<any[]>([]);
   const [cats,   setCats]   = useState<any[]>([]);
@@ -202,9 +258,6 @@ export default function AdminPublicaciones() {
   const [vcols,  setVcols]  = useState<Set<string>>(new Set(["alta"]));
   const [showC,  setShowC]  = useState(false);
   const [toast,  setToast]  = useState<{text:string;ok:boolean}|null>(null);
-  const [showNew,setShowNew]= useState(false);
-  const [nForm,  setNForm]  = useState<Partial<Art>>({...EMPTY});
-  const [nTab,   setNTab]   = useState(TABS[0]);
   const [eForm,  setEForm]  = useState<Partial<Art>>({});
   const [eTab,   setETab]   = useState(TABS[0]);
   const [dirty,  setDirty]  = useState(false);
@@ -214,17 +267,20 @@ export default function AdminPublicaciones() {
 
   const reload = useCallback(async()=>{
     setLoad(true);
-    const [{data:{user}},dR,cR]=await Promise.all([
-      supabase.auth.getUser(),
+    const [dR,cR]=await Promise.all([
       supabase.from("departamentos").select("id,nombre").eq("activo",true).order("orden"),
       supabase.from("categorias").select("id,nombre,departamento_id").eq("activo",true).order("nombre"),
     ]);
-    if(!user)return;
     setDeptos(dR.data||[]);setCats(cR.data||[]);
-    const{data}=await supabase.from("articulos").select("*")
-      .eq("vendedor_id",user.id).is("deleted_at",null)
-      .order("created_at",{ascending:false});
-    setArts(data||[]);setLoad(false);
+    try{
+      setArts((await fetchPublicaciones()).map(toArt));
+    }catch(e){
+      // Cero filas con sesión válida casi siempre significa que el claim
+      // store_id no viaja en el JWT y RLS está filtrando todo.
+      notify(e instanceof Error?e.message:String(e),false);
+      setArts([]);
+    }
+    setLoad(false);
   },[]);
 
   useEffect(()=>{reload();},[reload]);
@@ -236,7 +292,10 @@ export default function AdminPublicaciones() {
     total:arts.length,
     activos:arts.filter(a=>a.status==="active").length,
     borradores:arts.filter(a=>a.status==="draft").length,
-    clicks:arts.reduce((s,a)=>s+(a.clicks||0),0),
+    // catalog_* no registra clicks: impresiones/clicks/ranking_score no
+    // tienen equivalente en el modelo nuevo. Ver nota en el handoff.
+    clicks:0,
+    errores:arts.filter(a=>(a.canales||[]).some(c=>c.status==="error")).length,
   };
 
   // Publicar stats a la topbar
@@ -246,16 +305,19 @@ export default function AdminPublicaciones() {
       {label:"Activos",    value:stats.activos,     color:GREEN},
       {label:"Borradores", value:stats.borradores,  color:"#F59E0B"},
       {label:"Clicks",     value:stats.clicks,      color:ACCENT},
+      ...(stats.errores>0
+        ? [{label:"Con error", value:stats.errores, color:"#EF4444"}]
+        : []),
     ]);
     return()=>setTopStats([]);
-  },[stats.total,stats.activos,stats.borradores,stats.clicks]);
+  },[stats.total,stats.activos,stats.borradores,stats.clicks,stats.errores]);
 
   const activeArt = arts.find(a=>a.id===exp);
   const activeIds = sel.size>0?Array.from(sel):exp?[exp]:[];
   const has = activeIds.length>0;
 
   const sort=(k:SK)=>{if(sk===k)setSd(d=>d==="asc"?"desc":"asc");else{setSk(k);setSd("asc");}};
-  const cycleSt=()=>{const o=[null,"active","draft","paused"];setFst(o[(o.indexOf(fst)+1)%o.length]);};
+  const cycleSt=()=>{const o=[null,"active","draft","archived"];setFst(o[(o.indexOf(fst)+1)%o.length]);};
 
   const togSel=(id:string)=>setSel(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const togAll=()=>{if(sel.size===filtered.length)setSel(new Set());else setSel(new Set(filtered.map(a=>a.id)));};
@@ -265,49 +327,61 @@ export default function AdminPublicaciones() {
   };
 
   const togSync=async(a:Art,k:string)=>{
+    const canal=TODOS_CANALES.find(c=>c.key===k);
+    if(!canal)return;
     const v=!(a as any)[k];
-    await supabase.from("articulos").update({[k]:v}).eq("id",a.id);
+    const{error}=await supabase.rpc("toggle_canal_publicacion",
+      {p_variant_id:a.id,p_channel:canal.channel,p_activo:v});
+    if(error){notify(error.message,false);return;}
     setArts(p=>p.map(x=>x.id===a.id?{...x,[k]:v}:x));
     if(exp===a.id)setEForm(f=>({...f,[k]:v}));
   };
 
   const chSt=async(ids:string[],status:string)=>{
-    await supabase.from("articulos").update({status}).in("id",ids);
+    const rs=await Promise.all(ids.map(id=>
+      supabase.rpc("actualizar_publicacion",{p_variant_id:id,p_status:status})));
+    const err=rs.find(r=>r.error);
+    if(err?.error){notify(err.error.message,false);return;}
     setArts(p=>p.map(a=>ids.includes(a.id)?{...a,status}:a));
     notify("Estado actualizado");
   };
   const clonar=async(a:Art)=>{
-    const{id,created_at,published_at,...r}=a;
-    await supabase.from("articulos").insert({...r,nombre:a.nombre+" (copia)",status:"draft",impresiones:0,clicks:0,ranking_score:0});
+    const{error}=await supabase.rpc("crear_publicacion",{
+      p_title:a.nombre+" (copia)", p_price:a.precio, p_currency:a.moneda||"UYU",
+      p_description:a.descripcion??null, p_stock:a.stock??0,
+      p_channels:TODOS_CANALES.filter(c=>(a as any)[c.key]).map(c=>c.channel),
+      p_status:"draft",
+    });
+    if(error){notify(error.message,false);return;}
     notify("Clonado");reload();
   };
-  const archivar=async(ids:string[])=>{await chSt(ids,"inactive");};
+  // catalog_items no tiene borrado lógico: 'archived' es su equivalente.
+  const archivar=async(ids:string[])=>{await chSt(ids,"archived");};
   const eliminar=async(ids:string[])=>{
-    if(!confirm("¿Eliminar "+ids.length+" artículo(s)?"))return;
-    await supabase.from("articulos").update({deleted_at:new Date().toISOString(),status:"deleted"}).in("id",ids);
+    if(!confirm("¿Archivar "+ids.length+" publicación(es)? Dejan de verse en la tienda pero no se borran."))return;
+    await chSt(ids,"archived");
     setArts(p=>p.filter(a=>!ids.includes(a.id)));
-    setExp(null);setSel(new Set());notify("Eliminado(s)");
+    setExp(null);setSel(new Set());
   };
 
-  const saveNew=async()=>{
-    setSaving(true);
-    const{data:{user}}=await supabase.auth.getUser();
-    if(!user){setSaving(false);return;}
-    const{error}=await supabase.from("articulos").insert({...nForm,vendedor_id:user.id,tipo});
-    if(!error){notify("Artículo creado");setShowNew(false);setNForm({...EMPTY});reload();}
-    else notify(error.message,false);
-    setSaving(false);
-  };
   const saveEdit=async()=>{
     if(!exp)return;setSaving(true);
-    const{error}=await supabase.from("articulos").update(eForm).eq("id",exp);
+    const{error}=await supabase.rpc("actualizar_publicacion",{
+      p_variant_id:exp,
+      p_title:eForm.nombre??null, p_description:eForm.descripcion??null,
+      p_status:eForm.status??null, p_price:eForm.precio??null,
+      p_currency:eForm.moneda||"UYU", p_sku:eForm.sku??null,
+      p_stock:eForm.stock??null,
+    });
     if(!error){setArts(p=>p.map(a=>a.id===exp?{...a,...eForm}:a));notify("Guardado");setDirty(false);}
     else notify(error.message,false);
     setSaving(false);
   };
 
   let filtered=arts.filter(a=>{
-    if(a.tipo!==tipo)return false;
+    // Por canal, no por `tipo`: un producto publicado en Market y en Second
+    // Hand debe aparecer en las dos vistas, no solo en una.
+    if(!(a.canales||[]).some(c=>c.channel===tipo&&c.status!=="delisted"))return false;
     if(fst&&a.status!==fst)return false;
     return true;
   });
@@ -324,25 +398,25 @@ export default function AdminPublicaciones() {
 
   // Estilos tabla
   const thB:React.CSSProperties={padding:"0.45rem 0.65rem",textAlign:"left",fontSize:"10px",
-    fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:".05em",
+    fontWeight:700,color:"var(--mute)",textTransform:"uppercase",letterSpacing:".05em",
     borderBottom:"2px solid #F3F4F6",background:"#FAFAFA",whiteSpace:"nowrap",userSelect:"none"};
-  const thS=(k:SK):React.CSSProperties=>({...thB,cursor:"pointer",color:sk===k?color:"#6B7280"});
+  const thS=(k:SK):React.CSSProperties=>({...thB,cursor:"pointer",color:sk===k?color:"var(--mute)"});
   const td:React.CSSProperties={padding:"0.5rem 0.65rem",fontSize:"0.81rem",color:"#374151",
-    borderBottom:"1px solid #F9FAFB",verticalAlign:"middle"};
+    borderBottom:"1px solid var(--gray-50)",verticalAlign:"middle"};
   const si=(k:SK)=>sk===k?(sd==="asc"?" ↑":" ↓"):" ↕";
 
-  const inp:React.CSSProperties={width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid #E5E7EB",
+  const inp:React.CSSProperties={width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid var(--border)",
     borderRadius:7,fontSize:"0.81rem",outline:"none",fontFamily:"DM Sans,sans-serif",boxSizing:"border-box"};
-  const lbl:React.CSSProperties={fontSize:"10px",color:"#9CA3AF",fontWeight:700,
+  const lbl:React.CSSProperties={fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
     textTransform:"uppercase",marginBottom:3,display:"block"};
 
   const artMenu=[
-    {label:"+ Nuevo artículo",onClick:()=>{setShowNew(true);setNForm({...EMPTY});setNTab(TABS[0]);setExp(null);},color},
+    {label:"+ Nueva publicación",onClick:()=>{setShowWizard(true);setExp(null);},color},
     {label:"Clonar",          onClick:()=>activeArt&&clonar(activeArt), color:has&&sel.size<=1?color:"#CBD5E1"},
     {sep:true,label:"",onClick:()=>{}},
     {label:"Activar",         onClick:()=>has&&chSt(activeIds,"active"),  color:GREEN},
-    {label:"Pausar",          onClick:()=>has&&chSt(activeIds,"paused"),  color:"#F59E0B"},
-    {label:"Archivar",        onClick:()=>has&&archivar(activeIds),       color:"#6B7280"},
+    {label:"Despublicar",     onClick:()=>has&&chSt(activeIds,"draft"),   color:"#F59E0B"},
+    {label:"Archivar",        onClick:()=>has&&archivar(activeIds),       color:"var(--mute)"},
     {sep:true,label:"",onClick:()=>{}},
     {label:"Eliminar",        onClick:()=>has&&eliminar(activeIds),       color:"#EF4444"},
   ];
@@ -357,7 +431,7 @@ export default function AdminPublicaciones() {
     ...CANALES.filter(c=>activeArt&&(activeArt as any)[c.key]).map(c=>({
       label:"Abrir en "+c.label, color:c.color, onClick:()=>notify("Abriendo "+c.label+"..."),
     })),
-    {label:"Mi web", color:"#6B7280", onClick:()=>notify("Abriendo web...")},
+    {label:"Mi web", color:"var(--mute)", onClick:()=>notify("Abriendo web...")},
   ];
 
   // Render form tabs
@@ -370,12 +444,21 @@ export default function AdminPublicaciones() {
             <button key={t} onClick={()=>setTab(t)} style={{
               padding:"0.35rem 0.7rem",border:"none",cursor:"pointer",
               fontSize:"0.72rem",fontWeight:tab===t?800:500,whiteSpace:"nowrap",
-              color:tab===t?color:"#9CA3AF",
+              color:tab===t?color:"var(--gray-400)",
               background:tab===t?`${color}12`:"transparent",
               borderRadius:6, transition:"all .15s",
             }}>{t}</button>
           ))}
         </div>
+        {PENDIENTES.includes(tab)&&(
+          <div style={{marginBottom:"0.8rem",padding:"0.5rem 0.7rem",borderRadius:7,
+            fontSize:"0.72rem",lineHeight:1.5,color:"#854d0e",background:"#fef9c3",
+            border:"1px solid #fde68a"}}>
+            Los campos de esta pestaña <strong>todavía no se guardan</strong>. La publicación
+            se crea con título, descripción, SKU, precio, moneda, stock y canales.
+            Categorías, imágenes y detalles se conectan en la próxima fase.
+          </div>
+        )}
         {tab==="Información"&&(
           <div style={{display:"flex",flexDirection:"column",gap:"0.6rem"}}>
             <div><span style={lbl}>Nombre *</span>
@@ -385,6 +468,10 @@ export default function AdminPublicaciones() {
             <div><span style={lbl}>Descripción</span>
               <textarea style={{...inp,minHeight:75,resize:"vertical"}} value={form.descripcion||""}
                 onChange={e=>setForm({...form,descripcion:e.target.value})}/>
+            </div>
+            <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginBottom:4}}>
+              Departamento y categoria todavia no se guardan: la taxonomia del
+              modelo multicanal se conecta en la proxima fase.
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
               <div><span style={lbl}>Departamento</span>
@@ -412,6 +499,7 @@ export default function AdminPublicaciones() {
                 {CONDICIONES.map(c=><option key={c}>{c}</option>)}
               </select>
             </div>}
+
           </div>
         )}
         {tab==="Multimedia"&&(
@@ -423,7 +511,7 @@ export default function AdminPublicaciones() {
                   const url = typeof img==="string"?img:img?.url;
                   return url?(
                     <div key={i} style={{position:"relative",width:64,height:64,borderRadius:8,
-                      overflow:"hidden",border:i===0?`2.5px solid ${color}`:"1.5px solid #E5E7EB",
+                      overflow:"hidden",border:i===0?`2.5px solid ${color}`:"1.5px solid var(--border)",
                       flexShrink:0}}>
                       <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
                         onError={e=>(e.currentTarget.style.display="none")}/>
@@ -481,7 +569,7 @@ export default function AdminPublicaciones() {
               <div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
                   <span style={lbl}>TC</span>
-                  <label style={{display:"flex",alignItems:"center",gap:3,cursor:"pointer",fontSize:"9px",color:"#9CA3AF",fontWeight:600}}>
+                  <label style={{display:"flex",alignItems:"center",gap:3,cursor:"pointer",fontSize:"9px",color:"var(--gray-400)",fontWeight:600}}>
                     <input type="checkbox"
                       checked={!(form.atributos as any)?.tc_manual}
                       style={{accentColor:color,width:10,height:10}}
@@ -491,7 +579,7 @@ export default function AdminPublicaciones() {
                 </div>
                 <input type="number" style={{...inp,
                   background:(form.atributos as any)?.tc_manual?"#fff":"#F3F4F6",
-                  color:(form.atributos as any)?.tc_manual?"#111":"#9CA3AF",
+                  color:(form.atributos as any)?.tc_manual?"#111":"var(--gray-400)",
                 }} min={0} step="0.01"
                   readOnly={!(form.atributos as any)?.tc_manual}
                   value={(form.atributos as any)?.tipo_cambio||""}
@@ -501,7 +589,7 @@ export default function AdminPublicaciones() {
               {/* Fuente */}
               <div>
                 <span style={lbl}>Fuente · Actualización</span>
-                <div style={{...inp,background:"#F3F4F6",color:"#6B7280",
+                <div style={{...inp,background:"#F3F4F6",color:"var(--mute)",
                   display:"flex",alignItems:"center",gap:5,fontSize:"0.72rem"}}>
                   <span style={{fontWeight:700,color:"#374151"}}>{(form.atributos as any)?.tc_fuente||"BCU"}</span>
                   <span style={{color:"#D1D5DB"}}>·</span>
@@ -583,15 +671,15 @@ export default function AdminPublicaciones() {
         )}
         {tab==="Vista previa"&&(
           <div style={{display:"flex",gap:"1rem",alignItems:"flex-start",padding:"0.75rem",
-            background:"#fff",borderRadius:10,border:"1px solid #E5E7EB"}}>
+            background:"#fff",borderRadius:10,border:"1px solid var(--border)"}}>
             {form.imagen_principal&&<img src={form.imagen_principal} alt="" style={{width:84,height:84,objectFit:"cover",borderRadius:8}} onError={e=>(e.currentTarget.style.display="none")}/>}
             <div style={{flex:1}}>
               <div style={{fontWeight:800,fontSize:"1rem",color:"#111"}}>{form.nombre||"Sin nombre"}</div>
               <div style={{color,fontWeight:700,fontSize:"0.95rem",margin:"4px 0"}}>
                 {form.moneda} {Number(form.precio||0).toLocaleString("es-UY")}
-                {form.precio_original&&form.precio_original>0&&<span style={{textDecoration:"line-through",color:"#9CA3AF",marginLeft:8,fontSize:"0.8rem"}}>{form.moneda} {Number(form.precio_original).toLocaleString("es-UY")}</span>}
+                {form.precio_original&&form.precio_original>0&&<span style={{textDecoration:"line-through",color:"var(--gray-400)",marginLeft:8,fontSize:"0.8rem"}}>{form.moneda} {Number(form.precio_original).toLocaleString("es-UY")}</span>}
               </div>
-              <div style={{fontSize:"0.78rem",color:"#6B7280"}}>
+              <div style={{fontSize:"0.78rem",color:"var(--mute)"}}>
                 {form.departamento_nombre||"Sin departamento"}
                 {form.condicion&&" · "+form.condicion}
                 {" · Stock: "+(form.stock_ilimitado?"∞":form.stock||0)}
@@ -612,16 +700,13 @@ export default function AdminPublicaciones() {
           borderTop:`2px solid ${color}33`}}>
           {/* Izquierda: form */}
           <div style={{padding:"1rem 1.25rem",borderRight:"1px solid #EAECF0"}}>
-            {isNew
-              ? renderForm(nForm,setNForm,nTab,setNTab)
-              : renderForm(eForm,(f)=>{setEForm(f);setDirty(true);},eTab,setETab)
-            }
+            {renderForm(eForm,(f)=>{setEForm(f);setDirty(true);},eTab,setETab)}
           </div>
           {/* Derecha: métricas */}
           <div style={{padding:"1rem"}}>
             {!isNew&&a&&(
               <>
-                <div style={{fontSize:"10px",fontWeight:700,color:"#9CA3AF",
+                <div style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
                   textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.6rem"}}>Métricas</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"5px"}}>
                   {[
@@ -633,8 +718,8 @@ export default function AdminPublicaciones() {
                     {l:"Reseñas",    v:a.rating_count||0},
                   ].map(m=>(
                     <div key={m.l} style={{background:"#fff",borderRadius:7,
-                      padding:"0.38rem 0.5rem",border:"1px solid #E5E7EB"}}>
-                      <div style={{fontSize:"9px",color:"#9CA3AF",textTransform:"uppercase"}}>{m.l}</div>
+                      padding:"0.38rem 0.5rem",border:"1px solid var(--border)"}}>
+                      <div style={{fontSize:"9px",color:"var(--gray-400)",textTransform:"uppercase"}}>{m.l}</div>
                       <div style={{fontWeight:700,color:"#374151",fontSize:"0.85rem"}}>{m.v}</div>
                     </div>
                   ))}
@@ -654,7 +739,7 @@ export default function AdminPublicaciones() {
         <div style={{position:"fixed",bottom:"1.5rem",right:"1.5rem",zIndex:9999,
           padding:"0.75rem 1.25rem",borderRadius:10,fontWeight:600,fontSize:"0.875rem",
           background:toast.ok?"#f0fdf4":"#fef2f2",color:toast.ok?"#166534":"#dc2626",
-          border:`1px solid ${toast.ok?"#6BB87A":"#ef4444"}`,
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
           boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
           {toast.text}
         </div>
@@ -672,7 +757,7 @@ export default function AdminPublicaciones() {
             padding:"0.55rem 1rem",border:"1px solid #F0F0F0",
             borderLeft:`3px solid ${s.c}`,display:"flex",flexDirection:"column",gap:"2px"}}>
             <span style={{fontSize:"1.4rem",fontWeight:800,color:s.c,lineHeight:1}}>{s.value}</span>
-            <span style={{fontSize:"0.63rem",color:"#9CA3AF",textTransform:"uppercase",
+            <span style={{fontSize:"0.63rem",color:"var(--gray-400)",textTransform:"uppercase",
               letterSpacing:".05em",fontWeight:700}}>{s.label}</span>
           </div>
         ))}
@@ -692,10 +777,10 @@ export default function AdminPublicaciones() {
         }}>
 
           <Drop label="Artículo" items={artMenu}/>
-          <div style={{width:1,height:28,background:"#E5E7EB",margin:"0 2px"}}/>
+          <div style={{width:1,height:28,background:"var(--border)",margin:"0 2px"}}/>
           <Drop label="Sync" items={syncMenu} dis={!activeArt}/>
           <Drop label="Ver"  items={verMenu}  dis={!activeArt}/>
-          <div style={{width:1,height:28,background:"#E5E7EB",margin:"0 2px"}}/>
+          <div style={{width:1,height:28,background:"var(--border)",margin:"0 2px"}}/>
 
           {/* Columnas */}
           <div style={{position:"relative"}}>
@@ -706,7 +791,7 @@ export default function AdminPublicaciones() {
             }}>Columnas <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
             {showC&&(
               <div style={{position:"absolute",left:0,top:"100%",background:"#fff",
-                border:"1.5px solid #E5E7EB",borderRadius:10,padding:"0.5rem",
+                border:"1.5px solid var(--border)",borderRadius:10,padding:"0.5rem",
                 zIndex:300,minWidth:155,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}
                 onMouseLeave={()=>setShowC(false)}>
                 {XCOLS.map(col=>(
@@ -726,22 +811,19 @@ export default function AdminPublicaciones() {
           {/* Selección */}
           {sel.size>0&&(
             <span style={{fontSize:"0.72rem",color:BLUE,fontWeight:700,
-              padding:"0.22rem 0.6rem",background:"rgba(15,52,96,.08)",borderRadius:6,marginRight:"0.5rem"}}>
+              padding:"0.22rem 0.6rem",background:"color-mix(in srgb, var(--brand-navy) 8%, transparent)",borderRadius:6,marginRight:"0.5rem"}}>
               {sel.size} sel.
             </span>
           )}
 
           {/* Guardar / Cancelar — solo cuando hay cambios */}
-          {(dirty||showNew)&&(
+          {dirty&&(
             <div style={{display:"flex",gap:6,padding:"0.3rem 0.5rem"}}>
-              <button onClick={()=>{
-                if(showNew){setShowNew(false);setNForm({...EMPTY});}
-                else{setExp(null);setDirty(false);}
-              }} style={{padding:"0.35rem 0.8rem",border:"1.5px solid #E5E7EB",borderRadius:7,
-                background:"#fff",color:"#6B7280",fontSize:"0.78rem",fontWeight:700,cursor:"pointer"}}>
+              <button onClick={()=>{setExp(null);setDirty(false);}} style={{padding:"0.35rem 0.8rem",border:"1.5px solid var(--border)",borderRadius:7,
+                background:"#fff",color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,cursor:"pointer"}}>
                 Cancelar
               </button>
-              <button onClick={showNew?saveNew:saveEdit} disabled={saving} style={{
+              <button onClick={saveEdit} disabled={saving} style={{
                 padding:"0.35rem 0.8rem",border:"none",borderRadius:7,
                 background:color,color:"#fff",fontSize:"0.78rem",fontWeight:700,
                 cursor:saving?"not-allowed":"pointer",opacity:saving?.7:1,
@@ -750,9 +832,16 @@ export default function AdminPublicaciones() {
           )}
         </div>
 
-        {/* TABLA SCROLLABLE */}
-        {load?(
-          <div style={{textAlign:"center",padding:"3rem",color:"#9CA3AF",flex:1}}>Cargando...</div>
+        {/* El alta reemplaza la tabla, sin cambiar de pantalla ni perder filtros */}
+        {showWizard?(
+          <div style={{overflowY:"auto",flex:1}}>
+            <AdminArticulos
+              onCancel={()=>setShowWizard(false)}
+              onFinish={()=>{setShowWizard(false);reload();}}
+            />
+          </div>
+        ):load?(
+          <div style={{textAlign:"center",padding:"3rem",color:"var(--gray-400)",flex:1}}>Cargando...</div>
         ):(
           <div style={{overflowY:"auto",flex:1}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
@@ -783,28 +872,11 @@ export default function AdminPublicaciones() {
                 </tr>
               </thead>
               <tbody>
-                {/* Fila nuevo */}
-                {showNew&&(
-                  <>
-                    <tr style={{background:`${color}07`,borderLeft:`3px solid ${color}`}}>
-                      <td colSpan={99} style={{padding:"0.5rem 1rem",borderBottom:`1px solid ${color}20`}}>
-                        <span style={{fontSize:"0.8rem",fontWeight:800,color}}>
-                          + Nuevo artículo · {isSH?"Second Hand":"Market"}
-                        </span>
-                        <span style={{fontSize:"0.72rem",color:"#9CA3AF",marginLeft:8}}>
-                          Completá los datos y presioná Guardar
-                        </span>
-                      </td>
-                    </tr>
-                    {renderPanel(null,true)}
-                  </>
-                )}
-
-                {filtered.length===0&&!showNew?(
+                {filtered.length===0?(
                   <tr><td colSpan={99} style={{textAlign:"center",padding:"3rem"}}>
                     <div style={{fontSize:"2.5rem"}}>📦</div>
                     <div style={{fontWeight:700,color:"#374151",marginTop:"0.5rem"}}>Sin publicaciones</div>
-                    <div style={{color:"#9CA3AF",fontSize:"0.82rem",marginTop:"0.25rem"}}>
+                    <div style={{color:"var(--gray-400)",fontSize:"0.82rem",marginTop:"0.25rem"}}>
                       Usá el menú Artículo → + Nuevo artículo para empezar
                     </div>
                   </td></tr>
@@ -834,7 +906,7 @@ export default function AdminPublicaciones() {
                         </td>
                         <td style={{...td,maxWidth:200}}>
                           <div style={{fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.nombre}</div>
-                          {a.condicion&&<div style={{fontSize:"10px",color:"#9CA3AF"}}>{a.condicion}</div>}
+                          {a.condicion&&<div style={{fontSize:"10px",color:"var(--gray-400)"}}>{a.condicion}</div>}
                         </td>
                         <td style={{...td,fontWeight:700,color}}>{fmtP(a.precio,a.moneda)}</td>
                         <td style={{...td,textAlign:"center"}}>

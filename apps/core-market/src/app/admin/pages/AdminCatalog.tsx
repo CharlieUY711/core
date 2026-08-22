@@ -76,7 +76,7 @@ export default function AdminCatalog() {
         <div style={{position:"fixed",bottom:"1.5rem",right:"1.5rem",zIndex:9999,
           padding:"0.75rem 1.25rem",borderRadius:"10px",fontWeight:600,fontSize:"0.875rem",
           background:toast.ok?"#f0fdf4":"#fef2f2",color:toast.ok?"#166534":"#dc2626",
-          border:`1px solid ${toast.ok?"#6BB87A":"#ef4444"}`,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
+          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
           {toast.ok?"✅":"❌"} {toast.text}
         </div>
       )}
@@ -84,24 +84,24 @@ export default function AdminCatalog() {
       {/* Toolbar */}
       <div style={{display:"flex",gap:"0.75rem",alignItems:"center"}}>
         <div style={{position:"relative",flex:1}}>
-          <span style={{position:"absolute",left:"12px",top:"50%",transform:"translateY(-50%)",color:"#9CA3AF"}}>🔍</span>
+          <span style={{position:"absolute",left:"12px",top:"50%",transform:"translateY(-50%)",color:"var(--gray-400)"}}>🔍</span>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Buscar en el catálogo..."
-            style={{width:"100%",padding:"0.55rem 0.75rem 0.55rem 2.25rem",border:"1.5px solid #E5E7EB",
+            style={{width:"100%",padding:"0.55rem 0.75rem 0.55rem 2.25rem",border:"1.5px solid var(--border)",
               borderRadius:"10px",fontSize:"0.875rem",outline:"none",boxSizing:"border-box"}}
-            onFocus={e=>e.target.style.borderColor="#FF7A00"}
-            onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+            onFocus={e=>e.target.style.borderColor="var(--brand-madre)"}
+            onBlur={e=>e.target.style.borderColor="var(--border)"} />
         </div>
         <button onClick={()=>setExpandAll(e=>!e)}
-          style={{padding:"0.55rem 1rem",background:expandAll?"#FF7A00":"#fff",
-            color:expandAll?"#fff":"#6B7280",border:"1.5px solid #E5E7EB",
+          style={{padding:"0.55rem 1rem",background:expandAll?"var(--brand-madre)":"#fff",
+            color:expandAll?"#fff":"var(--mute)",border:"1.5px solid var(--border)",
             borderRadius:"10px",cursor:"pointer",fontSize:"0.85rem",fontWeight:600,
             transition:"all 0.15s",whiteSpace:"nowrap"}}>
           {expandAll?"⬆ Colapsar todo":"⬇ Expandir todo"}
         </button>
         <button onClick={load}
-          style={{padding:"0.55rem 0.75rem",background:"#fff",border:"1.5px solid #E5E7EB",
-            borderRadius:"10px",cursor:"pointer",fontSize:"1rem",color:"#6B7280"}}>↻</button>
+          style={{padding:"0.55rem 0.75rem",background:"#fff",border:"1.5px solid var(--border)",
+            borderRadius:"10px",cursor:"pointer",fontSize:"1rem",color:"var(--mute)"}}>↻</button>
         {isAdmin && <AddRootForm onAdd={addDepto} />}
       </div>
 
@@ -111,13 +111,13 @@ export default function AdminCatalog() {
           {label:"Departamentos",value:deptos.length,    color:"#3B82F6"},
           {label:"Categorías",   value:totalCats,        color:"#8B5CF6"},
           {label:"Subcategorías",value:totalSubcats,     color:"#06B6D4"},
-          {label:"Activos",      value:deptos.filter(d=>d.activo).length, color:"#6BB87A"},
+          {label:"Activos",      value:deptos.filter(d=>d.activo).length, color:"color-mix(in srgb, var(--color-success) 70%, white)"},
         ].map(s=>(
           <div key={s.label} style={{background:"#fff",borderRadius:"10px",padding:"0.65rem 1rem",
             borderLeft:`4px solid ${s.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.05)",
             display:"flex",gap:"0.6rem",alignItems:"center"}}>
             <span style={{fontWeight:800,fontSize:"1.15rem",color:s.color}}>{s.value}</span>
-            <span style={{fontSize:"0.75rem",color:"#6B7280"}}>{s.label}</span>
+            <span style={{fontSize:"0.75rem",color:"var(--mute)"}}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -165,13 +165,13 @@ function AddRootForm({onAdd}:{onAdd:(n:string)=>void}) {
       <input autoFocus value={name} onChange={e=>setName(e.target.value)}
         placeholder="Nuevo departamento..."
         onKeyDown={e=>{if(e.key==="Enter")handle();if(e.key==="Escape"){setShow(false);setName("");}}}
-        style={{padding:"0.45rem 0.75rem",border:"1.5px solid #FF7A00",borderRadius:"8px",fontSize:"0.875rem",outline:"none",width:"200px"}} />
-      <Btn color="#FF7A00" bg="#FF7A00" textColor="#fff" onClick={handle}>Crear</Btn>
+        style={{padding:"0.45rem 0.75rem",border:"1.5px solid var(--brand-madre)",borderRadius:"8px",fontSize:"0.875rem",outline:"none",width:"200px"}} />
+      <Btn color="var(--brand-madre)" bg="var(--brand-madre)" textColor="#fff" onClick={handle}>Crear</Btn>
       <Btn color="#D1D5DB" onClick={()=>{setShow(false);setName("");}}>✕</Btn>
     </div>
   ):(
     <button onClick={()=>setShow(true)}
-      style={{padding:"0.55rem 1.25rem",background:"#FF7A00",color:"#fff",border:"none",
+      style={{padding:"0.55rem 1.25rem",background:"var(--brand-madre)",color:"#fff",border:"none",
         borderRadius:"10px",cursor:"pointer",fontWeight:700,fontSize:"0.875rem",whiteSpace:"nowrap"}}>
       + Departamento
     </button>
@@ -197,12 +197,12 @@ const DeptoNode = memo(({depto,cats,subcats,isAdmin,expandAll,onEditDepto,onDele
     <div>
       <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
         style={{display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.65rem 1rem",
-          borderBottom:"1px solid #F3F4F6",background:hovered?"#FAFAFA":"#F9FAFB",
+          borderBottom:"1px solid #F3F4F6",background:hovered?"#FAFAFA":"var(--gray-50)",
           opacity:depto.activo?1:0.5}}>
 
         {/* Botón expand */}
         <button onClick={()=>setOpen(o=>!o)}
-          style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",
+          style={{background:"none",border:"none",cursor:"pointer",color:"var(--gray-400)",
             fontSize:"0.7rem",width:"16px",flexShrink:0,transition:"transform 0.15s",
             transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</button>
 
@@ -212,11 +212,11 @@ const DeptoNode = memo(({depto,cats,subcats,isAdmin,expandAll,onEditDepto,onDele
           <input value={editName} onChange={e=>setEditName(e.target.value)} autoFocus
             onKeyDown={e=>{if(e.key==="Enter")doEdit();if(e.key==="Escape")setEditing(false);}}
             onClick={e=>e.stopPropagation()}
-            style={{flex:1,padding:"2px 6px",border:"1.5px solid #FF7A00",borderRadius:"5px",fontSize:"0.9rem",outline:"none"}} />
+            style={{flex:1,padding:"2px 6px",border:"1.5px solid var(--brand-madre)",borderRadius:"5px",fontSize:"0.9rem",outline:"none"}} />
         ):(
           <span onDoubleClick={()=>isAdmin&&setEditing(true)}
             style={{flex:1,fontWeight:700,fontSize:"0.9rem",
-              color:depto.activo?"#111":"#9CA3AF",
+              color:depto.activo?"#111":"var(--gray-400)",
               textDecoration:depto.activo?"none":"line-through"}}>
             {depto.nombre}
           </span>
@@ -227,15 +227,15 @@ const DeptoNode = memo(({depto,cats,subcats,isAdmin,expandAll,onEditDepto,onDele
         {isAdmin&&(hovered||editing)&&(
           <div style={{display:"flex",gap:"0.25rem",flexShrink:0}} onClick={e=>e.stopPropagation()}>
             {editing?(<>
-              <Btn color="#6BB87A" onClick={doEdit}>✓</Btn>
-              <Btn color="#9CA3AF" onClick={()=>setEditing(false)}>✕</Btn>
+              <Btn color="color-mix(in srgb, var(--color-success) 70%, white)" onClick={doEdit}>✓</Btn>
+              <Btn color="var(--gray-400)" onClick={()=>setEditing(false)}>✕</Btn>
             </>):(<>
               <Btn color="#3B82F6" onClick={()=>{setEditing(true);setEditName(depto.nombre);}}>✏️</Btn>
-              <Btn color="#6BB87A" onClick={()=>{setAddingCat(a=>!a);setOpen(true);}}>+Cat</Btn>
-              <Btn color={depto.activo?"#F59E0B":"#6BB87A"} onClick={()=>onToggleDepto(depto.id,depto.activo)}>{depto.activo?"⏸":"▶"}</Btn>
+              <Btn color="color-mix(in srgb, var(--color-success) 70%, white)" onClick={()=>{setAddingCat(a=>!a);setOpen(true);}}>+Cat</Btn>
+              <Btn color={depto.activo?"#F59E0B":"color-mix(in srgb, var(--color-success) 70%, white)"} onClick={()=>onToggleDepto(depto.id,depto.activo)}>{depto.activo?"⏸":"▶"}</Btn>
               {delConfirm?(<>
                 <Btn color="#EF4444" bg="#EF4444" textColor="#fff" onClick={()=>onDeleteDepto(depto.id)}>Confirmar</Btn>
-                <Btn color="#9CA3AF" onClick={()=>setDelConfirm(false)}>✕</Btn>
+                <Btn color="var(--gray-400)" onClick={()=>setDelConfirm(false)}>✕</Btn>
               </>):(<Btn color="#EF4444" onClick={()=>setDelConfirm(true)}>🗑</Btn>)}
             </>)}
           </div>
@@ -249,16 +249,16 @@ const DeptoNode = memo(({depto,cats,subcats,isAdmin,expandAll,onEditDepto,onDele
           <input autoFocus value={newCat} onChange={e=>setNewCat(e.target.value)}
             placeholder="Nueva categoría..."
             onKeyDown={e=>{if(e.key==="Enter")doAddCat();if(e.key==="Escape"){setAddingCat(false);setNewCat("");}}}
-            style={{flex:1,padding:"0.3rem 0.6rem",border:"1.5px solid #FF7A00",borderRadius:"6px",fontSize:"0.85rem",outline:"none",maxWidth:"260px"}} />
-          <Btn color="#FF7A00" bg="#FF7A00" textColor="#fff" onClick={doAddCat}>Agregar</Btn>
+            style={{flex:1,padding:"0.3rem 0.6rem",border:"1.5px solid var(--brand-madre)",borderRadius:"6px",fontSize:"0.85rem",outline:"none",maxWidth:"260px"}} />
+          <Btn color="var(--brand-madre)" bg="var(--brand-madre)" textColor="#fff" onClick={doAddCat}>Agregar</Btn>
           <Btn color="#D1D5DB" onClick={()=>{setAddingCat(false);setNewCat("");}}>✕</Btn>
         </div>
       )}
 
       {open&&(
-        <div style={{borderLeft:"3px solid #FF7A0025",marginLeft:"32px"}}>
+        <div style={{borderLeft:"3px solid var(--brand-madre)25",marginLeft:"32px"}}>
           {cats.length===0?(
-            <div style={{padding:"0.6rem 1rem",color:"#9CA3AF",fontSize:"0.8rem",fontStyle:"italic"}}>
+            <div style={{padding:"0.6rem 1rem",color:"var(--gray-400)",fontSize:"0.8rem",fontStyle:"italic"}}>
               Sin categorías {isAdmin?"— usá +Cat":""}
             </div>
           ):cats.map(cat=>(
@@ -294,7 +294,7 @@ const CatNode = memo(({cat,subcats,isAdmin,expandAll,onEdit,onDelete,onAddSubCat
     <div>
       <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
         style={{display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.5rem 1rem",
-          borderBottom:"1px solid #F9FAFB",background:hovered?"#FAFAFA":"#fff"}}>
+          borderBottom:"1px solid var(--gray-50)",background:hovered?"#FAFAFA":"#fff"}}>
 
         <button onClick={()=>setOpen(o=>!o)}
           style={{background:"none",border:"none",cursor:"pointer",color:"#C4B5FD",
@@ -324,14 +324,14 @@ const CatNode = memo(({cat,subcats,isAdmin,expandAll,onEdit,onDelete,onAddSubCat
         {isAdmin&&(hovered||editing)&&(
           <div style={{display:"flex",gap:"0.25rem",flexShrink:0}}>
             {editing?(<>
-              <Btn color="#6BB87A" onClick={doEdit}>✓</Btn>
-              <Btn color="#9CA3AF" onClick={()=>setEditing(false)}>✕</Btn>
+              <Btn color="color-mix(in srgb, var(--color-success) 70%, white)" onClick={doEdit}>✓</Btn>
+              <Btn color="var(--gray-400)" onClick={()=>setEditing(false)}>✕</Btn>
             </>):(<>
               <Btn color="#3B82F6" onClick={()=>{setEditing(true);setEditName(cat.nombre);}}>✏️</Btn>
               <Btn color="#06B6D4" onClick={()=>{setAddingSub(a=>!a);setOpen(true);}}>+Sub</Btn>
               {delConfirm?(<>
                 <Btn color="#EF4444" bg="#EF4444" textColor="#fff" onClick={()=>onDelete(cat.id)}>Confirmar</Btn>
-                <Btn color="#9CA3AF" onClick={()=>setDelConfirm(false)}>✕</Btn>
+                <Btn color="var(--gray-400)" onClick={()=>setDelConfirm(false)}>✕</Btn>
               </>):(<Btn color="#EF4444" onClick={()=>setDelConfirm(true)}>🗑</Btn>)}
             </>)}
           </div>
@@ -375,7 +375,7 @@ const SubCatNode = memo(({sub,isAdmin,onEdit,onDelete}:any) => {
   return (
     <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
       style={{display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.45rem 1rem",
-        borderBottom:"1px solid #F9FAFB",background:hovered?"#F0FDFA":"#fff"}}>
+        borderBottom:"1px solid var(--gray-50)",background:hovered?"#F0FDFA":"#fff"}}>
 
       <span style={{fontSize:"0.75rem",color:"#CBD5E1",width:"14px",flexShrink:0}}>·</span>
       <span style={{fontSize:"0.85rem",flexShrink:0}}>📁</span>
@@ -386,7 +386,7 @@ const SubCatNode = memo(({sub,isAdmin,onEdit,onDelete}:any) => {
           style={{flex:1,padding:"2px 6px",border:"1.5px solid #06B6D4",borderRadius:"5px",fontSize:"0.85rem",outline:"none"}} />
       ):(
         <span onDoubleClick={()=>isAdmin&&setEditing(true)}
-          style={{flex:1,fontSize:"0.85rem",color:"#6B7280"}}>
+          style={{flex:1,fontSize:"0.85rem",color:"var(--mute)"}}>
           {sub.nombre}
         </span>
       )}
@@ -397,13 +397,13 @@ const SubCatNode = memo(({sub,isAdmin,onEdit,onDelete}:any) => {
       {isAdmin&&(hovered||editing)&&(
         <div style={{display:"flex",gap:"0.25rem",flexShrink:0}}>
           {editing?(<>
-            <Btn color="#6BB87A" onClick={doEdit}>✓</Btn>
-            <Btn color="#9CA3AF" onClick={()=>setEditing(false)}>✕</Btn>
+            <Btn color="color-mix(in srgb, var(--color-success) 70%, white)" onClick={doEdit}>✓</Btn>
+            <Btn color="var(--gray-400)" onClick={()=>setEditing(false)}>✕</Btn>
           </>):(<>
             <Btn color="#3B82F6" onClick={()=>{setEditing(true);setEditName(sub.nombre);}}>✏️</Btn>
             {delConfirm?(<>
               <Btn color="#EF4444" bg="#EF4444" textColor="#fff" onClick={()=>onDelete(sub.id)}>Confirmar</Btn>
-              <Btn color="#9CA3AF" onClick={()=>setDelConfirm(false)}>✕</Btn>
+              <Btn color="var(--gray-400)" onClick={()=>setDelConfirm(false)}>✕</Btn>
             </>):(<Btn color="#EF4444" onClick={()=>setDelConfirm(true)}>🗑</Btn>)}
           </>)}
         </div>

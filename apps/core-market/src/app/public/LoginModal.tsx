@@ -1,5 +1,5 @@
 /* =====================================================
-   CORE Storefront — CoreStorefront.tsx
+   CORE Storefront
    CORE Marketplace Builder v1.5
    Frontstore principal: Market + Segunda Mano
    ===================================================== */

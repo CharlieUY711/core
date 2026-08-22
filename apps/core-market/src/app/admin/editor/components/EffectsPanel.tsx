@@ -3,7 +3,7 @@ import { useEditorStore } from "../engine/useEditorStore";
 import { FILTERS } from "../engine/filters";
 import { removeBg } from "../engine/bgRemoval";
 
-const A = "#FF7A00";
+const A = "var(--brand-madre)";
 
 export default function EffectsPanel() {
   const store = useEditorStore();
@@ -39,7 +39,7 @@ export default function EffectsPanel() {
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
     padding:"7px 4px", border:`0.5px solid ${active ? A : "var(--color-border-secondary)"}`,
-    borderRadius:"6px", background: active ? "rgba(255,122,0,.08)" : "var(--color-background-primary)",
+    borderRadius:"6px", background: active ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "var(--color-background-primary)",
     color: active ? A : "var(--color-text-secondary)",
     fontSize:"11px", cursor:"pointer", textAlign:"center" as const
   });

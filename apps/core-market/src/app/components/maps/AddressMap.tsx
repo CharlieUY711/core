@@ -43,10 +43,10 @@ export default function AddressMap({ lat, lng, zoom=15, height="100%", interacti
     const el = document.createElement("div");
     el.style.cssText = `
       width:22px;height:22px;
-      background:#FF7A00;
+      background:var(--brand-madre);
       border:3px solid #fff;
       border-radius:50%;
-      box-shadow:0 2px 10px rgba(255,122,0,0.5);
+      box-shadow:0 2px 10px color-mix(in srgb, var(--brand-madre) 50%, transparent);
       cursor:${interactive?"grab":"default"};
       transition:transform 0.15s;
     `;

@@ -12,7 +12,7 @@ const TYPE_STYLE: Record<string, { icon: string; badge: string; bColor: string }
   category:    { icon:"📂", badge:"Categoría", bColor:"#8B5CF6" },
   subcategory: { icon:"📁", badge:"Subcat",    bColor:"#06B6D4" },
   node:        { icon:"📌", badge:"Nodo",      bColor:"#F59E0B" },
-  product:     { icon:"📦", badge:"Producto",  bColor:"#6BB87A" },
+  product:     { icon:"📦", badge:"Producto",  bColor:"color-mix(in srgb, var(--color-success) 70%, white)" },
 };
 
 const INDENT = 24;
@@ -65,7 +65,7 @@ const TreeNode = memo(({ node, depth, isAdmin, defaultOpen=false, onAdd, onEdit,
           padding:`0.4rem 1rem 0.4rem ${depth * INDENT + 12}px`,
           cursor: hasKids ? "pointer" : "default",
           borderBottom:"1px solid #F3F4F6",
-          background: depth===0 ? "#F9FAFB" : depth===1 ? "#fff" : "#FCFCFC",
+          background: depth===0 ? "var(--gray-50)" : depth===1 ? "#fff" : "#FCFCFC",
           opacity: node.is_active ? 1 : 0.45,
           transition:"background 0.1s",
           position:"relative",
@@ -100,7 +100,7 @@ const TreeNode = memo(({ node, depth, isAdmin, defaultOpen=false, onAdd, onEdit,
             onChange={e => setEditName(e.target.value)}
             onKeyDown={e => { if(e.key==="Enter") doEdit(); if(e.key==="Escape") setEditing(false); }}
             onClick={e => e.stopPropagation()}
-            style={{ flex:1, padding:"2px 6px", border:"1.5px solid #FF7A00", borderRadius:"5px",
+            style={{ flex:1, padding:"2px 6px", border:"1.5px solid var(--brand-madre)", borderRadius:"5px",
               fontSize:"0.875rem", outline:"none", maxWidth:"260px" }}
           />
         ) : (
@@ -108,7 +108,7 @@ const TreeNode = memo(({ node, depth, isAdmin, defaultOpen=false, onAdd, onEdit,
             onDoubleClick={e => { e.stopPropagation(); if(isAdmin){ setEditing(true); setEditName(node.name); } }}
             style={{ flex:1, fontSize: depth===0?"0.95rem":"0.875rem",
               fontWeight: depth===0?700:depth===1?600:400,
-              color: node.is_active?"#111":"#9CA3AF",
+              color: node.is_active?"#111":"var(--gray-400)",
               textDecoration: node.is_active?"none":"line-through" }}>
             {node.name}
           </span>
@@ -143,22 +143,22 @@ const TreeNode = memo(({ node, depth, isAdmin, defaultOpen=false, onAdd, onEdit,
             placeholder={`Nuevo ${childType}...`}
             onKeyDown={e=>{ if(e.key==="Enter") doAdd(); if(e.key==="Escape"){setAdding(false);setNewName("");} }}
             onClick={e=>e.stopPropagation()}
-            style={{ flex:1, padding:"0.3rem 0.6rem", border:"1.5px solid #FF7A00",
+            style={{ flex:1, padding:"0.3rem 0.6rem", border:"1.5px solid var(--brand-madre)",
               borderRadius:"6px", fontSize:"0.85rem", outline:"none", maxWidth:"280px" }} />
           <button onClick={e=>{e.stopPropagation();doAdd();}} disabled={saving||!newName.trim()}
-            style={{ padding:"0.3rem 0.75rem", background:saving?"#ccc":"#FF7A00", color:"#fff",
+            style={{ padding:"0.3rem 0.75rem", background:saving?"#ccc":"var(--brand-madre)", color:"#fff",
               border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"0.8rem", fontWeight:700 }}>
             {saving?"...":"Agregar"}
           </button>
           <button onClick={e=>{e.stopPropagation();setAdding(false);setNewName("");}}
             style={{ padding:"0.3rem 0.5rem", background:"transparent", border:"1px solid #D1D5DB",
-              borderRadius:"6px", cursor:"pointer", fontSize:"0.8rem", color:"#6B7280" }}>✕</button>
+              borderRadius:"6px", cursor:"pointer", fontSize:"0.8rem", color:"var(--mute)" }}>✕</button>
         </div>
       )}
 
       {/* ── Children ── */}
       {open && hasKids && (
-        <div style={{ borderLeft:`2px solid ${depth===0?"#FF7A0040":depth===1?"#8B5CF620":"#E5E7EB"}`,
+        <div style={{ borderLeft:`2px solid ${depth===0?"var(--brand-madre)40":depth===1?"#8B5CF620":"var(--border)"}`,
           marginLeft:`${depth*INDENT+20}px` }}>
           {node.children.map(child => (
             <TreeNode key={child.id} node={child} depth={depth+1} isAdmin={isAdmin}

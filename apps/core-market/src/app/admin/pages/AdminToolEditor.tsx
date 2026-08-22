@@ -137,10 +137,10 @@ export default function AdminToolEditor() {
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 900,
             maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "1rem 1.25rem", borderBottom: "1px solid #E5E7EB" }}>
+              padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
               <span style={{ fontWeight: 700, fontSize: "1rem", color: "#0D2B55" }}>Abrir desde biblioteca</span>
               <button onClick={() => setPickerOpen(false)}
-                style={{ background: "none", border: "none", fontSize: "1.25rem", cursor: "pointer", color: "#6B7280" }}>✕</button>
+                style={{ background: "none", border: "none", fontSize: "1.25rem", cursor: "pointer", color: "var(--mute)" }}>✕</button>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
               <AdminBiblioteca mode="modal" maxImages={1} maxVideos={0}

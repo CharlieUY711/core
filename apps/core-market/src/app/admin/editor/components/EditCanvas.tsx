@@ -101,7 +101,7 @@ export default function EditCanvas({ canvasRef, onRender }: Props) {
       ctx.fillRect(0, 0, c.width, c.height);
 
       // Marco guía (borde del margen 5%)
-      ctx.strokeStyle = "rgba(255,122,0,0.2)";
+      ctx.strokeStyle = "color-mix(in srgb, var(--brand-madre) 20%, transparent)";
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       const mx = c.width * MARGIN, my = c.height * MARGIN;
@@ -135,7 +135,7 @@ export default function EditCanvas({ canvasRef, onRender }: Props) {
 
 
       if (store.activeTool === "select-circ") {
-        ctx.strokeStyle="#FF7A00"; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
+        ctx.strokeStyle="var(--brand-madre)"; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
         ctx.beginPath();
         ctx.ellipse(c.width/2, c.height/2, c.width*0.35, c.height*0.35, 0, 0, Math.PI*2);
         ctx.stroke(); ctx.setLineDash([]);

@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../utils/supabase/client';
 import { useProductos } from '../hooks/useProductos';
-import { agregarAlCarrito } from '../services/carritoApi'; // re-export → app/services/carritoApi
+import { agregarAlCarrito, getCarrito } from '../services/carritoApi'; // re-export → app/services/carritoApi
 import { Navbar } from './Navbar';
 import { FilterBar } from './FilterBar';
 import { MarketCard } from './MarketCard';
@@ -49,12 +49,11 @@ export default function MarketPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Plataforma: Market / Second / Gourmet
-  const [mode, setMode] = useState<'mkt' | 'sh' | 'gourmet'>('mkt');
+  // Plataforma: Market / Second
+  const [mode, setMode] = useState<'mkt' | 'sh'>('mkt');
   const isSH = mode === 'sh';
-  const isGourmet = mode === 'gourmet';
-  const platColor = isSH ? '#2E7D57' : isGourmet ? '#9B3326' : '#3D5689';
-  const platColorHover = isSH ? '#2A7350' : isGourmet ? '#8A2C21' : '#46639B';
+  const platColor = isSH ? '#2E7D57' : '#3D5689';
+  const platColorHover = isSH ? '#2A7350' : '#46639B';
 
   // Usuario
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -86,8 +85,17 @@ export default function MarketPage() {
         const exists = prev.find(i => i.id === p.id && i.m === m);
         return exists ? prev : [...prev, item];
       });
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await agregarAlCarrito((p as any).uid ?? String(p.id), m === 'sh' ? 'secondhand' : 'market', 1, pNum);
+      // Se persiste siempre, con o sin sesion: carritoApi identifica al
+      // comprador por la cookie `core_cart_session`, que existe justamente
+      // para carritos anonimos. Antes esto estaba detras de un
+      // `if (session?.user)` y el carrito de un visitante solo vivia en
+      // estado local, asi que se perdia al recargar.
+      await agregarAlCarrito(
+        (p as any).uid ?? String(p.id),
+        m === 'sh' ? 'secondhand' : 'market',
+        1,
+        pNum,
+      );
     } catch (err) {
       console.error('Error al agregar al carrito:', err);
     }
@@ -98,11 +106,11 @@ export default function MarketPage() {
   const [flashText, setFlashText] = useState('MARKET');
   const [flashKey, setFlashKey] = useState(0);
 
-  const setPlatform = useCallback((p: 'mkt' | 'sh' | 'gourmet', silent = false) => {
+  const setPlatform = useCallback((p: 'mkt' | 'sh', silent = false) => {
     if (!silent) { setFlash(true); setFlashKey(k => k + 1); }
     setTimeout(() => {
       setMode(p);
-      setFlashText(p === 'sh' ? 'SECOND' : p === 'gourmet' ? 'GOURMET' : 'MARKET');
+      setFlashText(p === 'sh' ? 'SECOND' : 'MARKET');
       if (!silent) setTimeout(() => setFlash(false), 500);
     }, silent ? 0 : 200);
   }, []);
@@ -123,7 +131,43 @@ export default function MarketPage() {
   const DEPT_COLORS_FINAL = apiDeptColors || {};
 
   // Filtrar por búsqueda
-  const baseMP = isGourmet ? MP.filter(p => (p as any).gourmet) : MP;
+  // Hidratar desde la base al montar. Sin esto el contador arranca en cero
+  // aunque el carrito tenga items, y la pagina /carrito muestra cosas que el
+  // navbar dice que no existen. Se espera a que los productos esten cargados
+  // porque CartItem se identifica por el id numerico del storefront, no por
+  // el uuid que guarda la base.
+  useEffect(() => {
+    if (productosLoading) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const filas = await getCarrito();
+        if (cancelado || filas.length === 0) return;
+        const porUid = new Map<string, { p: MktProduct | ShProduct; m: 'mkt' | 'sh' }>();
+        MP.forEach(x => porUid.set(String((x as any).uid), { p: x, m: 'mkt' }));
+        SH.forEach(x => porUid.set(String((x as any).uid), { p: x, m: 'sh' }));
+        const items: CartItem[] = [];
+        for (const f of filas) {
+          const hit = porUid.get(String(f.producto_id));
+          if (!hit) continue;
+          items.push({
+            id: hit.p.id,
+            img: hit.p.img,
+            n: hit.p.n,
+            p: (hit.p as any).p ?? '',
+            pNum: Number(f.precio_unitario) || 0,
+            m: hit.m,
+          });
+        }
+        if (!cancelado) setCartItems(items);
+      } catch (err) {
+        console.error('Error cargando el carrito:', err);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [productosLoading, MP, SH]);
+
+  const baseMP = MP;
   const filteredMP = searchValue
     ? baseMP.filter(p => p.n.toLowerCase().includes(searchValue.toLowerCase()) || p.d.toLowerCase().includes(searchValue.toLowerCase()))
     : baseMP;
@@ -170,9 +214,8 @@ export default function MarketPage() {
         {/* Barra horizontal: filtros + ordenar (una línea) */}
         <FilterBar />
 
-        {/* Grid: columna vacía · 4 fichas · columna vacía */}
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px', gap: 28, alignItems: 'start', marginTop: 28 }}>
-          <div />
+        {/* Grid a ancho completo: 5 fichas por fila, sin columnas laterales */}
+        <div style={{ marginTop: 28 }}>
           <div style={{ minWidth: 0 }}>
 
             {!isSH && (
@@ -229,7 +272,6 @@ export default function MarketPage() {
             </div>
 
           </div>
-          <div />
         </div>
 
       </main>

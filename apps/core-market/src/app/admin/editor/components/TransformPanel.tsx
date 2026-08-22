@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from "react";
 import { useEditorStore } from "../engine/useEditorStore";
 
-const ACCENT = "#FF7A00";
-const BLUE   = "#0F3460";
+const ACCENT = "var(--brand-madre)";
+const BLUE   = "var(--brand-navy)";
 
 const ASPECTS = [
   { label:"1:1",  ratio:"1:1"   },
@@ -79,7 +79,7 @@ export default function TransformPanel() {
   const dotY      = 38 + dialR * Math.sin(dialRad);
 
   const sectionTitle = (t: string) => (
-    <div style={{ fontSize:"10px", fontWeight:600, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"6px" }}>{t}</div>
+    <div style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:"6px" }}>{t}</div>
   );
 
   const activeBg = BG_COLORS.find(b => b.color === bgColor)?.label || null;
@@ -99,10 +99,10 @@ export default function TransformPanel() {
           ].map(p => (
             <button key={p.key} onClick={p.action} style={{
               flex:1, padding:"5px 2px", fontSize:"10px", cursor:"pointer", whiteSpace:"nowrap",
-              border:`1.5px solid ${activePreset===p.key ? ACCENT : "#E5E7EB"}`,
+              border:`1.5px solid ${activePreset===p.key ? ACCENT : "var(--border)"}`,
               borderRadius:"7px",
-              background: activePreset===p.key ? "rgba(255,122,0,.08)" : "#fff",
-              color: activePreset===p.key ? ACCENT : "#6B7280",
+              background: activePreset===p.key ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
+              color: activePreset===p.key ? ACCENT : "var(--mute)",
               fontWeight: activePreset===p.key ? 600 : 400,
             }}>{p.label}</button>
           ))}
@@ -149,10 +149,10 @@ export default function TransformPanel() {
                 saveHistory("Aspecto: " + a.label);
               }} style={{
                 padding:"6px 4px", fontSize:"10px", cursor:"pointer",
-                border:`1.5px solid ${active ? ACCENT : "#E5E7EB"}`,
+                border:`1.5px solid ${active ? ACCENT : "var(--border)"}`,
                 borderRadius: a.label === "○" ? "50%" : "7px",
-                background: active ? "rgba(255,122,0,.08)" : "#fff",
-                color: active ? ACCENT : "#6B7280",
+                background: active ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
+                color: active ? ACCENT : "var(--mute)",
                 fontWeight: active ? 600 : 400,
                 display:"flex", alignItems:"center", justifyContent:"center",
                 aspectRatio: a.label === "○" ? "1" : "auto",
@@ -174,7 +174,7 @@ export default function TransformPanel() {
               background: bg.color === "transparent"
                 ? "linear-gradient(135deg,#ddd 25%,#fff 25%,#fff 75%,#ddd 75%)"
                 : bg.color,
-              border:`2px solid ${bgColor === bg.color ? ACCENT : "#E5E7EB"}`,
+              border:`2px solid ${bgColor === bg.color ? ACCENT : "var(--border)"}`,
             }}/>
           ))}
         </div>
@@ -188,7 +188,7 @@ export default function TransformPanel() {
         }} style={{
           width:"100%", padding:"6px", fontSize:"10px", fontWeight:600,
           border:`1.5px solid ${BLUE}`, borderRadius:"7px",
-          background:"rgba(15,52,96,.06)", color:BLUE, cursor:"pointer"
+          background:"color-mix(in srgb, var(--brand-navy) 6%, transparent)", color:BLUE, cursor:"pointer"
         }}>⊞ Auto proporción</button>
       </div>
 
@@ -201,16 +201,16 @@ export default function TransformPanel() {
               set("activeTool", activeTool === t.id ? null : t.id);
             }} style={{
               width:"32px", height:"32px", display:"flex", alignItems:"center", justifyContent:"center",
-              border:`1.5px solid ${activeTool===t.id ? ACCENT : "#E5E7EB"}`,
+              border:`1.5px solid ${activeTool===t.id ? ACCENT : "var(--border)"}`,
               borderRadius:"7px",
-              background: activeTool===t.id ? "rgba(255,122,0,.08)" : "#fff",
-              color: activeTool===t.id ? ACCENT : "#6B7280",
+              background: activeTool===t.id ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
+              color: activeTool===t.id ? ACCENT : "var(--mute)",
               fontSize:"14px", cursor:"pointer"
             }}>{t.icon}</button>
           ))}
         </div>
         {activeTool && (
-          <div style={{ marginTop:"6px", fontSize:"10px", color:"#9CA3AF", padding:"4px 8px", background:"#F9FAFB", borderRadius:"6px" }}>
+          <div style={{ marginTop:"6px", fontSize:"10px", color:"var(--gray-400)", padding:"4px 8px", background:"var(--gray-50)", borderRadius:"6px" }}>
             {activeTool === "select-rect" && "Arrastrá para seleccionar área rectangular"}
             {activeTool === "select-circ" && "Arrastrá para seleccionar área circular"}
             {activeTool === "select-free" && "Dibujá libremente el área de selección"}
