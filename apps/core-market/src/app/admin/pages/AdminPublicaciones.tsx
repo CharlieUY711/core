@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
+import { sincronizarCanal, verificarCanal, canalesDisponibles,
+         type ProblemaPublicacion } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
 
 const ACCENT = "var(--brand-madre)";
@@ -18,12 +20,44 @@ const MONEDAS = ["UYU","USD","EUR"];
 // `key` es la propiedad sintética que la UI ya renderiza; `channel` es el
 // valor real de catalog_listings.channel. El adaptador deriva una de la otra,
 // así el render de la tabla no cambia.
-const CANALES = [
-  {key:"sync_ml",  channel:"mercadolibre", label:"ML",   color:"#F5C518", tc:"#333"},
-  {key:"sync_meta",channel:"meta",         label:"Meta", color:"#1877F2", tc:"#fff"},
-  {key:"sync_wa",  channel:"whatsapp",     label:"WA",   color:"#25D366", tc:"#fff"},
-  {key:"sync_web", channel:"web",          label:"Web",  color:"var(--mute)", tc:"#fff"},
-];
+/**
+ * Presentación de un canal.
+ *
+ * DEFINICIÓN DE DISEÑO: la pantalla no tiene una lista de canales. Los canales
+ * salen del catálogo, que guarda `catalog_listings.channel` como texto libre.
+ * Puede aparecer la web propia, un marketplace que hoy no usamos, o uno que
+ * todavía no existe.
+ *
+ * Este mapa es sólo estética: da una etiqueta corta y un color a los que ya
+ * conocemos. Un canal que no esté acá no es un error ni requiere tocar código:
+ * se muestra con una etiqueta derivada de su nombre y color neutro, y funciona
+ * igual. Lo único que decide si se puede publicar en él es si tiene motor.
+ */
+const ESTETICA_CANAL: Record<string,{label:string;color:string;tc:string}> = {
+  mercadolibre: {label:"ML",   color:"#F5C518",      tc:"#333"},
+  meta:         {label:"Meta", color:"#1877F2",      tc:"#fff"},
+  whatsapp:     {label:"WA",   color:"#25D366",      tc:"#fff"},
+  web:          {label:"Web",  color:"var(--mute)",  tc:"#fff"},
+};
+
+const NEUTRO = {color:"#64748B", tc:"#fff"};
+
+/** Etiqueta legible para un canal desconocido: su propio nombre, acortado. */
+const etiquetaDe = (channel:string) =>
+  channel.length <= 5 ? channel.toUpperCase() : channel.slice(0,4).toUpperCase();
+
+export interface CanalUI { key:string; channel:string; label:string; color:string; tc:string }
+
+const canalUI = (channel:string):CanalUI => {
+  const e = ESTETICA_CANAL[channel];
+  return {
+    key:     "sync_" + channel,
+    channel,
+    label:   e?.label ?? etiquetaDe(channel),
+    color:   e?.color ?? NEUTRO.color,
+    tc:      e?.tc    ?? NEUTRO.tc,
+  };
+};
 
 // Market y Second Hand NO son canales de distribucion: son el tipo del
 // articulo (nuevo o usado) y son excluyentes entre si. Viven aca solo para que
@@ -32,7 +66,32 @@ const CANALES_BASE = [
   {key:"sync_market", channel:"market",     label:"Market",      color:ACCENT, tc:"#fff"},
   {key:"sync_second", channel:"secondhand", label:"Second Hand", color:GREEN,  tc:"#fff"},
 ];
-const TODOS_CANALES = [...CANALES_BASE, ...CANALES];
+
+
+/**
+ * Estado de sincronizacion de un canal, tal como lo pinta el chip.
+ *
+ *   off      el canal no esta habilitado para este articulo
+ *   espera   habilitado pero todavia no salio: mantiene el color de la marca
+ *   error    Mercado Libre -u otro canal- lo rechazo
+ *   ok       publicado y vigente
+ *
+ * Son cuatro y no tres porque "habilitado pero sin publicar" y "sin habilitar"
+ * son cosas distintas: en la primera el usuario ya decidio, en la segunda no.
+ */
+export type EstadoCanal = "off" | "espera" | "error" | "ok";
+
+const estadoDeCanal = (p: Publicacion | undefined, channel: string): EstadoCanal => {
+  const l = p?.channels?.find((c: any) => c.channel === channel);
+  if (!l || l.status === "delisted") return "off";
+  if (l.status === "error")   return "error";
+  if (l.status === "active")  return "ok";
+  return "espera";
+};
+
+/** Igual que canalActivo pero sobre la forma plana que usa la tabla. */
+const canalActivoEn = (a:{canales?:any[]}, channel:string) =>
+  (a.canales ?? []).some((c:any)=>c.channel===channel && c.status!=="delisted");
 
 /** Un canal cuenta como activo salvo que se lo haya dado de baja. */
 const canalActivo = (p:Publicacion, channel:string) =>
@@ -109,62 +168,66 @@ type SK = "precio"|"stock"|"status"|"alta"|null;
 const fmt = (s?:string) => s?new Date(s).toLocaleDateString("es-UY",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
 const fmtP = (n:number,m="UYU") => m+" "+Number(n).toLocaleString("es-UY");
 
-// ── Canal toggle button ───────────────────────────────────────────────────
-function Canal({c,active,onClick}:{c:typeof CANALES[0];active:boolean;onClick:()=>void}) {
+// ── Chip de canal ─────────────────────────────────────────────────────────
+//
+// El color dice el estado de sincronizacion; el anillo, si esta seleccionado
+// para el proximo Sincronizar. Son dos ejes independientes y por eso se pintan
+// con recursos distintos: mezclarlos en el mismo (color) obligaria a elegir
+// cual de los dos se ve.
+const ROJO_SYNC = "#EF4444";
+const VERDE_SYNC = "#16A34A";
+
+function Canal({c,estado,sel,onClick}:{
+  c:CanalUI; estado:EstadoCanal; sel:boolean; onClick:()=>void;
+}) {
   const [dn,setDn]=useState(false);
+  const borde = estado==="error" ? ROJO_SYNC : estado==="ok" ? VERDE_SYNC : c.color;
+  const relleno = estado==="error" ? ROJO_SYNC : estado==="ok" ? VERDE_SYNC
+                : estado==="espera" ? c.color : "#fff";
+  const texto = estado==="off" ? c.color
+              : estado==="espera" ? c.tc : "#fff";
+  const titulo = estado==="error" ? "Con error — clic para ver que corregir"
+               : estado==="ok"    ? "Publicado"
+               : estado==="espera"? "Habilitado, todavia sin publicar"
+               : "Sin publicar en este canal";
   return (
-    <button onMouseDown={()=>setDn(true)} onMouseUp={()=>{setDn(false);onClick();}}
+    <button title={titulo}
+      onMouseDown={()=>setDn(true)} onMouseUp={()=>{setDn(false);onClick();}}
       onMouseLeave={()=>setDn(false)} onTouchStart={()=>setDn(true)} onTouchEnd={()=>{setDn(false);onClick();}}
-      style={{padding:"2px 0",width:"100%",border:`1.5px solid ${c.color}`,borderRadius:5,
+      style={{padding:"2px 0",width:"100%",border:`1.5px solid ${borde}`,borderRadius:5,
         fontSize:"10px",fontWeight:800,cursor:"pointer",letterSpacing:".02em",
-        background:active?c.color:"#fff", color:active?c.tc:c.color,
-        boxShadow:active?"inset 0 2px 5px rgba(0,0,0,.25)":"0 2px 3px rgba(0,0,0,.08)",
-        transform:(active||dn)?"translateY(1px) scale(.97)":"none",transition:"all .1s",
+        background:relleno, color:texto,
+        outline: sel ? `2px solid ${borde}` : "none", outlineOffset: sel ? 1 : 0,
+        boxShadow: estado!=="off" ? "inset 0 2px 5px rgba(0,0,0,.18)" : "0 2px 3px rgba(0,0,0,.08)",
+        transform:dn?"translateY(1px) scale(.97)":"none",transition:"all .1s",
       }}>{c.label}</button>
   );
 }
 
-// ── Dropdown menu ─────────────────────────────────────────────────────────
-function Drop({label,items,dis=false}:{
-  label:string;
-  items:{label:string;onClick:()=>void;color?:string;sep?:boolean}[];
-  dis?:boolean;
+/**
+ * Boton de la barra de acciones.
+ *
+ * Directo, sin desplegable: las acciones de esta pantalla son siete y entran
+ * todas. Un menu que hay que abrir para elegir entre tres cosas cuesta dos
+ * clics en lugar de uno y esconde lo que se puede hacer.
+ */
+function Accion({label,onClick,dis,color,destacado}:{
+  label:string; onClick:()=>void; dis?:boolean; color?:string; destacado?:boolean;
 }) {
-  const [open,setOpen]=useState(false);
-  const ref=useRef<HTMLDivElement>(null);
-  useEffect(()=>{
-    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
-    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
-  },[]);
   return (
-    <div ref={ref} style={{position:"relative"}}>
-      <button onClick={()=>setOpen(p=>!p)} style={{
-        padding:"0.5rem 0.8rem",border:"none",background:"transparent",cursor:"pointer",
-        fontSize:"0.78rem",fontWeight:open?700:500,color:open?"#111":"#555",
-        display:"flex",alignItems:"center",gap:3,whiteSpace:"nowrap",transition:"color .1s",
-      }}>{label} <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
-      {open&&(
-        <div style={{position:"absolute",top:"100%",left:0,background:"#fff",
-          border:"1.5px solid var(--border)",borderRadius:10,padding:"0.3rem",
-          zIndex:300,minWidth:180,boxShadow:"0 8px 28px rgba(0,0,0,.13)"}}>
-          {items.map((it,i)=>it.sep?(
-            <div key={i} style={{borderTop:"1px solid #F0F0F0",margin:"0.2rem 0"}}/>
-          ):(
-            <button key={i} onClick={()=>{it.onClick();setOpen(false);}} style={{
-              display:"block",width:"100%",textAlign:"left",padding:"0.42rem 0.8rem",
-              border:"none",background:"none",fontSize:"0.8rem",cursor:"pointer",
-              color:it.color||"#374151",fontWeight:600,borderRadius:7,transition:"background .1s",
-            }}
-            onMouseEnter={e=>(e.currentTarget.style.background="#F5F5F5")}
-            onMouseLeave={e=>(e.currentTarget.style.background="none")}>
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button onClick={()=>!dis&&onClick()} disabled={dis} title={dis?"Elegí al menos una publicación":undefined}
+      style={{
+        padding:"0.42rem 0.7rem", borderRadius:7, whiteSpace:"nowrap",
+        fontSize:"0.76rem", fontWeight:700, fontFamily:"DM Sans,sans-serif",
+        cursor:dis?"not-allowed":"pointer", transition:"all .12s",
+        border: destacado?"none":`1.5px solid ${dis?"#E5E7EB":(color??"var(--border)")}`,
+        background: destacado?(dis?"#CBD5E1":(color??"#111")):"#fff",
+        color: destacado?"#fff":(dis?"#CBD5E1":(color??"#374151")),
+        opacity: dis?.75:1,
+      }}>{label}</button>
   );
 }
+
 
 
 function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>void;color:string;lbl:any;inp:any}) {
@@ -326,8 +389,81 @@ export default function AdminPublicaciones() {
     else{const a=arts.find(x=>x.id===id);if(a){setEForm({...a});setETab(TABS[0]);}setExp(id);setDirty(false);}
   };
 
+  // Chips seleccionados para el proximo Sincronizar, como "variantId|canal".
+  // La clave compuesta permite elegir ML de un articulo y Meta de otro en la
+  // misma pasada, que es lo que se hace cuando cada uno fallo por su lado.
+  const [chips,setChips]=useState<Set<string>>(new Set());
+  const [sincro,setSincro]=useState(false);
+  // Lo que falta por articulo, segun la verificacion del servidor.
+  const [problemas,setProblemas]=useState<Record<string,ProblemaPublicacion[]>>({});
+  // Que canal se estaba mirando cuando se pidieron los problemas: el mismo
+  // articulo puede fallar distinto en cada uno.
+  const [canalConProblema,setCanalConProblema]=useState<Record<string,string>>({});
+
+  // Los canales que se ofrecen son los que su motor declara operativos: no una
+  // lista fija, ni lo que haya en los datos. Un canal cuyo modulo no esta
+  // configurado -o cuya credencial vencio- no aparece, porque elegirlo solo
+  // llevaria a un error mas adelante.
+  const [canales,setCanales]=useState<CanalUI[]>([]);
+  const [canalesFuera,setCanalesFuera]=useState<Array<{nombre:string;motivo:string}>>([]);
+
+  useEffect(()=>{
+    let vivo=true;
+    (async()=>{
+      const {disponibles,bloqueados}=await canalesDisponibles();
+      if(!vivo)return;
+      setCanales(disponibles.map(d=>canalUI(d.channel)));
+      setCanalesFuera(bloqueados.map(b=>({nombre:b.nombre,motivo:b.motivo})));
+    })();
+    return ()=>{vivo=false;};
+  },[]);
+
+  const claveChip=(id:string,canal:string)=>id+"|"+canal;
+
+  const togChip=(id:string,canal:string)=>{
+    setChips(p=>{const n=new Set(p);const k=claveChip(id,canal);n.has(k)?n.delete(k):n.add(k);return n;});
+  };
+
+  /** Abre el articulo y trae del canal que hay que corregir. */
+  const verProblemas=async(a:Art,canal:string)=>{
+    if(exp!==a.id){setEForm({...a});setETab(TABS[0]);setExp(a.id);setDirty(false);}
+    setProblemas(p=>({...p,[a.id]:[]}));
+    const ps=await verificarCanal(a.id,canal);
+    setProblemas(p=>({...p,[a.id]:ps}));
+    setCanalConProblema(p=>({...p,[a.id]:canal}));
+  };
+
+  /**
+   * Sincroniza los chips seleccionados.
+   *
+   * Se hace de a uno y en serie: son llamadas a APIs externas con limite de
+   * frecuencia, y un lote en paralelo se come el rate limit sin ganar nada.
+   */
+  const sincronizar=async()=>{
+    const pares=[...chips].map(k=>{const [id,canal]=k.split("|");return {id,canal};});
+    if(!pares.length){notify("Elegí al menos un canal en la columna Sync",false);return;}
+    setSincro(true);
+    let ok=0; const fallos:string[]=[];
+    for(const {id,canal} of pares){
+      const r=await sincronizarCanal(id,canal);
+      if(r.ok){ok++;continue;}
+      const nombre=arts.find(a=>a.id===id)?.nombre??id;
+      // El motor ya devuelve el motivo redactado: quien lista no sabe traducir
+      // la jerga de ningun canal, ni tiene por que aprenderla.
+      fallos.push(nombre+" · "+canal+": "+(r.motivo??"No se pudo publicar"));
+    }
+    setSincro(false);
+    setChips(new Set());
+    await reload();
+    if(fallos.length===0) notify("Sincronizado ✓ ("+ok+")");
+    // Con un solo fallo se dice cual; con varios se remite a los chips rojos,
+    // que ya senializan cual es cual sin llenar el aviso de texto.
+    else if(fallos.length===1) notify(fallos[0],false);
+    else notify(fallos.length+" fallaron. Los chips en rojo indican cuales; hace clic en uno para ver que corregir.",false);
+  };
+
   const togSync=async(a:Art,k:string)=>{
-    const canal=TODOS_CANALES.find(c=>c.key===k);
+    const canal=[...CANALES_BASE,...canales].find(c=>c.key===k);
     if(!canal)return;
     const v=!(a as any)[k];
     const{error}=await supabase.rpc("toggle_canal_publicacion",
@@ -349,7 +485,7 @@ export default function AdminPublicaciones() {
     const{error}=await supabase.rpc("crear_publicacion",{
       p_title:a.nombre+" (copia)", p_price:a.precio, p_currency:a.moneda||"UYU",
       p_description:a.descripcion??null, p_stock:a.stock??0,
-      p_channels:TODOS_CANALES.filter(c=>(a as any)[c.key]).map(c=>c.channel),
+      p_channels:[...CANALES_BASE,...canales].filter(c=>(a as any)[c.key]).map(c=>c.channel),
       p_status:"draft",
     });
     if(error){notify(error.message,false);return;}
@@ -410,29 +546,7 @@ export default function AdminPublicaciones() {
   const lbl:React.CSSProperties={fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
     textTransform:"uppercase",marginBottom:3,display:"block"};
 
-  const artMenu=[
-    {label:"+ Nueva publicación",onClick:()=>{setShowWizard(true);setExp(null);},color},
-    {label:"Clonar",          onClick:()=>activeArt&&clonar(activeArt), color:has&&sel.size<=1?color:"#CBD5E1"},
-    {sep:true,label:"",onClick:()=>{}},
-    {label:"Activar",         onClick:()=>has&&chSt(activeIds,"active"),  color:GREEN},
-    {label:"Despublicar",     onClick:()=>has&&chSt(activeIds,"draft"),   color:"#F59E0B"},
-    {label:"Archivar",        onClick:()=>has&&archivar(activeIds),       color:"var(--mute)"},
-    {sep:true,label:"",onClick:()=>{}},
-    {label:"Eliminar",        onClick:()=>has&&eliminar(activeIds),       color:"#EF4444"},
-  ];
 
-  const syncMenu=CANALES.map(c=>({
-    label:(activeArt&&(activeArt as any)[c.key]?"✓ ":"○ ")+c.label,
-    color:activeArt&&(activeArt as any)[c.key]?c.color:"#CBD5E1",
-    onClick:()=>activeArt&&(activeArt as any)[c.key]&&notify("Sync "+c.label+" — próximamente"),
-  }));
-
-  const verMenu=[
-    ...CANALES.filter(c=>activeArt&&(activeArt as any)[c.key]).map(c=>({
-      label:"Abrir en "+c.label, color:c.color, onClick:()=>notify("Abriendo "+c.label+"..."),
-    })),
-    {label:"Mi web", color:"var(--mute)", onClick:()=>notify("Abriendo web...")},
-  ];
 
   // Render form tabs
   const renderForm=(form:Partial<Art>,setForm:(f:Partial<Art>)=>void,tab:string,setTab:(t:string)=>void)=>{
@@ -698,8 +812,63 @@ export default function AdminPublicaciones() {
       <td colSpan={99} style={{padding:0,borderBottom:`2px solid ${color}22`}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 0.48fr",background:"#F8F9FB",
           borderTop:`2px solid ${color}33`}}>
-          {/* Izquierda: form */}
+          {/* Izquierda: que falta + form */}
           <div style={{padding:"1rem 1.25rem",borderRight:"1px solid #EAECF0"}}>
+            {!isNew&&a&&problemas[a.id]!==undefined&&(
+              <div style={{
+                border:`1.5px solid ${problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}`,
+                background:problemas[a.id].length?"rgba(239,68,68,.06)":"rgba(22,163,74,.06)",
+                borderRadius:9, padding:"0.7rem 0.85rem", marginBottom:"0.9rem",
+              }}>
+                <div style={{fontSize:"0.82rem",fontWeight:800,
+                  color:problemas[a.id].length?ROJO_SYNC:VERDE_SYNC}}>
+                  {problemas[a.id].length===0
+                    ? "No falta nada para publicar en "+(canalConProblema[a.id]??"este canal")
+                    : problemas[a.id].length===1
+                      ? "Falta una cosa para publicar en "+(canalConProblema[a.id]??"este canal")
+                      : "Faltan "+problemas[a.id].length+" cosas para publicar en "+(canalConProblema[a.id]??"este canal")}
+                </div>
+                {problemas[a.id].length>0&&(
+                  <ul style={{margin:"6px 0 0",paddingLeft:18,fontSize:"0.78rem",color:"#374151"}}>
+                    {problemas[a.id].map((x,i)=>(
+                      <li key={i} style={{marginBottom:2}}>
+                        {x.mensaje}
+                        {" "}<span style={{color:"var(--gray-400)"}}>({x.etiqueta})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {problemas[a.id].length===0&&(
+                  <div style={{fontSize:"0.78rem",color:"#374151",marginTop:2}}>
+                    Seleccioná el canal en la columna Sync y usá Sincronizar.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Canales del articulo: activar o dar de baja sin salir de aca */}
+            {!isNew&&a&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:"0.9rem"}}>
+                <span style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
+                  textTransform:"uppercase",letterSpacing:".08em"}}>Canales</span>
+                {canales.map(c=>{
+                  const activo=canalActivoEn(a,c.channel);
+                  return (
+                    <button key={c.key} onClick={()=>togSync(a,c.key)}
+                      title={activo?"Dar de baja en este canal":"Activar este canal"}
+                      style={{
+                        padding:"3px 9px",borderRadius:999,fontSize:"0.72rem",fontWeight:700,
+                        cursor:"pointer",border:`1.5px solid ${c.color}`,
+                        background:activo?c.color:"#fff",color:activo?c.tc:c.color,
+                      }}>{activo?"✓ ":"+ "}{c.label}</button>
+                  );
+                })}
+                <span style={{fontSize:"0.7rem",color:"var(--gray-400)"}}>
+                  Activar lo suma al catálogo; publicar es Sincronizar.
+                </span>
+              </div>
+            )}
+
             {renderForm(eForm,(f)=>{setEForm(f);setDirty(true);},eTab,setETab)}
           </div>
           {/* Derecha: métricas */}
@@ -776,11 +945,6 @@ export default function AdminPublicaciones() {
           boxShadow:"0 1px 3px rgba(0,0,0,.04)",
         }}>
 
-          <Drop label="Artículo" items={artMenu}/>
-          <div style={{width:1,height:28,background:"var(--border)",margin:"0 2px"}}/>
-          <Drop label="Sync" items={syncMenu} dis={!activeArt}/>
-          <Drop label="Ver"  items={verMenu}  dis={!activeArt}/>
-          <div style={{width:1,height:28,background:"var(--border)",margin:"0 2px"}}/>
 
           {/* Columnas */}
           <div style={{position:"relative"}}>
@@ -806,7 +970,42 @@ export default function AdminPublicaciones() {
             )}
           </div>
 
+          <div style={{width:1,height:28,background:"var(--border)",margin:"0 6px"}}/>
+
+          {/* ACCIONES — directas, sin desplegables */}
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",padding:"6px 0"}}>
+            <Accion label="Nuevo" destacado color={color}
+              onClick={()=>{setShowWizard(true);setExp(null);}}/>
+            <Accion label="Publicar"  dis={!has} color={GREEN}
+              onClick={()=>chSt(activeIds,"active")}/>
+            <Accion label="Ocultar"   dis={!has} color="#F59E0B"
+              onClick={()=>chSt(activeIds,"draft")}/>
+            <Accion label="Archivar"  dis={!has} color="var(--mute)"
+              onClick={()=>archivar(activeIds)}/>
+            <Accion label="Duplicar"  dis={!has||sel.size>1} color={BLUE}
+              onClick={()=>activeArt&&clonar(activeArt)}/>
+            <Accion label="Eliminar"  dis={!has} color="#EF4444"
+              onClick={()=>eliminar(activeIds)}/>
+            <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
+            <Accion label={sincro?"Sincronizando…":"Sincronizar"+(chips.size?" ("+chips.size+")":"")}
+              destacado color={BLUE} dis={sincro||chips.size===0}
+              onClick={sincronizar}/>
+          </div>
+
           <div style={{flex:1}}/>
+
+          {/* Canales que no se ofrecen y por que: no aparecen en la tabla, asi
+              que sin esto la ausencia no se distingue de un olvido. */}
+          {canalesFuera.length>0&&(
+            <span title={canalesFuera.map(c=>c.nombre+": "+c.motivo).join(" · ")}
+              style={{fontSize:"0.72rem",color:"#B45309",fontWeight:600,
+                background:"rgba(245,158,11,.12)",padding:"3px 9px",borderRadius:999,
+                marginRight:8,cursor:"help",whiteSpace:"nowrap"}}>
+              {canalesFuera.length===1
+                ? canalesFuera[0].nombre+" no está disponible"
+                : canalesFuera.length+" canales no están disponibles"}
+            </span>
+          )}
 
           {/* Selección */}
           {sel.size>0&&(
@@ -917,11 +1116,18 @@ export default function AdminPublicaciones() {
                             background:cfg.bg,color:cfg.color,fontWeight:700}}>{cfg.label}</span>
                         </td>
                         <td style={{...td,padding:"0.4rem 0.5rem"}}>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"3px"}}>
-                            {CANALES.map(c=>(
-                              <Canal key={c.key} c={c} active={!!(a as any)[c.key]}
-                                onClick={()=>togSync(a,c.key)}/>
-                            ))}
+                          <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.max(1,Math.min(canales.length,4))},1fr)`,gap:"3px"}}>
+                            {canales.map(c=>{
+                              const est=estadoDeCanal(a.canales?{channels:a.canales} as any:undefined,c.channel);
+                              return (
+                                <Canal key={c.key} c={c} estado={est}
+                                  sel={chips.has(claveChip(a.id,c.channel))}
+                                  // Un chip en rojo no se selecciona: lo que hace
+                                  // falta ahi es ver que corregir, no reintentar
+                                  // lo mismo y que vuelva a fallar.
+                                  onClick={()=>est==="error"?verProblemas(a,c.channel):togChip(a.id,c.channel)}/>
+                              );
+                            })}
                           </div>
                         </td>
                         <td style={td}>{a.departamento_nombre||"—"}</td>
