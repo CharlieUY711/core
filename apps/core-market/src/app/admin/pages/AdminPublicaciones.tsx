@@ -335,7 +335,9 @@ function FichaDelProducto({ variantId, canales, nombreCanal, precioActual, guard
                   </>
                 ) : (
                   <td colSpan={4} style={{...tdc,color:"var(--gray-400)"}}>
-                    Sin datos de mercado en este canal
+                    {/* El motivo, no un "sin datos" que no distingue un
+                        producto que nadie mas vende de una consulta caida. */}
+                    {f?.mercadoMotivo ?? "Sin datos de mercado en este canal"}
                   </td>
                 )}
                 <td style={{padding:"3px 6px",textAlign:"center",whiteSpace:"nowrap"}}>

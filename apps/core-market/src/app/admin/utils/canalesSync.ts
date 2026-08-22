@@ -116,6 +116,14 @@ export interface FichaCanal {
   /** Puntos para usar al vender: caracteristicas y contexto de mercado. */
   argumentosDeVenta: string[];
   mercado: MercadoCanal | null;
+  /**
+   * Por que no hay datos de mercado, cuando no los hay.
+   *
+   * "Sin datos" a secas no deja distinguir un producto que nadie mas vende de
+   * una consulta que fallo, y son cosas distintas: la primera es informacion,
+   * la segunda es un problema.
+   */
+  mercadoMotivo: string | null;
 }
 
 export interface MotorCanal {
@@ -342,6 +350,7 @@ const motorMercadoLibre: MotorCanal = {
           moneda: String(p.moneda ?? ""), ofertas: Number(p.ofertas) || 0,
           competencia: Array.isArray(d.competencia) ? d.competencia : [],
         } : null,
+        mercadoMotivo: d.mercadoMotivo ?? null,
       };
     } catch (_) {
       return null;
@@ -438,6 +447,7 @@ export async function fichaPorTitulo(
         moneda: String(p.moneda ?? ""), ofertas: Number(p.ofertas) || 0,
         competencia: Array.isArray(d.competencia) ? d.competencia : [],
       } : null,
+      mercadoMotivo: d.mercadoMotivo ?? null,
     };
   } catch (_) {
     return null;

@@ -225,6 +225,7 @@ serve(async (req: Request) => {
       descripcion: c.descripcion,
       precios: c.precios,
       competencia: c.competencia,
+      mercadoMotivo: c.mercadoMotivo,
       descripcionSugerida: redactarFicha(c),
       argumentosDeVenta:   argumentosDeFicha(c),
     });
@@ -387,6 +388,7 @@ serve(async (req: Request) => {
       descripcion: delCatalogo?.descripcion ?? null,
       precios: delCatalogo?.precios ?? null,
       competencia: delCatalogo?.competencia ?? [],
+      mercadoMotivo: delCatalogo?.mercadoMotivo ?? null,
       descripcionSugerida: delCatalogo ? redactarFicha(delCatalogo) : null,
       argumentosDeVenta:   delCatalogo ? argumentosDeFicha(delCatalogo) : [],
     });
@@ -928,6 +930,7 @@ async function buscarEnCatalogo(
   caracteristicas: string[];
   descripcion: string | null;
   precios: { min: number; max: number; mediana: number; moneda: string; ofertas: number } | null;
+  mercadoMotivo: string | null;
   competencia: Array<{
     precio: number; moneda: string; envioGratis: boolean;
     vendidos: number; condicion: string; ganaLaCompra: boolean;
@@ -995,6 +998,10 @@ async function buscarEnCatalogo(
     // A que precio se vende hoy el mismo producto. Sirve para decidir con que
     // numero salir, que es una decision que hoy se toma a ciegas.
     let precios = null as null | { min: number; max: number; mediana: number; moneda: string; ofertas: number };
+    // Por que no hay datos de mercado, cuando no los hay. "Sin datos" a secas
+    // no deja distinguir un producto que nadie vende de una consulta que
+    // fallo, y son cosas distintas.
+    let mercadoMotivo: string | null = null;
     let competencia: Array<{
       precio: number; moneda: string; envioGratis: boolean;
       vendidos: number; condicion: string; ganaLaCompra: boolean;
@@ -1003,6 +1010,9 @@ async function buscarEnCatalogo(
       const ri = await fetch(`https://api.mercadolibre.com/products/${primero.id}/items`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!ri.ok) {
+        mercadoMotivo = `Mercado Libre respondio ${ri.status} al pedir las ofertas`;
+      }
       if (ri.ok) {
         const di = await ri.json();
 
@@ -1018,7 +1028,9 @@ async function buscarEnCatalogo(
             envioGratis:  it?.shipping?.free_shipping === true,
             vendidos:     Number(it?.sold_quantity) || 0,
             condicion:    String(it?.condition ?? ""),
-            ganaLaCompra: String(it?.id ?? "") === ganador,
+            // En este endpoint el identificador es item_id; `id` no existe y
+            // comparar contra undefined dejaba el ganador siempre en false.
+            ganaLaCompra: String(it?.item_id ?? it?.id ?? "") === ganador,
           }))
           .filter((c: any) => c.precio > 0)
           .sort((a: any, b: any) => a.precio - b.precio)
@@ -1039,11 +1051,37 @@ async function buscarEnCatalogo(
           };
         }
       }
-    } catch (_) { /* la comparativa es una ayuda, no un requisito */ }
+    } catch (e) {
+      mercadoMotivo = "No se pudo consultar las ofertas: " + (e as Error).message;
+    }
+
+    // Respaldo: la ficha del producto trae el ganador de la compra y, a veces,
+    // el rango de precios. Es menos que la lista completa pero es mejor que
+    // nada, y evita mostrar "sin datos" cuando el precio esta a la vista.
+    if (!precios) {
+      const bbw = ficha?.buy_box_winner ?? primero?.buy_box_winner;
+      const rango = ficha?.price_range ?? primero?.price_range;
+      const p1 = Number(bbw?.price);
+      const rmin = Number(rango?.min_price ?? rango?.min);
+      const rmax = Number(rango?.max_price ?? rango?.max);
+      const moneda = String(bbw?.currency_id ?? rango?.currency_id ?? "");
+      if (Number.isFinite(rmin) && rmin > 0 && Number.isFinite(rmax) && rmax > 0) {
+        precios = { min: rmin, max: rmax,
+                    mediana: Number.isFinite(p1) && p1 > 0 ? p1 : (rmin + rmax) / 2,
+                    moneda, ofertas: 0 };
+        mercadoMotivo = null;
+      } else if (Number.isFinite(p1) && p1 > 0) {
+        precios = { min: p1, max: p1, mediana: p1, moneda, ofertas: 1 };
+        mercadoMotivo = null;
+      } else if (!mercadoMotivo) {
+        mercadoMotivo = "Todavia nadie mas publica este producto";
+      }
+    }
 
     return {
       id: String(primero.id), nombre: String(primero.name ?? q),
       atributos: mapa, imagenes, caracteristicas, descripcion, precios, competencia,
+      mercadoMotivo,
     };
   } catch (_) {
     return null;
