@@ -72,11 +72,11 @@ begin
        set amount = p_price, updated_at = now()
      where variant_id = p_variant_id
        and channel is null
-       and currency = p_currency::char;
+       and currency = p_currency;
 
     if not found then
       insert into catalog_prices (variant_id, channel, currency, amount, priority)
-      values (p_variant_id, null, p_currency::char, p_price, 0);
+      values (p_variant_id, null, p_currency, p_price, 0);
     end if;
   end if;
 

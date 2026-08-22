@@ -70,7 +70,7 @@ as $$
 
   -- Solo lo que esta realmente publicado y a la venta.
   left join lateral (
-    select * from resolve_price(v.id, p_currency::char, l.channel)
+    select * from resolve_price(v.id, p_currency, l.channel)
   ) rp on true
 
   left join lateral (

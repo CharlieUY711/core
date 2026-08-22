@@ -76,7 +76,7 @@ begin
 
   -- Precio maestro: channel IS NULL aplica a todos los canales ---------------
   insert into catalog_prices (variant_id, channel, currency, amount, priority)
-  values (v_variant, null, p_currency::char, p_price, 0);
+  values (v_variant, null, p_currency, p_price, 0);
 
   -- Stock -------------------------------------------------------------------
   -- `available` es columna generada: no se escribe.

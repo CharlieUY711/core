@@ -72,7 +72,7 @@ as $$
   join catalog_items    i on i.id = v.item_id
 
   left join lateral (
-    select * from resolve_price(v.id, p_currency::char, l.channel)
+    select * from resolve_price(v.id, p_currency, l.channel)
   ) rp on true
 
   left join lateral (

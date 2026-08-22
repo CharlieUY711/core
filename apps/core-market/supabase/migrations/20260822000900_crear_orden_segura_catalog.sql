@@ -150,11 +150,11 @@ BEGIN
 
     -- ── Precio: se prueba UYU y luego USD, igual que soportaba el modelo viejo ──
     v_precio_row := NULL;
-    SELECT * INTO v_precio_row FROM resolve_price(v_product_id, 'UYU'::char, v_tipo);
+    SELECT * INTO v_precio_row FROM resolve_price(v_product_id, 'UYU'::text, v_tipo);
     IF v_precio_row.amount IS NOT NULL THEN
       v_price := v_precio_row.amount; v_currency := 'UYU';
     ELSE
-      SELECT * INTO v_precio_row FROM resolve_price(v_product_id, 'USD'::char, v_tipo);
+      SELECT * INTO v_precio_row FROM resolve_price(v_product_id, 'USD'::text, v_tipo);
       IF v_precio_row.amount IS NOT NULL THEN
         v_price := v_precio_row.amount; v_currency := 'USD';
       ELSE

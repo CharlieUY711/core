@@ -79,7 +79,7 @@ begin
   returning id into v_variant;
 
   insert into catalog_prices (variant_id, channel, currency, amount, priority)
-  values (v_variant, null, p_currency::char, p_price, 0);
+  values (v_variant, null, p_currency, p_price, 0);
 
   -- Media --------------------------------------------------------------------
   -- El orden importa: la primera imagen es la principal en la vidriera.
