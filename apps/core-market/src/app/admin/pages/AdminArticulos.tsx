@@ -4,6 +4,7 @@ import { buscarProductos, fichaPorTitulo,
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
+import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
@@ -1647,6 +1648,23 @@ export default function AdminArticulos(
           <div style={celdaAviso}>{avisos.tarjeta}</div>
         </div>
       </div>
+
+      {/* Lo que los canales saben del producto, debajo de la franja de avisos.
+          Va aca y no arriba porque es informacion traida, no cargada: se
+          consulta cuando hace falta y no compite con los campos que hay que
+          completar. Solo con el articulo ya creado: sin variante no hay a quien
+          preguntarle. */}
+      {articulo?.id && (
+        <div style={{ background:"#fff", padding:`${AIRE_LINEA}px 1.5rem`,
+          borderBottom:"1px solid #EAECF0" }}>
+          <DatosDelProducto
+            variantId={articulo.id}
+            precioActual={parseFloat(precio) || 0}
+            guardada={articulo.ficha ?? null}
+            fuente={articulo.fichaFuente ?? null}
+            traidaEl={articulo.fichaAt ?? null} />
+        </div>
+      )}
 
       {/* ABAJO: la informacion ampliada. Toda en la misma pagina.
           Saltar de pantalla en pantalla obliga a recordar lo que quedo atras
