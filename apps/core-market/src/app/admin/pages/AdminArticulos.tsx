@@ -71,77 +71,61 @@ const DESTINOS = [
 /*
  * Geometria de las cuatro columnas.
  *
- * Una sola medida manda: el alto, que lo fija la columna de medios -es la que
- * tiene forma propia, cuatro filas de tiles-. Todo lo demas se deriva de ahi.
+ * TODO SALE DEL LADO DEL TILE. Una sola constante en pixeles, y de ahi el alto
+ * de la fila, el ancho de medios y el de la tarjeta.
  *
- * VA EN CSS Y NO EN CONSTANTES DE JS a proposito. Con el alto fijo en pixeles
- * la fila se veia bien en un monitor y ocupaba media pantalla en una notebook:
- * el alto tiene que seguir a la ventana, y si el alto cambia, los anchos que
- * salen de el tienen que cambiar con el. calc() lo hace solo, en cada resize,
- * sin medir nada desde JS.
+ * Antes el alto era 56vh -relativo a la ventana- mientras el bloque de la
+ * tarjeta seguia siendo 285px. Al mezclar unidades su relacion cambiaba con
+ * cada pantalla, y por eso se veia distinto en el monitor que en la notebook:
+ * no era un ajuste fino que faltaba, era que no podian coincidir en las dos.
  *
- * La tarjeta de vista previa no se estira: es la misma que ve quien compra, y
- * deformarla seria mostrar algo que no existe. Mantiene proporcion, y por eso
- * su ancho sale del alto.
+ * Con todo en pixeles la fila mide lo mismo en cualquier pantalla. Si la
+ * ventana es baja, la pagina scrollea: preferible a que la fila se deforme
+ * distinto en cada maquina. El escalado del sistema operativo agranda o achica
+ * todo por igual, que es lo que se espera.
  */
 const GEOMETRIA = {
-  /** Sigue a la ventana, con piso y techo para que nunca quede absurda. */
-  alto: "clamp(400px, 56vh, 620px)",
+  /** La unica medida elegida. Todo lo demas se deriva. */
+  ladoTile: 80,
+  /** Espacio entre tiles: un cuarto del original. */
+  gapTiles: 4,
+  /** Tres columnas de medios. */
+  columnasMedios: 3,
+  /** Seis filas: cuatro de imagenes, dos de videos. */
+  filasMedios: 6,
   /**
    * Alto del bloque de la tarjeta que NO escala con el ancho.
    *
-   * La tarjeta es MarketCard, la misma del front: su imagen es cuadrada, asi
-   * que crece con el ancho, pero abajo lleva titulo, precio, rating y el
-   * boton de compra, que ocupan lo mismo sea cual sea el ancho.
-   *
-   * Por eso su alto NO es una proporcion del ancho -eso fue un error mio al
-   * estimarlo- sino ancho + este bloque. Invertido: dado el alto de la fila,
-   * el ancho que le corresponde es alto - bloque.
+   * MarketCard tiene imagen cuadrada -crece con el ancho- mas titulo, precio,
+   * rating y boton de compra, que ocupan lo mismo sea cual sea el ancho. Su
+   * alto es ancho + este bloque; invertido, el ancho que le corresponde a un
+   * alto dado es alto - bloque.
    */
   bloqueFijoTarjeta: 285,
-  /** Espacio entre tiles. Un cuarto del anterior: los tiles vacios ya se
-   *  leen como grilla sin necesidad de tanto aire entre ellos. */
-  gapTiles: 4,
-  /** Columnas de la grilla de medios. */
-  columnasMedios: 3,
-  /** Cuatro filas de imagenes y dos de videos. */
-  filasMedios: 6,
 } as const;
 
-/**
- * Ancho de la columna de medios.
- *
- * El alto la define: cuatro filas de tiles cuadrados mas sus espacios. De ahi
- * sale el lado del tile, y el ancho son tres de esos lados mas dos espacios.
- */
-const LADO_TILE    = `((${GEOMETRIA.alto} - ${(GEOMETRIA.filasMedios - 1) * GEOMETRIA.gapTiles}px) / ${GEOMETRIA.filasMedios})`;
-const ANCHO_MEDIOS = `calc(${LADO_TILE} * ${GEOMETRIA.columnasMedios} + ${(GEOMETRIA.columnasMedios - 1) * GEOMETRIA.gapTiles}px)`;
-/**
- * Ancho de la tarjeta: el que hace que su alto sea el de la fila.
- *
- * Se acota por abajo para que en pantallas bajas no quede una tarjeta
- * ridicula: antes que deformarla, se la deja mas chica que la fila.
- */
-/**
- * Ancho de la tarjeta: el que hace que su alto sea el de la fila.
- *
- * MarketCard tiene imagen cuadrada -crece con el ancho- mas un bloque de
- * titulo, precio, rating y compra que ocupa lo mismo siempre. Su alto es
- * ancho + ese bloque, asi que dado el alto de la fila el ancho correcto es
- * alto - bloque. Con eso la tarjeta llega justo al alto de la columna de
- * medios, que es la que manda.
- */
-const ANCHO_TARJETA = `clamp(200px, calc(${GEOMETRIA.alto} - ${GEOMETRIA.bloqueFijoTarjeta}px), 360px)`;
+/** Seis filas de tiles mas sus espacios. Es el alto de las cuatro columnas. */
+const ALTO_FILA = GEOMETRIA.ladoTile * GEOMETRIA.filasMedios
+                + GEOMETRIA.gapTiles * (GEOMETRIA.filasMedios - 1);
+
+/** Tres tiles mas sus espacios. */
+const ANCHO_MEDIOS = GEOMETRIA.ladoTile * GEOMETRIA.columnasMedios
+                   + GEOMETRIA.gapTiles * (GEOMETRIA.columnasMedios - 1);
+
+/** El ancho con el que la tarjeta llega justo al alto de la fila. */
+const ANCHO_TARJETA = ALTO_FILA - GEOMETRIA.bloqueFijoTarjeta;
+
 /** El precio son dos campos cortos: mas ancho seria espacio muerto. */
-const ANCHO_PRECIO  = "clamp(170px, 14vw, 230px)";
+const ANCHO_PRECIO = 230;
+
 /**
  * Piso de la descripcion.
  *
- * Es la columna que mas aire necesita -nombre, marca, condicion, taxonomia y
- * un texto largo- y tiene que ser la mas ancha. Con las otras tres derivadas
- * del alto se queda con el resto; el piso la protege en pantallas chicas.
+ * Es la columna que mas aire necesita y tiene que ser la mas ancha. Con las
+ * otras tres fijas se queda con el resto; el piso la protege en pantallas
+ * angostas, y si no entra, la fila scrollea en vez de apretarla.
  */
-const ANCHO_MIN_DESCRIPCION = "clamp(280px, 24vw, 460px)"
+const ANCHO_MIN_DESCRIPCION = 380;
 
 /**
  * Campo con su check "personalizado" adentro, a la derecha.
@@ -766,8 +750,8 @@ export default function AdminArticulos(
            * que mas aire necesita.
            */
           gridTemplateColumns:
-            `minmax(${ANCHO_MIN_DESCRIPCION}, 1fr) ${ANCHO_MEDIOS} ${ANCHO_PRECIO} ${ANCHO_TARJETA}`,
-          height: GEOMETRIA.alto,
+            `minmax(${ANCHO_MIN_DESCRIPCION}px, 1fr) ${ANCHO_MEDIOS}px ${ANCHO_PRECIO}px ${ANCHO_TARJETA}px`,
+          height: ALTO_FILA,
         }}>
           {/* Descripcion. Si su contenido pasa el alto comun, scrollea ella:
               estirar la fila entera para que entre un campo mas deja a las
