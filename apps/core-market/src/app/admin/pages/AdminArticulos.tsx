@@ -5,6 +5,7 @@ import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
+import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
@@ -774,6 +775,14 @@ export default function AdminArticulos(
     setCatId(articulo.categoria_id ?? "");
     setPublicarComo(articulo.status === "draft" ? "draft" : "active");
     if (articulo.condicion) { setCondicion(articulo.condicion); setCondicionMarketId(articulo.condicion); }
+    setDetalles({
+      garantia:    articulo.garantia    ?? "",
+      tipo_envio:  articulo.tipo_envio  ?? "",
+      peso:        articulo.peso        ?? "",
+      dimensiones: articulo.dimensiones ?? "",
+      material:    articulo.material    ?? "",
+      origen:      articulo.origen      ?? "",
+    });
     setCanales((articulo.canales ?? [])
       .filter((c: any) => c?.status !== "delisted")
       .map((c: any) => c.channel)
@@ -934,6 +943,19 @@ export default function AdminArticulos(
    * trabajo de varios minutos que nadie va a poder recuperar: el respaldo se
    * consume al usarlo, deshacer no se deshace.
    */
+  /**
+   * Garantía, envío, peso, dimensiones, material y origen.
+   *
+   * Un objeto y no seis useState porque el bloque que los dibuja ya trabaja con
+   * `{form, setForm}` — el mismo contrato que traía del editor de pestañas. Y
+   * porque se guardan juntos, en una sola llamada.
+   *
+   * Estaban en el editor viejo, se extrajeron, y quedaron sin usar: ponerlos
+   * habría mostrado campos que no persisten, porque ninguna RPC los escribía.
+   * Ahora los escribe `guardar_detalles_articulo`.
+   */
+  const [detalles, setDetalles] = useState<Record<string, string>>({});
+
   const [deshacerDesde, setDeshacerDesde] = useState<string | null>(null);
   const [confirmandoDeshacer, setConfirmandoDeshacer] = useState(false);
 
@@ -962,23 +984,6 @@ export default function AdminArticulos(
     return () => { vivo = false; };
   }, []);
 
-  // La tasa que se hereda depende de donde se clasifique el articulo, asi que
-  // se vuelve a resolver cada vez que eso cambia. En un articulo nuevo esto es
-  // lo unico que puede decir que tasa va a regir: todavia no existe la fila.
-  useEffect(() => {
-    let vivo = true;
-    supabase.rpc("tasa_por_taxonomia", {
-      p_departamento_id: deptoId || null,
-      p_categoria_id:    catId    || null,
-      p_subcategoria_id: subcatId || null,
-    }).then(({ data }) => {
-      const f = Array.isArray(data) ? data[0] : data;
-      if (!vivo || !f) return;
-      setTasaHeredada({ name: f.name, rate: Number(f.rate), origen: f.origen });
-    });
-    return () => { vivo = false; };
-  }, [deptoId, catId, subcatId]);
-
   // Al abrir un articulo existente, si tiene una excepcion declarada hay que
   // mostrarla: sin esto el selector diria "heredada" sobre un articulo que
   // decidio otra cosa.
@@ -993,6 +998,27 @@ export default function AdminArticulos(
     });
     return () => { vivo = false; };
   }, [articulo?.id]);
+
+  /**
+   * Los detalles van en su propia llamada.
+   *
+   * Que falle no invalida el alta: el articulo ya existe y esto se puede
+   * completar despues. Se avisa por consola y sigue, igual que la ficha.
+   */
+  const guardarDetalles = async (variantId: string) => {
+    const hay = Object.values(detalles).some(v => (v ?? "").trim() !== "");
+    if (!hay) return;
+    const { error } = await supabase.rpc("guardar_detalles_articulo", {
+      p_variant_id:  variantId,
+      p_garantia:    detalles.garantia    ?? null,
+      p_peso:        detalles.peso        ?? null,
+      p_dimensiones: detalles.dimensiones ?? null,
+      p_material:    detalles.material    ?? null,
+      p_origen:      detalles.origen      ?? null,
+      p_tipo_envio:  detalles.tipo_envio  ?? null,
+    });
+    if (error) console.warn("[detalles]", error.message);
+  };
 
   const deshacer = async () => {
     if (!articulo?.id) return;
@@ -1081,6 +1107,27 @@ export default function AdminArticulos(
   const [deptoId,       setDeptoId]       = useState("");
   const [catId,         setCatId]         = useState("");
   const [subcatId,      setSubcatId]      = useState("");
+
+  // La tasa que se hereda depende de donde se clasifique el articulo, asi que
+  // se vuelve a resolver cada vez que eso cambia. En un articulo nuevo esto es
+  // lo unico que puede decir que tasa va a regir: todavia no existe la fila.
+  //
+  // Va aca abajo y no arriba con los otros efectos porque lee deptoId, catId y
+  // subcatId: declararlos despues no es un detalle de orden, es un
+  // ReferenceError al montar. El build de Vite no lo mira; `tsc` si.
+  useEffect(() => {
+    let vivo = true;
+    supabase.rpc("tasa_por_taxonomia", {
+      p_departamento_id: deptoId || null,
+      p_categoria_id:    catId    || null,
+      p_subcategoria_id: subcatId || null,
+    }).then(({ data }) => {
+      const f = Array.isArray(data) ? data[0] : data;
+      if (!vivo || !f) return;
+      setTasaHeredada({ name: f.name, rate: Number(f.rate), origen: f.origen });
+    });
+    return () => { vivo = false; };
+  }, [deptoId, catId, subcatId]);
   // Aviso de que depto/cat/subcat vinieron de la predicción por ML, no de una
   // elección propia: apenas la persona toca cualquiera de los tres selectores
   // se apaga, para no seguir mostrando "sugerido" sobre algo que ya corrigió.
@@ -1311,6 +1358,7 @@ export default function AdminArticulos(
         await supabase.rpc("fijar_tasa_articulo", {
           p_variant_id: articulo.id, p_tax_rate_id: tasaId,
         });
+        await guardarDetalles(articulo.id);
         // Recien guardado: a partir de ahora hay un estado anterior al que
         // volver. Se marca aca y no se vuelve a consultar porque acabamos de
         // crearlo nosotros.
@@ -1334,6 +1382,8 @@ export default function AdminArticulos(
         p_videos:      videoUrls,
       });
       if (error) throw error;
+
+      if (nuevaVariante) await guardarDetalles(nuevaVariante as string);
 
       // La excepcion de tasa, solo si se eligio una. Sin esto el articulo
       // hereda, que es lo correcto y lo que pasa el 95% de las veces.
@@ -1976,6 +2026,21 @@ export default function AdminArticulos(
             traidaEl={articulo.fichaAt ?? null} />
         </div>
       )}
+
+      {/* Detalles del producto: garantía, envío, peso, medidas, material y
+          origen. Van debajo de la franja, con los datos traídos de los canales,
+          porque son la ficha del producto y no lo que define la venta —el
+          título, la foto, el precio— que está arriba.
+
+          Garantía y tipo de envío son datos que pide Mercado Libre. Hasta ahora
+          la única forma de completarlos era a mano en la base. */}
+      <div style={{ background:"#fff", padding:`${AIRE_LINEA}px 1.5rem`,
+        borderBottom:"1px solid #EAECF0" }}>
+        <div style={{ maxWidth: ANCHO_TARJETA_ELEGIDO * 3, display:"flex",
+          flexDirection:"column", gap:RITMO }}>
+          <BloqueDetalles form={detalles} setForm={setDetalles} lbl={lbl} inp={inp} />
+        </div>
+      </div>
 
       {/* ABAJO: la informacion ampliada. Toda en la misma pagina.
           Saltar de pantalla en pantalla obliga a recordar lo que quedo atras

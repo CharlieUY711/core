@@ -24,7 +24,8 @@ import React from "react";
 export interface PropsBloque {
   form: any;
   setForm: (f: any) => void;
-  color: string;
+  /** Sin uso desde que se fueron los checks; se deja opcional por compatibilidad. */
+  color?: string;
   lbl: React.CSSProperties;
   inp: React.CSSProperties;
 }
@@ -35,141 +36,81 @@ const columna: React.CSSProperties = {
 const dos: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem",
 };
-const check: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.82rem",
-};
 
-/* ── Monedas y tipo de cambio ───────────────────────────────────────────── */
-export function BloqueMonedas({ form, setForm, color, lbl, inp }: PropsBloque) {
-  const attrs = (form.atributos ?? {}) as any;
-  const set = (k: string, v: unknown) =>
-    setForm({ ...form, atributos: { ...(form.atributos || {}), [k]: v } });
-
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem",
-      padding: "0.5rem 0.75rem", background: "#F8F9FB", borderRadius: 8,
-      border: "1px solid #EAECF0", alignItems: "end",
-    }}>
-      <div>
-        <span style={lbl}>Moneda principal</span>
-        <select style={inp} value={form.moneda || "UYU"}
-          onChange={(e) => setForm({ ...form, moneda: e.target.value })}>
-          {["UYU", "USD", "EUR", "ARS", "BRL"].map((m) => <option key={m}>{m}</option>)}
-        </select>
-      </div>
-
-      <div>
-        <span style={lbl}>Moneda secundaria</span>
-        <select style={inp} value={attrs.moneda_sec || "USD"}
-          onChange={(e) => set("moneda_sec", e.target.value)}>
-          {["USD", "EUR", "UYU", "ARS", "BRL"].map((m) => <option key={m}>{m}</option>)}
-        </select>
-      </div>
-
-      {/*
-        Acá había un campo de tipo de cambio, un check "Auto" y una fuente con
-        fecha y hora, guardados en `atributos` de cada artículo — o sea que
-        cada artículo podía tener el suyo.
-
-        Un artículo no tiene tipo de cambio propio. El TC es de la plataforma y
-        es el oficial del BCU: lo escribe la Edge Function `tipo-de-cambio` en
-        `exchange_rates` y lo leen igual la vidriera y el checkout. La tienda
-        lo toma de la plataforma, no lo define.
-
-        Lo que sí es del artículo, y queda, es la moneda: en qué moneda está su
-        precio.
-      */}
-    </div>
-  );
-}
+/*
+ * Acá vivían BloqueMonedas y BloqueInventario. Se borran, no se reubican.
+ *
+ * El formulario unificado ya tiene lo suyo y mejor: la moneda salió del
+ * selector propio -que además convierte el precio al cambiarla-, el stock
+ * tiene su campo, y el estado de publicación es el par "Publicar ahora /
+ * Guardar borrador". Ponerlos igual habría dejado dos lugares para editar lo
+ * mismo, que es exactamente lo que esta extracción vino a terminar.
+ *
+ * El tipo de cambio se fue antes y por otro motivo: es de la plataforma, no
+ * del artículo (ver la Edge Function `tipo-de-cambio`).
+ *
+ * Lo único que sobrevive es lo que el formulario NO tenía.
+ */
 
 /* ── Detalles: identificación, garantía y envío ─────────────────────────── */
-export function BloqueDetalles({ form, setForm, color, lbl, inp }: PropsBloque) {
+export function BloqueDetalles({ form, setForm, lbl, inp }: PropsBloque) {
+  /*
+   * Cada campo es una columna de `catalog_producto_base` y se guarda con
+   * `guardar_detalles_articulo`. Antes esto tenía `garantia_tipo`,
+   * `garantia_meses`, `peso_kg` y `envio_gratis`, que no existen en ninguna
+   * tabla: se escribían y se perdían al recargar.
+   *
+   * Garantía y tipo de envío son datos que pide Mercado Libre. Hasta ahora la
+   * única forma de completarlos era a mano en la base.
+   */
+  const set = (k: string, v: string) => setForm({ ...form, [k]: v });
+
   return (
     <div style={columna}>
       <div style={dos}>
         <div>
-          <span style={lbl}>SKU</span>
-          <input style={inp} value={form.sku || ""}
-            onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+          <span style={lbl}>Garantía</span>
+          <input style={inp} value={form.garantia || ""} placeholder="12 meses de fábrica"
+            onChange={(e) => set("garantia", e.target.value)} />
         </div>
         <div>
-          <span style={lbl}>Garantía tipo</span>
-          <select style={inp} value={form.garantia_tipo || ""}
-            onChange={(e) => setForm({ ...form, garantia_tipo: e.target.value })}>
-            <option value="">Sin garantía</option>
-            <option value="vendedor">Del vendedor</option>
-            <option value="fabrica">De fábrica</option>
+          <span style={lbl}>Tipo de envío</span>
+          <select style={inp} value={form.tipo_envio || ""}
+            onChange={(e) => set("tipo_envio", e.target.value)}>
+            <option value="">Sin definir</option>
+            <option value="retiro">Solo retiro</option>
+            <option value="propio">Envío propio</option>
+            <option value="courier">Courier / paquetería</option>
           </select>
         </div>
       </div>
 
       <div style={dos}>
         <div>
-          <span style={lbl}>Garantía (meses)</span>
-          <input type="number" min={0} style={inp} value={form.garantia_meses || ""}
-            onChange={(e) => setForm({ ...form, garantia_meses: parseInt(e.target.value) || undefined })} />
+          <span style={lbl}>Peso</span>
+          <input style={inp} value={form.peso || ""} placeholder="1,2 kg"
+            onChange={(e) => set("peso", e.target.value)} />
         </div>
         <div>
-          <span style={lbl}>Peso kg</span>
-          <input type="number" min={0} step="0.1" style={inp} value={form.peso_kg || ""}
-            onChange={(e) => setForm({ ...form, peso_kg: parseFloat(e.target.value) || undefined })} />
+          <span style={lbl}>Dimensiones</span>
+          <input style={inp} value={form.dimensiones || ""} placeholder="30 × 20 × 10 cm"
+            onChange={(e) => set("dimensiones", e.target.value)} />
         </div>
       </div>
 
-      <div>
-        <span style={lbl}>Tipo de envío</span>
-        <select style={inp} value={form.envio_tipo || "retiro"}
-          onChange={(e) => setForm({ ...form, envio_tipo: e.target.value })}>
-          <option value="retiro">Solo retiro</option>
-          <option value="custom">Envío propio</option>
-          <option value="meli_like">Tipo MercadoEnvíos</option>
-          <option value="pickup">Pickup point</option>
-        </select>
-      </div>
-
-      <label style={check}>
-        <input type="checkbox" checked={!!form.envio_gratis} style={{ accentColor: color }}
-          onChange={(e) => setForm({ ...form, envio_gratis: e.target.checked })} />
-        Envío gratis
-      </label>
-    </div>
-  );
-}
-
-/* ── Inventario y estado de publicación ─────────────────────────────────── */
-export function BloqueInventario({ form, setForm, color, lbl, inp }: PropsBloque) {
-  return (
-    <div style={columna}>
       <div style={dos}>
         <div>
-          <span style={lbl}>Stock</span>
-          {/* Deshabilitado cuando es ilimitado, no oculto: el número anterior
-              sigue a la vista para cuando se desmarque. */}
-          <input type="number" min={0} style={inp}
-            value={form.stock ?? 1}
-            disabled={!!form.stock_ilimitado}
-            onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })} />
+          <span style={lbl}>Material</span>
+          <input style={inp} value={form.material || ""} placeholder="Aluminio y vidrio"
+            onChange={(e) => set("material", e.target.value)} />
         </div>
-        <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
-          <label style={check}>
-            <input type="checkbox" checked={!!form.stock_ilimitado} style={{ accentColor: color }}
-              onChange={(e) => setForm({ ...form, stock_ilimitado: e.target.checked })} />
-            Ilimitado
-          </label>
+        <div>
+          <span style={lbl}>Origen</span>
+          <input style={inp} value={form.origen || ""} placeholder="Importado de China"
+            onChange={(e) => set("origen", e.target.value)} />
         </div>
       </div>
 
-      <div>
-        <span style={lbl}>Estado de publicación</span>
-        <select style={inp} value={form.status || "draft"}
-          onChange={(e) => setForm({ ...form, status: e.target.value })}>
-          <option value="draft">Borrador</option>
-          <option value="active">Publicar ahora</option>
-          <option value="paused">Pausado</option>
-        </select>
-      </div>
     </div>
   );
 }

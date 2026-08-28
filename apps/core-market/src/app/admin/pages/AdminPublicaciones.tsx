@@ -108,7 +108,12 @@ interface Art {
   created_at:string; published_at?:string; deleted_at?:string;
   baja_prevista?:string; precio_original?:number; sku?:string;
   stock_ilimitado?:boolean; envio_tipo?:string; envio_gratis?:boolean;
-  peso_kg?:number; garantia_tipo?:string; garantia_meses?:number;
+  /* garantia/tipo_envio/peso/dimensiones/material/origen son columnas reales de
+     catalog_producto_base. Antes habia aca `peso_kg`, `garantia_tipo` y
+     `garantia_meses`, que no existen en ninguna tabla: el editor viejo los
+     mostraba y se perdian al recargar. */
+  garantia?:string|null; tipo_envio?:string|null; peso?:string|null;
+  dimensiones?:string|null; material?:string|null; origen?:string|null;
   sync_ml?:boolean; sync_meta?:boolean; sync_wa?:boolean; sync_web?:boolean;
   // Añadidos por la migración a catalog_*: `id` es el variant_id, y estos dos
   // conservan lo que la forma plana de Art no puede representar.
@@ -142,6 +147,12 @@ function toArt(p:Publicacion):Art {
     ficha:       (p as any).ficha ?? null,
     fichaFuente: (p as any).ficha_fuente ?? null,
     fichaAt:     (p as any).ficha_at ?? null,
+    garantia:    (p as any).garantia    ?? null,
+    tipo_envio:  (p as any).tipo_envio  ?? null,
+    peso:        (p as any).peso        ?? null,
+    dimensiones: (p as any).dimensiones ?? null,
+    material:    (p as any).material    ?? null,
+    origen:      (p as any).origen      ?? null,
     sync_market: p.tipo === "market",
     sync_second: p.tipo === "secondhand",
     sync_ml:     canalActivo(p,"mercadolibre"),

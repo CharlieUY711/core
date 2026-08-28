@@ -58,6 +58,15 @@ export interface Publicacion {
   ficha: Record<string, any> | null;
   ficha_fuente: string | null;
   ficha_at: string | null;
+  /* Detalles del producto. Viven en `catalog_producto_base` y hasta ahora
+     ninguna consulta los traia: el formulario los mostraba vacios aunque la
+     base tuviera datos. */
+  garantia: string | null;
+  tipo_envio: string | null;
+  peso: string | null;
+  dimensiones: string | null;
+  material: string | null;
+  origen: string | null;
   created_at: string;
   updated_at: string;
 }
