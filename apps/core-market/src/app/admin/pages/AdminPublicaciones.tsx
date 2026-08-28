@@ -322,6 +322,23 @@ export default function AdminPublicaciones() {
   // (Market / Second Hand). "Market +" y "Second +" funcionan siempre, sin
   // depender de que haya filas seleccionadas.
   const [wizardTipo,setWizardTipo]=useState<"market"|"secondhand">("market");
+
+  /**
+   * Lo que el formulario esta escribiendo, en vivo.
+   *
+   * Sin esto, dar de alta era escribir en un formulario y esperar a guardar
+   * para ver si la fila queda como uno esperaba. Con el renglon arriba se ve
+   * mientras se escribe: el titulo cortandose, el precio con su moneda, la
+   * foto que quedo de portada.
+   *
+   * Sirve igual al editar. La regla es que mientras se edita la lista no se
+   * reordena -reordenar debajo del cursor es perder el lugar-, pero la fila
+   * del articulo que se esta tocando si tiene que reflejar lo que se toca.
+   */
+  const [resumen,setResumen]=useState<{
+    nombre:string; precio:number; moneda:string; stock:number;
+    imagen:string|null; estado:string; canales:string[]; tipo:string;
+  }|null>(null);
   const [arts,   setArts]   = useState<Art[]>([]);
   const [deptos, setDeptos] = useState<any[]>([]);
   const [cats,   setCats]   = useState<any[]>([]);
@@ -878,9 +895,10 @@ export default function AdminPublicaciones() {
               <AdminArticulos
                 key={a.id}
                 articulo={a}
+                onResumen={setResumen}
                 tipoInicial={(a as any).tipo === "secondhand" ? "secondhand" : "market"}
-                onCancel={()=>setExp(null)}
-                onFinish={()=>{setExp(null);reload();}}
+                onCancel={()=>{setExp(null);setResumen(null);}}
+                onFinish={()=>{setExp(null);setResumen(null);reload();}}
               />
             )}
 
@@ -948,9 +966,9 @@ export default function AdminPublicaciones() {
                 de un artículo en el canal correspondiente. Sin `dis`: deben
                 funcionar siempre, sin depender de que haya filas elegidas. */}
             <Accion label="Market +" destacado color={BLUE}
-              onClick={()=>{setWizardTipo("market");setShowWizard(true);setExp(null);}}/>
+              onClick={()=>{setWizardTipo("market");setShowWizard(true);setExp(null);setResumen(null);}}/>
             <Accion label="Second +" destacado color={GREEN}
-              onClick={()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);}}/>
+              onClick={()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);setResumen(null);}}/>
             <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
             <Accion label="Publicar"  dis={!has} color={GREEN}
               onClick={()=>chSt(activeIds,"active")}/>
@@ -1017,7 +1035,7 @@ export default function AdminPublicaciones() {
           {(showWizard||exp)&&(
             <>
               <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
-              <button onClick={()=>{setShowWizard(false);setExp(null);}}
+              <button onClick={()=>{setShowWizard(false);setExp(null);setResumen(null);}}
                 style={{border:"none",background:"none",padding:"0 6px",cursor:"pointer",
                   color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,
                   fontFamily:"DM Sans,sans-serif",whiteSpace:"nowrap"}}>
@@ -1117,16 +1135,69 @@ export default function AdminPublicaciones() {
                 {/* El alta va como una fila mas: la tabla no cambia de forma
                     para recibirla, y al terminar la fila real ocupa su lugar. */}
                 {showWizard&&(
-                  <tr>
-                    <td colSpan={99} style={{padding:0,background:"#fff"}}>
-                      <AdminArticulos
-                        key={wizardTipo}
-                        tipoInicial={wizardTipo}
-                        onCancel={()=>setShowWizard(false)}
-                        onFinish={()=>{setShowWizard(false);reload();}}
-                      />
-                    </td>
-                  </tr>
+                  <>
+                    {/* El renglon del articulo que se esta dando de alta, arriba
+                        del formulario y completandose mientras se escribe.
+
+                        Es la misma fila que va a quedar: mismas columnas, mismo
+                        formato de precio, misma foto de portada. Por eso se ve
+                        el titulo cortandose antes de guardar, y no despues.
+
+                        Lo que todavia no se escribio se muestra con una raya
+                        gris, no en blanco: un hueco no dice si falta o si no
+                        aplica. */}
+                    <tr style={{
+                      background:"#fff",
+                      borderLeft:`3px solid ${color}`,
+                      // Punteado hasta que exista de verdad: es una fila que
+                      // todavia no esta guardada, y tiene que verse asi.
+                      outline:`1px dashed ${color}55`, outlineOffset:-1,
+                    }}>
+                      <td style={td}/>
+                      <td style={td}>
+                        <div style={{width:38,height:38,borderRadius:6,overflow:"hidden",background:"#F3F4F6"}}>
+                          {resumen?.imagen
+                            ?<img src={resumen.imagen} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                            :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",
+                              justifyContent:"center",fontSize:"1.1rem",opacity:.5}}>
+                              {wizardTipo==="secondhand"?"♻️":"🛍"}
+                            </div>}
+                        </div>
+                      </td>
+                      <td style={{...td,maxWidth:200}}>
+                        <div style={{fontWeight:600,color:resumen?.nombre?"#111":"var(--gray-400)",
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {resumen?.nombre||"Sin título todavía"}
+                        </div>
+                      </td>
+                      <td style={{...td,fontWeight:700,color:resumen?.precio?color:"var(--gray-400)"}}>
+                        {resumen?.precio?fmtP(resumen.precio,resumen.moneda):"—"}
+                      </td>
+                      <td style={{...td,textAlign:"center",color:"var(--gray-400)"}}>
+                        {resumen?.stock??"—"}
+                      </td>
+                      <td style={td}>
+                        <span style={{fontSize:"11px",padding:"2px 8px",borderRadius:20,
+                          background:"var(--gray-100,#F3F4F6)",color:"var(--gray-400)",fontWeight:700}}>
+                          Sin guardar
+                        </span>
+                      </td>
+                      <td colSpan={99} style={{...td,color:"var(--gray-400)",fontSize:"0.78rem"}}>
+                        Se completa mientras escribís. Al guardar ocupa su lugar en la lista.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={99} style={{padding:0,background:"#fff"}}>
+                        <AdminArticulos
+                          key={wizardTipo}
+                          tipoInicial={wizardTipo}
+                          onResumen={setResumen}
+                          onCancel={()=>{setShowWizard(false);setResumen(null);}}
+                          onFinish={()=>{setShowWizard(false);setResumen(null);reload();}}
+                        />
+                      </td>
+                    </tr>
+                  </>
                 )}
                 {showWizard?null:filtered.length===0?(
                   <tr><td colSpan={99} style={{textAlign:"center",padding:"3rem"}}>
@@ -1136,20 +1207,39 @@ export default function AdminPublicaciones() {
                       Usá el menú Artículo → + Nuevo artículo para empezar
                     </div>
                   </td></tr>
-                ):visibles.map(a=>{
+                ):visibles.map(aOrig=>{
+                  const isE=exp===aOrig.id;
+                  /*
+                   * Mientras se edita, la fila muestra lo que el formulario
+                   * tiene ahora, no lo que hay guardado. Ver el titulo
+                   * cortandose o el precio con su moneda es justo lo que la
+                   * fila puede decir y el formulario no.
+                   *
+                   * La lista NO se reordena por esto: el orden se recalcula
+                   * recien al guardar. Reordenar debajo del cursor es hacerle
+                   * perder el lugar a quien esta trabajando.
+                   */
+                  const a=(isE&&resumen)
+                    ? {...aOrig,
+                       nombre:           resumen.nombre,
+                       precio:           resumen.precio,
+                       moneda:           resumen.moneda,
+                       stock:            resumen.stock,
+                       imagen_principal: resumen.imagen ?? aOrig.imagen_principal,
+                       status:           resumen.estado}
+                    : aOrig;
                   const cfg=S[a.status]||S.draft;
-                  const isE=exp===a.id;
-                  const isS=sel.has(a.id);
+                  const isS=sel.has(aOrig.id);
                   const ctr=a.impresiones?Math.round((a.clicks||0)/a.impresiones*100):0;
                   return(
                     <>
-                      <tr key={a.id} style={{
+                      <tr key={aOrig.id} style={{
                         background:isE?`${color}06`:isS?`${color}03`:"#fff",
                         borderLeft:isE?`3px solid ${color}`:"3px solid transparent",
                         transition:"all .1s",
                       }}>
                         <td style={td}><input type="checkbox" checked={isS}
-                          onChange={()=>togSel(a.id)} style={{accentColor:color}}/></td>
+                          onChange={()=>togSel(aOrig.id)} style={{accentColor:color}}/></td>
                         <td style={td}>
                           <div style={{width:38,height:38,borderRadius:6,overflow:"hidden",background:"#F3F4F6"}}>
                             {a.imagen_principal
@@ -1178,16 +1268,16 @@ export default function AdminPublicaciones() {
                               const est=estadoDeCanal(a.canales?{channels:a.canales} as any:undefined,c.channel);
                               return (
                                 <Canal key={c.key} c={c} estado={est}
-                                  sel={chips.has(claveChip(a.id,c.channel))}
-                                  ocupado={sincronizando.has(claveChip(a.id,c.channel))}
+                                  sel={chips.has(claveChip(aOrig.id,c.channel))}
+                                  ocupado={sincronizando.has(claveChip(aOrig.id,c.channel))}
                                   // Un chip en rojo hace las dos cosas: queda
                                   // elegido y abre lo que hay que corregir. Que
                                   // no se pudiera elegir bloqueaba justo el
                                   // reintento despues de arreglarlo, y el boton
                                   // quedaba apagado sin decir por que.
                                   onClick={()=>{
-                                    togChip(a.id,c.channel);
-                                    if(est==="error")verProblemas(a,c.channel);
+                                    togChip(aOrig.id,c.channel);
+                                    if(est==="error")verProblemas(aOrig,c.channel);
                                   }}/>
                               );
                             })}
@@ -1203,14 +1293,14 @@ export default function AdminPublicaciones() {
                         {vcols.has("mkt1")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
                         {vcols.has("mkt2")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
                         <td style={td}>
-                          <button onClick={()=>togExp(a.id)} style={{
+                          <button onClick={()=>{togExp(aOrig.id);setResumen(null);}} style={{
                             background:"none",border:"none",cursor:"pointer",
                             color:isE?color:"#CBD5E1",fontSize:"12px",padding:"2px 4px",
                             transform:isE?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",
                           }}>▼</button>
                         </td>
                       </tr>
-                      {isE&&renderPanel(a,false)}
+                      {isE&&renderPanel(aOrig,false)}
                     </>
                   );
                 })}

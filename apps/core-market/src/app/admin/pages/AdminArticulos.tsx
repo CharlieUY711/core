@@ -920,6 +920,23 @@ export default function AdminArticulos(
    * categoria, departamento, default- y sirve para poder mostrar cual esta
    * rigiendo aunque nadie haya elegido nada.
    */
+  /**
+   * Deshacer el ultimo cambio.
+   *
+   * La base guarda una sola version anterior y `revertir_ultimo_cambio` la
+   * restaura. Eso existe y funciona desde hace dias; lo que faltaba era poder
+   * llegar.
+   *
+   * `deshacerDesde` es CUANDO se tomo el respaldo, no un booleano: "deshacer" a
+   * secas no dice que se va a perder, "deshacer el cambio de las 14:32" si.
+   *
+   * Y pide confirmacion, porque descarta lo que hay ahora — que puede ser
+   * trabajo de varios minutos que nadie va a poder recuperar: el respaldo se
+   * consume al usarlo, deshacer no se deshace.
+   */
+  const [deshacerDesde, setDeshacerDesde] = useState<string | null>(null);
+  const [confirmandoDeshacer, setConfirmandoDeshacer] = useState(false);
+
   const [tasas, setTasas] = useState<{ id: string; code: string; name: string; rate: number }[]>([]);
   const [tasaId, setTasaId] = useState<string | null>(null);
   const [tasaHeredada, setTasaHeredada] = useState<{ name: string; rate: number; origen: string } | null>(null);
@@ -971,8 +988,29 @@ export default function AdminArticulos(
     supabase.rpc("tasa_de_articulo", { p_variant_id: articulo.id }).then(({ data }) => {
       if (vivo && data) setTasaId(data as string);
     });
+    supabase.rpc("hay_deshacer", { p_variant_id: articulo.id }).then(({ data }) => {
+      if (vivo) setDeshacerDesde((data as string) ?? null);
+    });
     return () => { vivo = false; };
   }, [articulo?.id]);
+
+  const deshacer = async () => {
+    if (!articulo?.id) return;
+    setLoading(true);
+    const { error } = await supabase.rpc("revertir_ultimo_cambio", { p_variant_id: articulo.id });
+    setLoading(false);
+    if (error) {
+      // El caso normal: alguien ya lo deshizo en otra pestaña. Se dice lo que
+      // pasa y se apaga el boton, en vez de dejarlo ofreciendo algo que ya no
+      // esta.
+      notify(error.message || "No hay un cambio anterior para deshacer.", false);
+      setDeshacerDesde(null);
+      setConfirmandoDeshacer(false);
+      return;
+    }
+    notify("Se volvió al estado anterior");
+    setTimeout(() => salir(true), 900);
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -1273,6 +1311,10 @@ export default function AdminArticulos(
         await supabase.rpc("fijar_tasa_articulo", {
           p_variant_id: articulo.id, p_tax_rate_id: tasaId,
         });
+        // Recien guardado: a partir de ahora hay un estado anterior al que
+        // volver. Se marca aca y no se vuelve a consultar porque acabamos de
+        // crearlo nosotros.
+        setDeshacerDesde(new Date().toISOString());
         notify("Cambios guardados");
         setTimeout(() => salir(true), 900);
         return;
@@ -2077,13 +2119,50 @@ export default function AdminArticulos(
 
       {/* Una sola accion: no hay pasos que recorrer. */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <button
-          onClick={() => salir(false)}
-          style={{ padding:"0.65rem 1.25rem", background:"transparent",
-            border:"1.5px solid var(--border)", borderRadius:10,
-            color:"var(--mute)", cursor:"pointer", fontSize:"0.875rem" }}>
-          Descartar y volver
-        </button>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          <button
+            onClick={() => salir(false)}
+            style={{ padding:"0.65rem 1.25rem", background:"transparent",
+              border:"1.5px solid var(--border)", borderRadius:10,
+              color:"var(--mute)", cursor:"pointer", fontSize:"0.875rem" }}>
+            Descartar y volver
+          </button>
+
+          {/* Deshacer: sólo aparece si hay un estado anterior guardado.
+              Ofrecerlo siempre y fallar cuando no hay respaldo sería ofrecer
+              algo que no se puede hacer. */}
+          {deshacerDesde && (
+            confirmandoDeshacer ? (
+              <span style={{ display:"flex", gap:"0.6rem", alignItems:"center",
+                padding:"0.5rem 0.85rem", borderRadius:10,
+                background:"#FFFBEB", border:"1.5px solid #FCD34D" }}>
+                <span style={{ fontSize:"0.8rem", color:"#92400E" }}>
+                  Se pierde lo que hay ahora y no se puede volver atrás.
+                </span>
+                <button onClick={deshacer} disabled={loading} style={{
+                  border:"none", background:"#92400E", color:"#fff", cursor:"pointer",
+                  padding:"0.35rem 0.8rem", borderRadius:8, fontSize:"0.78rem", fontWeight:700 }}>
+                  Deshacer
+                </button>
+                <button onClick={() => setConfirmandoDeshacer(false)} style={{
+                  border:"none", background:"none", cursor:"pointer",
+                  color:"#92400E", fontSize:"0.78rem", textDecoration:"underline" }}>
+                  No
+                </button>
+              </span>
+            ) : (
+              <button onClick={() => setConfirmandoDeshacer(true)} title={
+                `Vuelve al estado del ${new Date(deshacerDesde).toLocaleString("es-UY")}`
+              } style={{
+                border:"none", background:"none", padding:0, cursor:"pointer",
+                color:"var(--mute)", fontSize:"0.82rem", textDecoration:"underline" }}>
+                Deshacer el cambio de las{" "}
+                {new Date(deshacerDesde).toLocaleTimeString("es-UY",
+                  { hour:"2-digit", minute:"2-digit" })}
+              </button>
+            )
+          )}
+        </div>
 
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
           {/* Lo que falta se dice antes de apretar, no despues. */}
