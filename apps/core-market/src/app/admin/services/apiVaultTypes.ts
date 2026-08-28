@@ -145,6 +145,8 @@ export const VAULT_PLATFORM_DEFS: VaultPlatformDef[] = [
   { name: 'ActiveCampaign',  category: 'CRM',           icon: '📣' },
   { name: 'Klaviyo',         category: 'CRM',           icon: '📧' },
   { name: 'Mailchimp',       category: 'CRM',           icon: '🐵' },
+  // Búsqueda
+  { name: 'Serper.dev',      category: 'Búsqueda',      icon: '🔎' },
   // Mapas & Geo
   { name: 'Google Maps',     category: 'Mapas',         icon: '📍' },
   { name: 'Mapbox',          category: 'Mapas',         icon: '🗺️' },
@@ -171,7 +173,7 @@ export const VAULT_PLATFORMS = VAULT_PLATFORM_DEFS.map(p => p.name)
 
 export const VAULT_PLATFORM_CATEGORIES = [
   'AI & ML', 'Pagos', 'Cloud', 'Base de datos', 'Deploy',
-  'Email & SMS', 'Comunicación', 'Monitoring', 'CRM', 'Mapas',
+  'Email & SMS', 'Comunicación', 'Monitoring', 'CRM', 'Búsqueda', 'Mapas',
   'Auth', 'Storage', 'eCommerce', 'Otro',
 ]
 

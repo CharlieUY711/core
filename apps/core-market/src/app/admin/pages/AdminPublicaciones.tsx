@@ -60,8 +60,10 @@ const canalUI = (channel:string):CanalUI => {
 };
 
 // Market y Second Hand NO son canales de distribucion: son el tipo del
-// articulo (nuevo o usado) y son excluyentes entre si. Viven aca solo para que
-// toArt y clonar puedan resolver a que lista pertenece cada publicacion.
+// articulo (nuevo o usado) y son excluyentes entre si. Ya no se usan para
+// resolver nada (DEC-012, 2026-08-25): toArt y el filtro por pestaña leen
+// `tipo` directo de catalog_producto_base. Queda sin uso, sin borrar, por si
+// algun render mas abajo todavia la referenciaba por nombre de canal.
 const CANALES_BASE = [
   {key:"sync_market", channel:"market",     label:"Market",      color:ACCENT, tc:"#fff"},
   {key:"sync_second", channel:"secondhand", label:"Second Hand", color:GREEN,  tc:"#fff"},
@@ -131,7 +133,7 @@ function toArt(p:Publicacion):Art {
     nombre:      p.title,
     descripcion: p.description ?? undefined,
     sku:         p.sku ?? undefined,
-    tipo:        canalActivo(p,"secondhand") && !canalActivo(p,"market") ? "secondhand" : "market",
+    tipo:        p.tipo,
     status:      p.item_status,
     precio:      p.master_price ?? 0,
     moneda:      p.master_currency,
@@ -142,8 +144,8 @@ function toArt(p:Publicacion):Art {
     ficha:       (p as any).ficha ?? null,
     fichaFuente: (p as any).ficha_fuente ?? null,
     fichaAt:     (p as any).ficha_at ?? null,
-    sync_market: canalActivo(p,"market"),
-    sync_second: canalActivo(p,"secondhand"),
+    sync_market: p.tipo === "market",
+    sync_second: p.tipo === "secondhand",
     sync_ml:     canalActivo(p,"mercadolibre"),
     sync_meta:   canalActivo(p,"meta"),
     sync_wa:     canalActivo(p,"whatsapp"),
@@ -593,6 +595,10 @@ export default function AdminPublicaciones() {
   // El alta se muestra dentro de esta misma pantalla: el usuario no pierde
   // de vista su lista ni los filtros que tenia puestos.
   const [showWizard,setShowWizard]=useState(false);
+  // Qué toolbar-button abrió el alta: define en qué canal arranca el wizard
+  // (Market / Second Hand). "Market +" y "Second +" funcionan siempre, sin
+  // depender de que haya filas seleccionadas.
+  const [wizardTipo,setWizardTipo]=useState<"market"|"secondhand">("market");
   const [arts,   setArts]   = useState<Art[]>([]);
   const [deptos, setDeptos] = useState<any[]>([]);
   const [cats,   setCats]   = useState<any[]>([]);
@@ -875,7 +881,10 @@ export default function AdminPublicaciones() {
   };
 
   const togSync=async(a:Art,k:string)=>{
-    const canal=[...CANALES_BASE,...canales].find(c=>c.key===k);
+    // sync_market/sync_second ya no son togglables: tipo se fija al crear el
+    // producto (DEC-012). Solo los canales reales pasan por acá.
+    if(k==="sync_market"||k==="sync_second")return;
+    const canal=canales.find(c=>c.key===k);
     if(!canal)return;
     const v=!(a as any)[k];
     const{error}=await supabase.rpc("toggle_canal_publicacion",
@@ -895,9 +904,9 @@ export default function AdminPublicaciones() {
   };
   const clonar=async(a:Art)=>{
     const{error}=await supabase.rpc("crear_publicacion",{
-      p_title:a.nombre+" (copia)", p_price:a.precio, p_currency:a.moneda||"UYU",
+      p_title:a.nombre+" (copia)", p_price:a.precio, p_tipo:a.tipo, p_currency:a.moneda||"UYU",
       p_description:a.descripcion??null, p_stock:a.stock??0,
-      p_channels:[...CANALES_BASE,...canales].filter(c=>(a as any)[c.key]).map(c=>c.channel),
+      p_channels:canales.filter(c=>(a as any)[c.key]).map(c=>c.channel),
       p_status:"draft",
     });
     if(error){notify(error.message,false);return;}
@@ -927,9 +936,10 @@ export default function AdminPublicaciones() {
   };
 
   let filtered=arts.filter(a=>{
-    // Por canal, no por `tipo`: un producto publicado en Market y en Second
-    // Hand debe aparecer en las dos vistas, no solo en una.
-    if(!(a.canales||[]).some(c=>c.channel===tipo&&c.status!=="delisted"))return false;
+    // Por `tipo` (DEC-012): Market y Second Hand son excluyentes -- un
+    // producto vive en una lista o en la otra, nunca en las dos. Antes se
+    // simulaba con un canal falso; ver catalog_producto_base.tipo.
+    if(a.tipo!==tipo)return false;
     if(fst&&a.status!==fst)return false;
     return true;
   });
@@ -1437,25 +1447,6 @@ export default function AdminPublicaciones() {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",height:"100%"}}>
 
-
-      {/* STATS tira compacta */}
-      <div style={{display:"flex",gap:"0.5rem"}}>
-        {[
-          {label:"Total",     value:stats.total,      c:BLUE},
-          {label:"Activos",   value:stats.activos,    c:GREEN},
-          {label:"Borradores",value:stats.borradores, c:"#F59E0B"},
-          {label:"Clicks",    value:stats.clicks,     c:color},
-        ].map(s=>(
-          <div key={s.label} style={{background:"#fff",borderRadius:8,flex:1,
-            padding:"0.55rem 1rem",border:"1px solid #F0F0F0",
-            borderLeft:`3px solid ${s.c}`,display:"flex",flexDirection:"column",gap:"2px"}}>
-            <span style={{fontSize:"1.4rem",fontWeight:800,color:s.c,lineHeight:1}}>{s.value}</span>
-            <span style={{fontSize:"0.63rem",color:"var(--gray-400)",textTransform:"uppercase",
-              letterSpacing:".05em",fontWeight:700}}>{s.label}</span>
-          </div>
-        ))}
-      </div>
-
       {/* TABLA — flex:1 + overflow hidden para scroll solo en tbody */}
       <div style={{background:"#fff",borderRadius:12,border:"1px solid #EAECF0",
         display:"flex",flexDirection:"column",flex:1,overflow:"hidden",
@@ -1470,36 +1461,16 @@ export default function AdminPublicaciones() {
         }}>
 
 
-          {/* Columnas */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowC(p=>!p)} style={{
-              padding:"0.5rem 0.8rem",border:"none",background:"transparent",cursor:"pointer",
-              fontSize:"0.78rem",fontWeight:showC?700:500,color:showC?"#111":"#555",
-              display:"flex",alignItems:"center",gap:3,whiteSpace:"nowrap",
-            }}>Columnas <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
-            {showC&&(
-              <div style={{position:"absolute",left:0,top:"100%",background:"#fff",
-                border:"1.5px solid var(--border)",borderRadius:10,padding:"0.5rem",
-                zIndex:300,minWidth:155,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}
-                onMouseLeave={()=>setShowC(false)}>
-                {XCOLS.map(col=>(
-                  <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,
-                    padding:"0.28rem 0",cursor:"pointer",fontSize:"0.8rem",color:"#374151"}}>
-                    <input type="checkbox" checked={vcols.has(col.id)} style={{accentColor:color}}
-                      onChange={()=>setVcols(p=>{const n=new Set(p);n.has(col.id)?n.delete(col.id):n.add(col.id);return n;})}/>
-                    {col.label}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{width:1,height:28,background:"var(--border)",margin:"0 6px"}}/>
-
           {/* ACCIONES — directas, sin desplegables */}
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",padding:"6px 0"}}>
-            <Accion label="Nuevo" destacado color={color}
-              onClick={()=>{setShowWizard(true);setExp(null);}}/>
+            {/* Market + / Second + reemplazan a "Nuevo": llevan directo al alta
+                de un artículo en el canal correspondiente. Sin `dis`: deben
+                funcionar siempre, sin depender de que haya filas elegidas. */}
+            <Accion label="Market +" destacado color={BLUE}
+              onClick={()=>{setWizardTipo("market");setShowWizard(true);setExp(null);}}/>
+            <Accion label="Second +" destacado color={GREEN}
+              onClick={()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);}}/>
+            <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
             <Accion label="Publicar"  dis={!has} color={GREEN}
               onClick={()=>chSt(activeIds,"active")}/>
             <Accion label="Ocultar"   dis={!has} color="#F59E0B"
@@ -1556,6 +1527,30 @@ export default function AdminPublicaciones() {
               }}>{saving?"Guardando...":"Guardar"}</button>
             </div>
           )}
+
+          {/* Columnas — al final de la barra, a la derecha del todo */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowC(p=>!p)} style={{
+              padding:"0.5rem 0.8rem",border:"none",background:"transparent",cursor:"pointer",
+              fontSize:"0.78rem",fontWeight:showC?700:500,color:showC?"#111":"#555",
+              display:"flex",alignItems:"center",gap:3,whiteSpace:"nowrap",
+            }}>Columnas <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
+            {showC&&(
+              <div style={{position:"absolute",right:0,top:"100%",background:"#fff",
+                border:"1.5px solid var(--border)",borderRadius:10,padding:"0.5rem",
+                zIndex:300,minWidth:155,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}
+                onMouseLeave={()=>setShowC(false)}>
+                {XCOLS.map(col=>(
+                  <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,
+                    padding:"0.28rem 0",cursor:"pointer",fontSize:"0.8rem",color:"#374151"}}>
+                    <input type="checkbox" checked={vcols.has(col.id)} style={{accentColor:color}}
+                      onChange={()=>setVcols(p=>{const n=new Set(p);n.has(col.id)?n.delete(col.id):n.add(col.id);return n;})}/>
+                    {col.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Aviso en linea, en el flujo de la pagina y pegado a la barra.
@@ -1582,6 +1577,8 @@ export default function AdminPublicaciones() {
         {showWizard?(
           <div style={{overflowY:"auto",flex:1}}>
             <AdminArticulos
+              key={wizardTipo}
+              tipoInicial={wizardTipo}
               onCancel={()=>setShowWizard(false)}
               onFinish={()=>{setShowWizard(false);reload();}}
             />

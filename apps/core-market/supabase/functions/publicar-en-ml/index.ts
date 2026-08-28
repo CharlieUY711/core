@@ -117,6 +117,39 @@ async function predecirCategoria(titulo: string, token: string): Promise<string 
     return null;
   }
 }
+
+/**
+ * Igual que `predecirCategoria`, pero además trae el camino completo hasta la
+ * categoría (de la raíz a la hoja), con nombres.
+ *
+ * Sirve para adivinar nuestro propio departamento/categoría/subcategoría: ML
+ * no conoce esa taxonomía, pero sus nombres de categoría suelen coincidir o
+ * parecerse a los nuestros en algún nivel del camino. Quien llama a esto hace
+ * el match por nombre; acá sólo se arma el dato crudo que hace falta para eso.
+ */
+async function predecirCategoriaConPath(
+  titulo: string, token: string,
+): Promise<{ id: string; nombre: string; path: string[] } | null> {
+  try {
+    const url = `${ML_API}/sites/${ML_SITE}/domain_discovery/search?limit=1&q=${encodeURIComponent(titulo)}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!resp.ok) return null;
+    const datos = await resp.json();
+    const primero = Array.isArray(datos) ? datos[0] : null;
+    const categoryId = primero?.category_id ?? null;
+    if (!categoryId) return null;
+
+    const catResp = await fetch(`${ML_API}/categories/${categoryId}`);
+    if (!catResp.ok) return { id: categoryId, nombre: primero?.category_name ?? categoryId, path: [] };
+    const cat = await catResp.json();
+    const path: string[] = Array.isArray(cat?.path_from_root)
+      ? cat.path_from_root.map((n: any) => String(n?.name ?? "")).filter(Boolean)
+      : [];
+    return { id: categoryId, nombre: cat?.name ?? primero?.category_name ?? categoryId, path };
+  } catch {
+    return null;
+  }
+}
 const CHANNEL = "mercadolibre";
 
 // ---------------------------------------------------------------------------
@@ -212,12 +245,18 @@ serve(async (req: Request) => {
       ? []
       : await buscarCandidatos(token, ML_SITE, String(body.titulo ?? ""));
 
+    // Categoría sugerida por ML a partir del título: se busca en paralelo con
+    // el resto, no depende de si el producto se encontró en su catálogo —
+    // sirve igual para un artículo que ML no tiene ficha propia.
+    const categoriaSugerida = await predecirCategoriaConPath(String(body.titulo ?? ""), token);
+
     const c = await buscarEnCatalogo(token, ML_SITE, String(body.titulo ?? ""), body.productoId);
-    if (!c) return json({ ok: true, encontrado: false, candidatos });
+    if (!c) return json({ ok: true, encontrado: false, candidatos, categoriaSugerida });
     return json({
       ok: true,
       encontrado: true,
       candidatos,
+      categoriaSugerida,
       producto: { id: c.id, nombre: c.nombre },
       atributos: [...c.atributos].map(([id, valor]) => ({ id, valor })),
       imagenes: c.imagenes,

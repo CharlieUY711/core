@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { buscarProductos, fichaPorTitulo,
          type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
+import { predecirTaxonomia } from "../utils/predecirTaxonomia";
+import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
+import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
+import { MarketCard } from "../../public/MarketCard";
 
 interface Depto  { id: string; nombre: string; }
 interface Cat    { id: string; nombre: string; departamento_id: string; }
@@ -14,6 +18,19 @@ const BLUE   = "var(--brand-navy)";
 const GREEN  = "var(--color-success)";
 
 const CONDICIONES = ["Nuevo","Excelente","Muy bueno","Bueno","Regular","Para reparar"];
+
+// Condiciones para artículos de Market (no Second Hand). A diferencia de
+// CONDICIONES (Second) cada estado trae su propia descripción, garantía,
+// empaque y nota — el estándar de a qué se compromete quien publica según
+// el estado que declara. "Reacondicionado" no es un estado final: pide
+// además uno de los 3 subestados de SUBESTADOS_RECONDICIONADO.
+const CONDICIONES_MARKET = [
+  { id:"nuevo",           label:"Nuevo",           desc:"Sin uso, 100% original",   garantia:"Fabricante", empaque:"Sellada",              nota:"Estado más estricto" },
+  { id:"caja_abierta",    label:"Caja abierta",    desc:"Nuevo sin sello",          garantia:"Fabricante", empaque:"Abierta",               nota:"Accesorios originales" },
+  { id:"usado",           label:"Usado",           desc:"Con uso, desgaste",        garantia:"Opcional",   empaque:"Opcional",              nota:"Puede faltar accesorios" },
+  { id:"reacondicionado", label:"Reacondicionado", desc:"Reparado/inspeccionado",   garantia:"90 días",    empaque:"Original o genérica",   nota:"Requiere subestado" },
+];
+const SUBESTADOS_RECONDICIONADO = ["Excelente","Bueno","Aceptable"];
 const MONEDAS     = ["UYU","USD","EUR"];
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
@@ -22,13 +39,10 @@ const DISPONIBILIDADES = [
 ];
 
 const STEPS = [
-  { id:1, label:"Tipo",       icon:"🏷" },
   { id:2, label:"Información",icon:"📝" },
-  { id:3, label:"Imágenes",   icon:"🖼" },
-  { id:4, label:"Precio",     icon:"💰" },
-  { id:5, label:"Detalles",   icon:"⚙️" },
-  { id:6, label:"Destinos",   icon:"📡" },
-  { id:7, label:"Revisión",   icon:"✅" },
+  { id:3, label:"Detalles",   icon:"⚙️" },
+  { id:4, label:"Destinos",   icon:"📡" },
+  { id:5, label:"Revisión",   icon:"✅" },
 ];
 
 // Canales de publicacion. `listo:false` = sin integracion real todavia: se
@@ -47,9 +61,13 @@ const DESTINOS = [
  *  - como ruta propia (/admin/publicaciones/nueva), enlazable
  *  - embebido dentro de Publicaciones, pasando onFinish/onCancel para no
  *    sacar al usuario de la pantalla donde esta trabajando
+ * El tipo (Market / Second Hand) ya no se elige acá adentro: lo define quien
+ * abre el formulario (los botones "Market +" / "Second +" de la toolbar de
+ * Publicaciones) vía tipoInicial, así que se arranca directo en Información.
  */
 export default function AdminArticulos(
-  { onFinish, onCancel }: { onFinish?: () => void; onCancel?: () => void } = {}
+  { onFinish, onCancel, tipoInicial }:
+  { onFinish?: () => void; onCancel?: () => void; tipoInicial?: "market"|"secondhand" } = {}
 ) {
   const { isAdmin } = useOutletContext<any>() || {};
   const navigate    = useNavigate();
@@ -58,7 +76,8 @@ export default function AdminArticulos(
     if (cb) cb();
     else navigate("/admin/publicaciones");
   };
-  const [step, setStep]     = useState(1);
+  const PRIMER_PASO = 2;
+  const [step, setStep]     = useState(PRIMER_PASO);
   const [loading, setLoading] = useState(false);
   const [toast, setToast]   = useState<{text:string;ok:boolean}|null>(null);
 
@@ -67,8 +86,99 @@ export default function AdminArticulos(
   const [cats,    setCats]    = useState<Cat[]>([]);
   const [subcats, setSubcats] = useState<SubCat[]>([]);
 
-  // PASO 1: Tipo
-  const [tipo, setTipo] = useState<"market"|"secondhand">("market");
+  // Tipo: viene fijo desde afuera (tipoInicial); ya no hay un paso propio
+  // para elegirlo.
+  const [tipo, setTipo] = useState<"market"|"secondhand">(tipoInicial ?? "market");
+
+  // PASO 2: Marca
+  // "buscando"     = todavía escribiendo / eligiendo de las sugerencias
+  // "sugerida"     = eligió una marca de la lista sugerida (o tiene logo propio)
+  // "personalizada"= marca escrita a mano, no está en las sugerencias
+  const [marca,         setMarca]         = useState("");
+  const [marcaModo,     setMarcaModo]     = useState<"buscando"|"sugerida"|"personalizada">("buscando");
+  const [marcaConfirmada, setMarcaConfirmada] = useState(false);
+  const [candidatosMarca, setCandidatosMarca] = useState<MarcaSugerida[]>([]);
+  const [buscandoMarca,  setBuscandoMarca]    = useState(false);
+  const [logoUrl,        setLogoUrl]        = useState<string|null>(null); // logo encontrado
+  const [logoPersonalizado, setLogoPersonalizado] = useState<string|null>(null); // subido a mano
+  const [logoError,      setLogoError]      = useState(false); // el logo encontrado no cargó
+
+  // Buscador de logo: el mismo mecanismo que las fotos del artículo (un
+  // tile que al tocarlo abre un buscador de imágenes de la web), pero acá
+  // el texto de búsqueda no lo escribe la persona: sale de la marca +
+  // "logo", así el buscador va directo a traer el logo en vez de fotos del
+  // producto.
+  const [logoModalOpen,  setLogoModalOpen]  = useState(false);
+  const [logoQuery,      setLogoQuery]      = useState("");
+  const [logoResultados, setLogoResultados] = useState<ResultadoBusqueda[]>([]);
+  const [buscandoLogoWeb,setBuscandoLogoWeb]= useState(false);
+
+  const buscarLogoWeb = async (q: string) => {
+    const texto = q.trim();
+    if (texto.length < 2) { setLogoResultados([]); return; }
+    setBuscandoLogoWeb(true);
+    const r = await buscarImagenes(texto);
+    setLogoResultados(r);
+    setBuscandoLogoWeb(false);
+  };
+  const abrirBuscadorLogo = () => {
+    const q = `${marca.trim()} logo`.trim();
+    setLogoQuery(q);
+    setLogoModalOpen(true);
+    buscarLogoWeb(q);
+  };
+  const elegirLogoBuscado = (r: ResultadoBusqueda) => {
+    if (!r.imagen) return;
+    setLogoUrl(r.imagen);
+    setLogoError(false);
+    setLogoPersonalizado(null);
+    setLogoModalOpen(false);
+  };
+  const quitarLogo = () => { setLogoUrl(null); setLogoPersonalizado(null); setLogoError(false); };
+
+  // Se espera a que deje de escribir: la sugerencia ahora sale de una
+  // búsqueda web real (Serper/Google), no de filtrar una lista en memoria.
+  useEffect(() => {
+    if (marcaConfirmada) { setCandidatosMarca([]); return; }
+    const q = marca.trim();
+    if (q.length < 2) { setCandidatosMarca([]); return; }
+    let vivo = true;
+    setBuscandoMarca(true);
+    const t = setTimeout(async () => {
+      const r = await buscarMarcas(q);
+      if (!vivo) return;
+      setCandidatosMarca(r);
+      setBuscandoMarca(false);
+    }, 500);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [marca, marcaConfirmada]);
+
+  const elegirMarcaSugerida = (m: MarcaSugerida) => {
+    setMarca(m.nombre);
+    setMarcaModo("sugerida");
+    setMarcaConfirmada(true);
+    setLogoUrl(m.imagen ?? logoDeDominio(m.dominio));
+    setLogoError(false);
+    setLogoPersonalizado(null);
+  };
+  const elegirMarcaPersonalizada = () => {
+    setMarcaModo("personalizada");
+    setMarcaConfirmada(true);
+    setLogoUrl(null);
+    setLogoError(false);
+  };
+  const cambiarMarca = () => {
+    setMarcaConfirmada(false);
+    setMarcaModo("buscando");
+    setLogoUrl(null);
+    setLogoError(false);
+    setLogoPersonalizado(null);
+  };
+  const subirLogoPersonalizado = (file: File) => {
+    const r = new FileReader();
+    r.onload = () => setLogoPersonalizado(String(r.result));
+    r.readAsDataURL(file);
+  };
 
   // PASO 2: Información
   const [nombre,      setNombre]      = useState("");
@@ -83,23 +193,68 @@ export default function AdminArticulos(
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
+  // Artículo "Personalizado": igual que la marca, se tipea a mano y no se
+  // buscan sugerencias/coincidencias de catálogo mientras esté marcado.
+  const [articuloPersonalizado, setArticuloPersonalizado] = useState(false);
+  // PASO 2: Condición (Market). Independiente de `condicion` (Second Hand):
+  // son tipos de artículo excluyentes, cada uno con su propia escala.
+  const [condicionMarketId, setCondicionMarketId] = useState("nuevo");
+  const [subestadoRecond,   setSubestadoRecond]   = useState("Excelente");
 
   // Se espera a que deje de escribir: buscar en cada tecla castiga la API y
   // hace parpadear la lista sin que nadie llegue a leerla.
   useEffect(() => {
     if (idElegido) return;              // ya eligio: no se le cambia debajo
+    if (articuloPersonalizado) return;  // se tipea a mano, no se buscan coincidencias
     const q = nombre.trim();
     if (q.length < 4) { setCandidatos([]); return; }
+    // Con la marca ya confirmada, la búsqueda va acotada a ella: sin esto
+    // "Golf" o "Serie 3" traen cualquier cosa que se llame igual, de
+    // cualquier marca.
+    const conMarca = marcaConfirmada && marca.trim()
+      ? `${marca.trim()} ${q}`
+      : q;
     let vivo = true;
     setBuscandoProd(true);
     const t = setTimeout(async () => {
-      const r = await buscarProductos(q);
+      const r = await buscarProductos(conMarca);
       if (!vivo) return;
       setCandidatos(r);
       setBuscandoProd(false);
     }, 600);
     return () => { vivo = false; clearTimeout(t); };
-  }, [nombre, idElegido]);
+  }, [nombre, idElegido, articuloPersonalizado, marca, marcaConfirmada, marcaModo]);
+
+  // Imágenes y videos encontrados en la web para marca + artículo. Sólo
+  // tiene sentido buscar una vez que hay algo de las dos cosas escrito: son
+  // los mismos datos que ya se usan para acotar la búsqueda del artículo,
+  // no un campo nuevo que haya que llenar.
+  const [imagenesBuscadas, setImagenesBuscadas] = useState<ResultadoBusqueda[]>([]);
+  const [buscandoImagenes, setBuscandoImagenes] = useState(false);
+  const [videosBuscados,   setVideosBuscados]   = useState<ResultadoBusqueda[]>([]);
+  const [buscandoVideos,   setBuscandoVideos]   = useState(false);
+
+  useEffect(() => {
+    const articulo = nombre.trim();
+    if (!marcaConfirmada || !marca.trim() || articulo.length < 4) {
+      setImagenesBuscadas([]);
+      setVideosBuscados([]);
+      return;
+    }
+    const q = `${marca.trim()} ${articulo}`;
+    let vivo = true;
+    setBuscandoImagenes(true);
+    setBuscandoVideos(true);
+    const t = setTimeout(async () => {
+      const [imgs, vids] = await Promise.all([buscarImagenes(q), buscarVideos(q)]);
+      if (!vivo) return;
+      setImagenesBuscadas(imgs);
+      setBuscandoImagenes(false);
+      setVideosBuscados(vids);
+      setBuscandoVideos(false);
+    }, 600);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [marca, marcaConfirmada, marcaModo, nombre]);
 
   /**
    * Adopta la version elegida.
@@ -123,14 +278,14 @@ export default function AdminArticulos(
     if (!precio && f.mercado?.mediana) setPrecio(String(Math.round(f.mercado.mediana)));
   };
 
-  // PASO 6: Destinos
+  // PASO 4: Destinos
   const [canales, setCanales] = useState<string[]>([]);
 
-  // PASO 3: Media
+  // PASO 2: Media (embebido junto a la información del artículo)
   const [imagenes,  setImagenes]  = useState<string[]>([]);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
 
-  // PASO 4: Precio
+  // PASO 2: Precio (embebido a la derecha de las fotos)
   const [precio,      setPrecio]      = useState("");
   const [precioOrig,  setPrecioOrig]  = useState("");
   const [moneda,      setMoneda]      = useState("UYU");
@@ -138,10 +293,14 @@ export default function AdminArticulos(
     ? Math.round((1 - parseFloat(precio) / parseFloat(precioOrig)) * 100)
     : null;
 
-  // PASO 5: Detalles
+  // PASO 3: Detalles
   const [deptoId,       setDeptoId]       = useState("");
   const [catId,         setCatId]         = useState("");
   const [subcatId,      setSubcatId]      = useState("");
+  // Aviso de que depto/cat/subcat vinieron de la predicción por ML, no de una
+  // elección propia: apenas la persona toca cualquiera de los tres selectores
+  // se apaga, para no seguir mostrando "sugerido" sobre algo que ya corrigió.
+  const [taxonomiaSugerida, setTaxonomiaSugerida] = useState(false);
   const [stock,         setStock]         = useState("1");
   const [disponibilidad,setDisponibilidad] = useState("inmediata");
   const [publicarComo,  setPublicarComo]  = useState<"active"|"draft">("active");
@@ -149,30 +308,84 @@ export default function AdminArticulos(
   const filteredCats = cats.filter(c => c.departamento_id === deptoId);
   const filteredSubs = subcats.filter(s => s.categoria_id === catId);
 
+  // Antes un error de la consulta se perdía en silencio: `d.data || []`
+  // dejaba el selector vacío sin ninguna pista de por qué. Ahora se guarda
+  // el motivo (error de Supabase, o "cargó bien pero no hay filas") para
+  // poder mostrarlo junto al selector en vez de un desplegable vacío mudo.
+  const [cargandoTaxonomia, setCargandoTaxonomia] = useState(true);
+  const [errorTaxonomia,    setErrorTaxonomia]    = useState<string | null>(null);
+
   const notify = (text: string, ok = true) => {
     setToast({text, ok});
     setTimeout(() => setToast(null), 3500);
   };
 
   useEffect(() => {
+    let vivo = true;
+    setCargandoTaxonomia(true);
     Promise.all([
       supabase.from("departamentos").select("id, nombre").eq("activo", true).order("orden"),
       supabase.from("categorias").select("id, nombre, departamento_id").eq("activo", true).order("orden"),
       supabase.from("subcategorias").select("id, nombre, categoria_id").eq("activo", true).order("orden"),
     ]).then(([d, c, s]) => {
+      if (!vivo) return;
+      const primerError = d.error || c.error || s.error;
+      if (primerError) {
+        console.error("Error cargando departamentos/categorías/subcategorías:", primerError);
+        setErrorTaxonomia(`No se pudo cargar el catálogo (${primerError.message})`);
+      } else if (!d.data?.length) {
+        // La consulta anduvo bien pero no trajo filas: es un catálogo vacío,
+        // no un bug de red — se avisa distinto para no mandar a buscar algo
+        // que no corresponde.
+        setErrorTaxonomia("No hay departamentos cargados todavía. Cargalos antes de poder categorizar artículos.");
+      } else {
+        setErrorTaxonomia(null);
+      }
       setDeptos(d.data || []);
       setCats(c.data || []);
       setSubcats(s.data || []);
+      setCargandoTaxonomia(false);
+    }).catch(err => {
+      if (!vivo) return;
+      console.error("Error cargando departamentos/categorías/subcategorías:", err);
+      setErrorTaxonomia("No se pudo cargar el catálogo. Revisá la conexión e intentá de nuevo.");
+      setCargandoTaxonomia(false);
     });
+    return () => { vivo = false; };
   }, []);
 
+  /**
+   * En cuanto se elige un producto de ML (o llega el catálogo, lo que pase
+   * después), se intenta adivinar depto/categoría/subcategoría a partir del
+   * camino de categoría que ML sugirió para ese título.
+   *
+   * Sólo completa lo que está vacío: si la persona ya eligió algo a mano
+   * (acá o en un paso anterior) no se lo pisa. Por eso depende también de
+   * deptoId — una vez que hay algo cargado, esto deja de tener efecto.
+   */
+  useEffect(() => {
+    if (deptoId) return;                       // ya hay algo elegido, no se toca
+    if (!deptos.length) return;                 // catálogo todavía no cargó
+    const path = elegido?.categoriaSugerida?.path;
+    if (!path || !path.length) return;
+
+    const { departamento, categoria, subcategoria } = predecirTaxonomia(path, deptos, cats, subcats);
+    if (!departamento) {
+      console.warn("No se encontró coincidencia de categoría para predecir taxonomía. Camino de ML:", path);
+      return;
+    }
+
+    setDeptoId(departamento.id);
+    if (categoria)    setCatId(categoria.id);
+    if (subcategoria) setSubcatId(subcategoria.id);
+    setTaxonomiaSugerida(true);
+  }, [elegido, deptos, cats, subcats, deptoId]);
+
   const canNext = (): boolean => {
-    if (step === 1) return true;
-    if (step === 2) return nombre.trim().length > 0 && descripcion.trim().length > 0;
-    if (step === 3) return imagenes.length > 0;
-    if (step === 4) return precio.length > 0 && parseFloat(precio) > 0;
-    if (step === 5) return true; // departamento opcional temporalmente
-    if (step === 6) return true; // el canal base del paso 1 siempre esta
+    if (step === 2) return nombre.trim().length > 0 && descripcion.trim().length > 0
+      && imagenes.length > 0 && precio.length > 0 && parseFloat(precio) > 0;
+    if (step === 3) return true; // departamento opcional temporalmente
+    if (step === 4) return true; // el tipo (Market/Second) ya viene fijo desde afuera
     return true;
   };
 
@@ -239,13 +452,74 @@ export default function AdminArticulos(
   const lbl: React.CSSProperties = {
     fontSize:"0.75rem", fontWeight:700, color:"#374151", marginBottom:"4px", display:"block",
   };
+  // Campo con la etiqueta adentro: un único recuadro con borde, la etiqueta
+  // como primera línea (chica, muted) y el control debajo sin su propio
+  // borde. Reemplaza el patrón anterior de <label> suelta arriba + <input>
+  // con su propio recuadro: ahora ambos viven dentro del mismo contenedor.
+  const fieldBox: React.CSSProperties = {
+    border:"1.5px solid var(--border)", borderRadius:8, background:"#fff",
+    padding:"0.4rem 0.7rem 0.5rem", boxSizing:"border-box",
+  };
+  const fieldLbl: React.CSSProperties = {
+    fontSize:"0.68rem", fontWeight:700, color:"var(--gray-400)", display:"block", marginBottom:2,
+  };
+  const fieldCtrl: React.CSSProperties = {
+    width:"100%", border:"none", outline:"none", padding:0, margin:0,
+    fontSize:"0.875rem", fontFamily:"DM Sans, sans-serif",
+    background:"transparent", boxSizing:"border-box", color:"#111", display:"block",
+  };
   const card: React.CSSProperties = {
     background:"#fff", borderRadius:14, padding:"1.5rem",
-    border:"1px solid #F3F4F6", boxShadow:"0 1px 4px rgba(0,0,0,0.06)",
+  };
+  // Mismo look que los slots de SelectorMediaArticulo (paso Imágenes): tile
+  // redondeado, fondo gris cuando está vacío, negro detrás de la foto/video
+  // cuando tiene algo. Acá se listan en columna en vez de en grilla.
+  const tile = (filled: boolean, ratio: string = "1"): React.CSSProperties => ({
+    width:"100%", aspectRatio:ratio, borderRadius:10, overflow:"hidden", flexShrink:0,
+    border: `1.5px solid ${filled ? "var(--border)" : "#F3F4F6"}`,
+    background: filled ? "#000" : "var(--gray-50)",
+    display:"flex", alignItems:"center", justifyContent:"center",
+  });
+  // Casillero de check cuadrado, mismo look en todos los selectores tipo
+  // check del formulario (Personalizada/o, condiciones de Market y Second).
+  const checkSq = (active: boolean): React.CSSProperties => ({
+    width:16, height:16, borderRadius:4, flexShrink:0, display:"inline-flex",
+    alignItems:"center", justifyContent:"center",
+    border:`1.5px solid ${active ? ACCENT : "var(--border)"}`,
+    background:"#fff", fontSize:"11px", fontWeight:900, color:ACCENT,
+  });
+  // Chip de condición (Market y Second): fila única en vez de lista vertical
+  // con título. flex:1 para repartir el ancho disponible entre todas las
+  // opciones y que entren siempre en una sola línea.
+  const condPill = (active: boolean): React.CSSProperties => ({
+    flex:1, textAlign:"center", cursor:"pointer", whiteSpace:"nowrap",
+    padding:"0.5rem 0.6rem", borderRadius:8, fontSize:"0.8rem",
+    fontWeight: active ? 700 : 500,
+    color: active ? ACCENT : "var(--mute)",
+    border:`1.5px solid ${active ? ACCENT : "var(--border)"}`,
+    background: active ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
+  });
+
+  // Paso 2 · Vista previa: arma el mismo objeto que consume la tarjeta real
+  // del front (MarketCard) para que se vea exactamente como en la tienda,
+  // actualizándose en vivo a medida que se completa el formulario.
+  const categoriaLabel = cats.find(c => c.id === catId)?.nombre || marca || undefined;
+  const previewProduct = {
+    id: 0,
+    img: imagenes[0] || "",
+    d: categoriaLabel || "",
+    n: nombre || "Nombre del artículo",
+    p: parseFloat(precio || "0").toLocaleString("es-UY"),
+    o: precioOrig && parseFloat(precioOrig) > parseFloat(precio || "0")
+      ? parseFloat(precioOrig).toLocaleString("es-UY") : null,
+    desc: descripcion || "",
+    r: 0,
+    rv: 0,
+    stock: stock ? parseInt(stock, 10) : undefined,
   };
 
   return (
-    <div style={{ maxWidth:760, margin:"0 auto", display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+    <div style={{ maxWidth: step === 2 ? "none" : 380, margin:0, display:"flex", flexDirection:"column", gap:"1.25rem" }}>
 
       {toast && (
         <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999,
@@ -258,82 +532,249 @@ export default function AdminArticulos(
         </div>
       )}
 
-      {/* Stepper */}
-      <div style={{ ...card, padding:"1rem 1.5rem" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:0 }}>
-          {STEPS.map((s, i) => {
-            const done    = step > s.id;
-            const active  = step === s.id;
-            return (
-              <div key={s.id} style={{ display:"flex", alignItems:"center", flex: i < STEPS.length-1 ? 1 : 0 }}>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", cursor: done ? "pointer" : "default" }}
-                  onClick={() => done && setStep(s.id)}>
-                  <div style={{
-                    width:32, height:32, borderRadius:"50%", display:"flex",
-                    alignItems:"center", justifyContent:"center", fontSize:"14px",
-                    background: done ? GREEN : active ? ACCENT : "#F3F4F6",
-                    color: done || active ? "#fff" : "var(--gray-400)",
-                    fontWeight:700, transition:"all .2s",
-                    border: active ? `2px solid ${ACCENT}` : "none",
-                  }}>
-                    {done ? "✓" : s.icon}
-                  </div>
-                  <span style={{ fontSize:"10px", fontWeight: active ? 700 : 400,
-                    color: active ? ACCENT : done ? GREEN : "var(--gray-400)", whiteSpace:"nowrap" }}>
-                    {s.label}
-                  </span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div style={{ flex:1, height:2, background: done ? GREEN : "var(--border)",
-                    margin:"0 4px", marginBottom:"18px", transition:"background .2s" }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Contenido del paso */}
-      <div style={card}>
-
-        {/* PASO 1: Tipo */}
-        {step === 1 && (
-          <div>
-            <h2 style={{ margin:"0 0 0.5rem", fontSize:"1.1rem", fontWeight:800, color:"#111" }}>¿Qué vas a publicar?</h2>
-            <p style={{ color:"var(--mute)", fontSize:"0.875rem", marginBottom:"1.5rem" }}>
-              Elegí el tipo de publicación para tu artículo.
-            </p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-              {([
-                { id:"market",     icon:"🛍", title:"Market",      desc:"Producto nuevo, precio fijo, stock ilimitado" },
-                { id:"secondhand", icon:"♻️", title:"Second Hand", desc:"Artículo usado, negociable, unidad única" },
-              ] as const).map(t => (
-                <button key={t.id} onClick={() => setTipo(t.id)} style={{
-                  padding:"1.5rem", borderRadius:12, textAlign:"left",
-                  border:`2px solid ${tipo===t.id ? ACCENT : "var(--border)"}`,
-                  background: tipo===t.id ? "color-mix(in srgb, var(--brand-madre) 4%, transparent)" : "#fff",
-                  cursor:"pointer", transition:"all .15s",
-                }}>
-                  <div style={{ fontSize:"2rem", marginBottom:"0.5rem" }}>{t.icon}</div>
-                  <div style={{ fontWeight:800, fontSize:"1rem", color: tipo===t.id ? ACCENT : "#111", marginBottom:"4px" }}>{t.title}</div>
-                  <div style={{ fontSize:"0.8rem", color:"var(--mute)", lineHeight:1.4 }}>{t.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* PASO 2: Información */}
-        {step === 2 && (
+      {step === 2 ? (
+        // Grid en vez de flex: 4 columnas que reparten el 100% del ancho del
+        // contenedor en la misma proporción que antes tenían fijada en px
+        // (380:285:380:285 → Información y Precio, columna 1 y 3, quedan del
+        // mismo ancho entre sí; Imágenes y Tarjeta, columna 2 y 4, quedan del
+        // mismo ancho entre sí). Con fr las 4 columnas se reparten siempre el
+        // 100% disponible, angostándose o ensanchándose todas juntas y en la
+        // misma proporción según el ancho real del contenedor.
+        <div style={{ ...card, display:"grid", gridTemplateColumns:"380fr 285fr 380fr 285fr", gap:"1rem", alignItems:"stretch" }}>
+          {/* PASO 2: Información */}
+          <div style={{ minWidth:0 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Información del artículo</h2>
+
+            {/* Marca: el input queda más angosto (flex:1) para dejarle lugar,
+                a continuación y siempre presente, a la miniatura del logo.
+                La miniatura no es un campo nuevo: es el mismo logoUrl que ya
+                se busca automáticamente a partir de lo que se escribe acá
+                (buscarMarcas / logoDeDominio), solo que antes se mostraba
+                arriba del todo -y solo después de confirmar la marca- y ahora
+                vive pegada al campo y se ve siempre, incluso mientras se
+                busca o no hay nada cargado todavía. */}
             <div>
-              <label style={lbl}>Nombre *</label>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
+                <label style={{ ...lbl, marginBottom:0 }}>Marca</label>
+                <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
+                  {marcaConfirmada && marcaModo === "sugerida" && (
+                    <button onClick={cambiarMarca} style={{ border:"none", background:"none",
+                      padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
+                      fontSize:"0.72rem" }}>
+                      Cambiar marca
+                    </button>
+                  )}
+                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer",
+                    fontSize:"0.75rem", color:"var(--mute)" }}>
+                    <span
+                      onClick={() => marcaModo === "personalizada" ? cambiarMarca() : elegirMarcaPersonalizada()}
+                      style={checkSq(marcaModo === "personalizada")}>
+                      {marcaModo === "personalizada" ? "✓" : ""}
+                    </span>
+                    <span onClick={() => marcaModo === "personalizada" ? cambiarMarca() : elegirMarcaPersonalizada()}>
+                      Personalizada
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start" }}>
+                <input style={{ ...inp, flex:1, minWidth:0 }} value={marca}
+                  readOnly={marcaConfirmada && marcaModo !== "personalizada"}
+                  onChange={e => { setMarca(e.target.value); }}
+                  placeholder="Empezá a escribir para buscar la marca…" />
+
+                {/* Logo de la marca: mismo patrón que los tiles de fotos del
+                    artículo (SelectorMediaArticulo) — vacío muestra "+" y al
+                    tocarlo abre un buscador; con logo cargado, el hover
+                    ofrece Reemplazar/Quitar. El buscador usa la misma
+                    función de búsqueda de imágenes de la web que las fotos
+                    del artículo (buscarImagenes), con "<marca> logo" como
+                    texto en vez de dejarlo en blanco. */}
+                {(() => {
+                  const logoActual = logoPersonalizado || (logoUrl && !logoError ? logoUrl : null);
+                  const puedeBuscar = marca.trim().length > 1;
+                  return (
+                    <div
+                      onClick={() => !logoActual && puedeBuscar && abrirBuscadorLogo()}
+                      style={{
+                        width:44, height:44, borderRadius:8, flexShrink:0, overflow:"hidden", position:"relative",
+                        border: logoActual ? "1px solid var(--border)" : "1.5px dashed var(--border)",
+                        background: logoActual ? "#000" : "var(--gray-50)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        cursor: logoActual || puedeBuscar ? "pointer" : "default",
+                      }}>
+                      {logoActual ? (
+                        <>
+                          <img src={logoActual} alt={marca} onError={() => setLogoError(true)}
+                            style={{ width:"100%", height:"100%", objectFit:"contain", background:"#fff" }} />
+                          <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0)",
+                            display:"flex", alignItems:"center", justifyContent:"center", gap:2,
+                            opacity:0, transition:"all .15s" }}
+                            onMouseEnter={e => (e.currentTarget.style.cssText += "background:rgba(0,0,0,.5);opacity:1")}
+                            onMouseLeave={e => (e.currentTarget.style.cssText += "background:rgba(0,0,0,0);opacity:0")}
+                          >
+                            <button onClick={e => { e.stopPropagation(); abrirBuscadorLogo(); }}
+                              title="Reemplazar logo"
+                              style={{ background:ACCENT, color:"#fff", border:"none", borderRadius:4,
+                                width:16, height:16, fontSize:"9px", cursor:"pointer", lineHeight:1, padding:0 }}>✏</button>
+                            <button onClick={e => { e.stopPropagation(); quitarLogo(); }}
+                              title="Quitar logo"
+                              style={{ background:"#ef4444", color:"#fff", border:"none", borderRadius:4,
+                                width:16, height:16, fontSize:"9px", cursor:"pointer", lineHeight:1, padding:0 }}>🗑</button>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ fontSize:"0.55rem", color:"var(--gray-400)", textAlign:"center", lineHeight:1.1, padding:"0 3px" }}>
+                          {buscandoMarca && !marcaConfirmada ? "…" : (puedeBuscar ? "+ Logo" : "Sin logo")}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {buscandoMarca && !marcaConfirmada && (
+
+                <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
+                  Buscando en la web…
+                </div>
+              )}
+
+              {/* Sugerencias mientras escribe */}
+              {!marcaConfirmada && candidatosMarca.length > 0 && (
+                <div style={{ border:"1px solid var(--border)", borderRadius:8, marginTop:6,
+                  maxHeight:200, overflowY:"auto" }}>
+                  {candidatosMarca.map(m => (
+                    <button key={m.nombre} onClick={() => elegirMarcaSugerida(m)}
+                      style={{ display:"flex", alignItems:"center", gap:9, width:"100%",
+                        textAlign:"left", padding:"7px 10px", border:"none", background:"transparent",
+                        cursor:"pointer", borderBottom:"1px solid var(--gray-50)" }}>
+                      {m.imagen
+                        ? <img src={m.imagen} alt="" style={{width:22,height:22,objectFit:"contain",
+                            borderRadius:4,flexShrink:0}} onError={e => (e.currentTarget.style.visibility="hidden")}/>
+                        : <div style={{width:22,height:22,flexShrink:0}}/>}
+                      <span style={{ fontSize:"0.8rem", fontWeight:600, color:"#111" }}>{m.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+            </div>
+
+            {/* MODAL BUSCADOR DE LOGO — mismo patrón que el modal de
+                Biblioteca de SelectorMediaArticulo (overlay + tarjeta
+                centrada), pero con resultados de la búsqueda de imágenes de
+                la web en vez de la biblioteca interna. */}
+            {logoModalOpen && (
+              <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:9999,
+                display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}
+                onClick={e => { if (e.target === e.currentTarget) setLogoModalOpen(false); }}
+              >
+                <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth:560,
+                  maxHeight:"85vh", display:"flex", flexDirection:"column", overflow:"hidden",
+                  boxShadow:"0 20px 60px rgba(0,0,0,.3)" }}>
+
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                    padding:"1rem 1.25rem", borderBottom:"1px solid var(--border)" }}>
+                    <span style={{ fontWeight:700, fontSize:"1rem", color:"#111" }}>🖼 Logo de {marca || "la marca"}</span>
+                    <button onClick={() => setLogoModalOpen(false)}
+                      style={{ background:"none", border:"none", fontSize:"1.25rem", cursor:"pointer", color:"var(--mute)" }}>✕</button>
+                  </div>
+
+                  <div style={{ padding:"1rem 1.25rem", borderBottom:"1px solid var(--border)",
+                    display:"flex", gap:"0.6rem" }}>
+                    <input style={{ ...inp, flex:1 }} value={logoQuery}
+                      onChange={e => setLogoQuery(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && buscarLogoWeb(logoQuery)}
+                      placeholder="Ej: Nike logo" />
+                    <button onClick={() => buscarLogoWeb(logoQuery)} style={{
+                      padding:"0 1rem", background:ACCENT, color:"#fff", border:"none",
+                      borderRadius:8, fontSize:"0.85rem", fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+                      Buscar
+                    </button>
+                  </div>
+
+                  <div style={{ flex:1, overflow:"auto", padding:"1.25rem" }}>
+                    {buscandoLogoWeb ? (
+                      <div style={{ textAlign:"center", padding:"2rem", color:"var(--gray-400)", fontSize:"0.85rem" }}>
+                        Buscando en la web…
+                      </div>
+                    ) : logoResultados.length > 0 ? (
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.75rem" }}>
+                        {logoResultados.filter(r => r.imagen).map((r, i) => (
+                          <button key={i} onClick={() => elegirLogoBuscado(r)} title={r.nombre}
+                            style={{ aspectRatio:"1", borderRadius:10, overflow:"hidden", padding:6,
+                              border:"1.5px solid var(--border)", background:"#fff", cursor:"pointer" }}>
+                            <img src={r.imagen!} alt={r.nombre}
+                              style={{ width:"100%", height:"100%", objectFit:"contain" }} />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign:"center", padding:"2rem", color:"var(--gray-400)", fontSize:"0.85rem" }}>
+                        Sin resultados. Probá con otro texto.
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding:"0.85rem 1.25rem", borderTop:"1px solid var(--border)",
+                    display:"flex", justifyContent:"center" }}>
+                    <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer",
+                      color:ACCENT, fontSize:"0.8rem", fontWeight:700, textDecoration:"underline" }}>
+                      Subir mi propio logo desde el dispositivo
+                      <input type="file" accept="image/*" style={{ display:"none" }}
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          subirLogoPersonalizado(f);
+                          setLogoModalOpen(false);
+                        }} />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
+                <label style={{ ...lbl, marginBottom:0 }}>Artículo *</label>
+                <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
+                  {elegido && (
+                    <button onClick={() => { setElegido(null); setIdElegido(null); }} style={{ border:"none", background:"none",
+                      padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
+                      fontSize:"0.72rem" }}>
+                      Cambiar artículo
+                    </button>
+                  )}
+                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer",
+                    fontSize:"0.75rem", color:"var(--mute)" }}>
+                    <span
+                      onClick={() => setArticuloPersonalizado(p => {
+                        const n = !p;
+                        if (n) { setCandidatos([]); setElegido(null); setIdElegido(null); }
+                        return n;
+                      })}
+                      style={checkSq(articuloPersonalizado)}>
+                      {articuloPersonalizado ? "✓" : ""}
+                    </span>
+                    <span onClick={() => setArticuloPersonalizado(p => {
+                        const n = !p;
+                        if (n) { setCandidatos([]); setElegido(null); setIdElegido(null); }
+                        return n;
+                      })}>
+                      Personalizado
+                    </span>
+                  </label>
+                </div>
+              </div>
               <input style={inp} value={nombre}
                 onChange={e => { setNombre(e.target.value); setIdElegido(null); setElegido(null); }}
                 placeholder="Ej: iPhone 14 Pro 256GB Negro" />
 
-              {buscandoProd && !elegido && (
+              {buscandoProd && !elegido && !articuloPersonalizado && (
                 <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
                   Buscando el producto…
                 </div>
@@ -392,120 +833,73 @@ export default function AdminArticulos(
                 </div>
               )}
             </div>
-            <div>
-              <label style={lbl}>Descripción *</label>
-              <textarea style={{ ...inp, minHeight:100, resize:"vertical" }}
-                value={descripcion} onChange={e => setDescripcion(e.target.value)}
-                placeholder="Describí el artículo con detalle: características, uso, accesorios incluidos..." />
-              <div style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"right", marginTop:"3px" }}>
-                {descripcion.length} / 2000
-              </div>
-            </div>
-            {tipo === "secondhand" && (
+
+            {/* Condición: entre Artículo y Descripción. Market y Second Hand
+                son excluyentes (definidos por `tipo`), cada uno con su
+                propia escala. Sin título "Condición *": las opciones van
+                directo en una sola fila de chips, todas visibles a la vez. */}
+            {tipo === "market" && (
               <div>
-                <label style={lbl}>Condición *</label>
-                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                  {CONDICIONES.map(c => (
-                    <button key={c} onClick={() => setCondicion(c)} style={{
-                      padding:"0.4rem 0.75rem", borderRadius:8, fontSize:"0.8rem",
-                      border:`1.5px solid ${condicion===c ? ACCENT : "var(--border)"}`,
-                      background: condicion===c ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
-                      color: condicion===c ? ACCENT : "var(--mute)",
-                      fontWeight: condicion===c ? 700 : 400, cursor:"pointer",
-                    }}>{c}</button>
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  {CONDICIONES_MARKET.map(c => (
+                    <div key={c.id} onClick={() => setCondicionMarketId(c.id)}
+                      style={condPill(condicionMarketId === c.id)}>
+                      {c.label}
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PASO 3: Imágenes */}
-        {step === 3 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <div>
-              <h2 style={{ margin:"0 0 4px", fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Imágenes y videos</h2>
-              <p style={{ color:"var(--mute)", fontSize:"0.875rem", margin:0 }}>
-                Seleccioná desde tu Biblioteca. La primera imagen es la principal.
-              </p>
-            </div>
-            <SelectorMediaArticulo
-              imagenes={imagenes}
-              videos={videoUrls}
-              onChangeImagenes={setImagenes}
-              onChangeVideos={setVideoUrls}
-            />
-            {imagenes.length === 0 && (
-              <div style={{ padding:"0.75rem", background:"#FFFBEB", border:"1px solid #FDE68A",
-                borderRadius:8, fontSize:"0.8rem", color:"#92400E" }}>
-                ⚠ Al menos una imagen es obligatoria para publicar.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PASO 4: Precio */}
-        {step === 4 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Precio</h2>
-            <div style={{ display:"grid", gridTemplateColumns:"120px 1fr 1fr", gap:"1rem" }}>
-              <div>
-                <label style={lbl}>Moneda</label>
-                <select style={inp} value={moneda} onChange={e => setMoneda(e.target.value)}>
-                  {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Precio *</label>
-                <input style={inp} type="number" value={precio}
-                  onChange={e => setPrecio(e.target.value)} placeholder="0" min="0" />
-              </div>
-              <div>
-                <label style={lbl}>Precio original <span style={{ fontWeight:400, color:"var(--gray-400)" }}>(sin descuento)</span></label>
-                <input style={inp} type="number" value={precioOrig}
-                  onChange={e => setPrecioOrig(e.target.value)} placeholder="0" min="0" />
-              </div>
-            </div>
-            {descuento && (
-              <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.75rem 1rem",
-                background:"#f0fdf4", border:"1px solid color-mix(in srgb, var(--color-success) 70%, white)", borderRadius:8 }}>
-                <span style={{ fontSize:"1.25rem" }}>🏷</span>
-                <span style={{ fontWeight:700, color:"#166534", fontSize:"0.9rem" }}>
-                  Descuento del {descuento}% calculado automáticamente
-                </span>
-              </div>
-            )}
-            {precio && (
-              <div style={{ padding:"1rem", background:"var(--gray-50)", borderRadius:8, border:"1px solid var(--border)" }}>
-                <div style={{ fontSize:"0.8rem", color:"var(--mute)", marginBottom:"4px" }}>Vista previa del precio</div>
-                {precioOrig && parseFloat(precioOrig) > parseFloat(precio) && (
-                  <div style={{ fontSize:"0.9rem", color:"var(--gray-400)", textDecoration:"line-through" }}>
-                    {moneda} {parseFloat(precioOrig).toLocaleString("es-UY")}
+                {condicionMarketId === "reacondicionado" ? (
+                  // Único estado que pide un subestado adicional: se muestra
+                  // debajo de la fila de chips, junto con el detalle del
+                  // estado elegido.
+                  <div style={{ marginTop:"0.5rem", display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+                    <span style={{ fontSize:"0.7rem", color:"var(--gray-400)" }}>
+                      {CONDICIONES_MARKET.find(c => c.id === "reacondicionado")?.desc} · Garantía: 90 días · Empaque: Original o genérica
+                    </span>
+                    <div style={{ display:"flex", gap:"0.5rem" }}>
+                      {SUBESTADOS_RECONDICIONADO.map(s => (
+                        <div key={s} onClick={() => setSubestadoRecond(s)} style={condPill(subestadoRecond === s)}>
+                          {s}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-                <div style={{ fontSize:"1.5rem", fontWeight:900, color:ACCENT }}>
-                  {moneda} {parseFloat(precio || "0").toLocaleString("es-UY")}
-                </div>
-                {descuento && (
-                  <div style={{ display:"inline-block", background:ACCENT, color:"#fff",
-                    fontSize:"0.75rem", fontWeight:700, padding:"2px 8px", borderRadius:20, marginTop:"4px" }}>
-                    -{descuento}% OFF
+                ) : (
+                  <div style={{ marginTop:"0.4rem", fontSize:"0.7rem", color:"var(--gray-400)" }}>
+                    {CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.desc}
+                    {" · Garantía: "}{CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.garantia}
+                    {" · Empaque: "}{CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.empaque}
                   </div>
                 )}
               </div>
             )}
-          </div>
-        )}
+            {tipo === "secondhand" && (
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                {CONDICIONES.map(c => (
+                  <div key={c} onClick={() => setCondicion(c)} style={condPill(condicion === c)}>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {/* PASO 5: Detalles */}
-        {step === 5 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Detalles y disponibilidad</h2>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+            {/* Categorización: Departamento/Categoría/Subcategoría. Se
+                auto-completan por predicción ML apenas se elige un producto
+                (ver el useEffect más arriba); el aviso "sugerido por ML" se
+                apaga en cuanto la persona toca cualquiera de los tres
+                selectores. */}
+            <div style={{ display:"grid", gridTemplateColumns: filteredSubs.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap:"0.75rem" }}>
               <div>
-                <label style={lbl}>Departamento *</label>
+                <label style={lbl}>
+                  Departamento *
+                  {taxonomiaSugerida && (
+                    <span style={{ marginLeft:6, fontWeight:600, fontSize:"0.75rem", color: BLUE }}>
+                      · sugerido por ML
+                    </span>
+                  )}
+                </label>
                 <select style={inp} value={deptoId}
-                  onChange={e => { setDeptoId(e.target.value); setCatId(""); setSubcatId(""); }}>
+                  onChange={e => { setDeptoId(e.target.value); setCatId(""); setSubcatId(""); setTaxonomiaSugerida(false); }}>
                   <option value="">Seleccionar...</option>
                   {deptos.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
                 </select>
@@ -513,7 +907,7 @@ export default function AdminArticulos(
               <div>
                 <label style={lbl}>Categoría</label>
                 <select style={inp} value={catId}
-                  onChange={e => { setCatId(e.target.value); setSubcatId(""); }}
+                  onChange={e => { setCatId(e.target.value); setSubcatId(""); setTaxonomiaSugerida(false); }}
                   disabled={!deptoId}>
                   <option value="">Seleccionar...</option>
                   {filteredCats.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -523,17 +917,141 @@ export default function AdminArticulos(
                 <div>
                   <label style={lbl}>Subcategoría</label>
                   <select style={inp} value={subcatId}
-                    onChange={e => setSubcatId(e.target.value)} disabled={!catId}>
+                    onChange={e => { setSubcatId(e.target.value); setTaxonomiaSugerida(false); }} disabled={!catId}>
                     <option value="">Seleccionar...</option>
                     {filteredSubs.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                   </select>
                 </div>
               )}
-              <div>
-                <label style={lbl}>Stock</label>
-                <input style={inp} type="number" value={stock}
-                  onChange={e => setStock(e.target.value)} min="0" />
+            </div>
+
+            <div>
+              <label style={lbl}>Descripción *</label>
+              <textarea style={{ ...inp, minHeight:100, resize:"vertical" }}
+                value={descripcion} onChange={e => setDescripcion(e.target.value)}
+                placeholder="Describí el artículo con detalle: características, uso, accesorios incluidos..." />
+              <div style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"right", marginTop:"3px" }}>
+                {descripcion.length} / 2000
               </div>
+            </div>
+          </div>
+          </div>
+
+          {/* Imágenes y videos: viven acá, en el paso Información, sin un paso
+              aparte. El usuario agrega/reemplaza/quita desde la Biblioteca.
+              El ancho de esta columna ya no es un valor fijo: lo pone la
+              grilla (columna 2, misma proporción que antes tenía 285 sobre
+              380), y como la columna 4 (Tarjeta) usa la misma fracción,
+              ambas quedan siempre del mismo ancho entre sí. */}
+          <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
+            <SelectorMediaArticulo
+              imagenes={imagenes}
+              videos={videoUrls}
+              onChangeImagenes={setImagenes}
+              onChangeVideos={setVideoUrls}
+              columnas={2}
+              maxImagenes={6}
+              maxVideos={2}
+              imagenAspect="1"
+              anchoGrid="100%"
+              espacioSecciones="1rem"
+              gapTiles="1rem"
+              sinEncabezados
+            />
+          </div>
+
+          {/* Precio: vive acá, a la derecha de las fotos, sin un paso aparte.
+              Misma fracción de grilla que la columna de Información (col 1)
+              para que ambas queden siempre del mismo ancho entre sí. */}
+          <div style={{ minWidth:0 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:"0.75rem" }}>
+                <div>
+                  <label style={lbl}>Moneda</label>
+                  <select style={inp} value={moneda} onChange={e => setMoneda(e.target.value)}>
+                    {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Precio *</label>
+                  <input style={inp} type="number" value={precio}
+                    onChange={e => setPrecio(e.target.value)} placeholder="0" min="0" />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Precio original <span style={{ fontWeight:400, color:"var(--gray-400)" }}>(sin descuento)</span></label>
+                <input style={inp} type="number" value={precioOrig}
+                  onChange={e => setPrecioOrig(e.target.value)} placeholder="0" min="0" />
+              </div>
+              {descuento && (
+                <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.65rem 0.8rem",
+                  background:"#f0fdf4", border:"1px solid color-mix(in srgb, var(--color-success) 70%, white)", borderRadius:8 }}>
+                  <span style={{ fontSize:"1.1rem" }}>🏷</span>
+                  <span style={{ fontWeight:700, color:"#166534", fontSize:"0.8rem" }}>
+                    Descuento del {descuento}%
+                  </span>
+                </div>
+              )}
+              {precio && (
+                <div style={{ padding:"0.85rem", background:"var(--gray-50)", borderRadius:8, border:"1px solid var(--border)" }}>
+                  <div style={{ fontSize:"0.75rem", color:"var(--mute)", marginBottom:"4px" }}>Vista previa</div>
+                  {precioOrig && parseFloat(precioOrig) > parseFloat(precio) && (
+                    <div style={{ fontSize:"0.85rem", color:"var(--gray-400)", textDecoration:"line-through" }}>
+                      {moneda} {parseFloat(precioOrig).toLocaleString("es-UY")}
+                    </div>
+                  )}
+                  <div style={{ fontSize:"1.3rem", fontWeight:900, color:ACCENT }}>
+                    {moneda} {parseFloat(precio || "0").toLocaleString("es-UY")}
+                  </div>
+                  {descuento && (
+                    <div style={{ display:"inline-block", background:ACCENT, color:"#fff",
+                      fontSize:"0.7rem", fontWeight:700, padding:"2px 8px", borderRadius:20, marginTop:"4px" }}>
+                      -{descuento}% OFF
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tarjeta del artículo: la misma que se usa en el front (MarketCard,
+              importada directamente desde ahí) con sus mismas funcionalidades
+              -dar vuelta, galería, selector de cantidad-.
+              Antes el ancho de esta columna salía del alto (aspect-ratio al
+              revés) para que no se disparara más alta que el resto cuando le
+              sobraba ancho libre. Ahora ya no puede sobrarle ancho: la
+              grilla le da la misma fracción que a la columna de Imágenes
+              (col 2 y col 4 comparten "285fr"), así que ambas quedan siempre
+              del mismo ancho entre sí — y con eso alcanza para que la
+              tarjeta no se dispare de alto: vuelve a ser el aspect-ratio
+              normal (ancho → alto). Si se modifica MarketCard.tsx, esta
+              vista previa se actualiza sola porque es el mismo componente,
+              no una copia. */}
+          <div style={{ minWidth:0 }}>
+            {/* Única regla de CSS que MarketCard necesita del front (le da a
+                la tarjeta su alto vía aspect-ratio); se define acá en vez de
+                importar toda la hoja de estilos del front para no arrastrar
+                sus reglas globales (html, body) al panel de admin. */}
+            <style>{`.core-card-slot{aspect-ratio:2/3.7;position:relative;width:100%;box-sizing:border-box}`}</style>
+            <MarketCard
+              p={previewProduct}
+              context={tipo === "secondhand" ? "second" : "market"}
+              onAdd={() => setToast({ text:"Vista previa: así se agrega al carrito en la tienda", ok:true })}
+            />
+          </div>
+
+        </div>
+      ) : (
+      <div style={card}>
+
+        {/* PASO 3: Detalles */}
+        {step === 3 && (
+          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Detalles y disponibilidad</h2>
+            <div style={{ maxWidth:160 }}>
+              <label style={lbl}>Stock</label>
+              <input style={inp} type="number" value={stock}
+                onChange={e => setStock(e.target.value)} min="0" />
             </div>
             <div>
               <label style={lbl}>Disponibilidad</label>
@@ -575,8 +1093,8 @@ export default function AdminArticulos(
           </div>
         )}
 
-        {/* PASO 6: Revisión */}
-        {step === 6 && (
+        {/* PASO 4: Destinos */}
+        {step === 4 && (
           <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
             <div>
               <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>
@@ -659,7 +1177,8 @@ export default function AdminArticulos(
             )}
           </div>
         )}
-        {step === 7 && (
+        {/* PASO 5: Revisión */}
+        {step === 5 && (
           <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Revisión final</h2>
 
@@ -714,20 +1233,23 @@ export default function AdminArticulos(
           </div>
         )}
       </div>
+      )}
 
       {/* Navegación */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <button
-          onClick={() => step > 1 ? setStep(s => s-1) : salir(false)}
+          onClick={() => step > PRIMER_PASO ? setStep(s => s-1) : salir(false)}
           style={{ padding:"0.65rem 1.25rem", background:"transparent",
             border:"1.5px solid var(--border)", borderRadius:10,
             color:"var(--mute)", cursor:"pointer", fontSize:"0.875rem" }}>
-          {step === 1 ? "← Cancelar" : "← Anterior"}
+          {step === PRIMER_PASO ? "← Cancelar" : "← Anterior"}
         </button>
 
         <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-          <span style={{ fontSize:"0.8rem", color:"var(--gray-400)" }}>Paso {step} de {STEPS.length}</span>
-          {step < 6 ? (
+          <span style={{ fontSize:"0.8rem", color:"var(--gray-400)" }}>
+            Paso {STEPS.findIndex(s => s.id === step) + 1} de {STEPS.length}
+          </span>
+          {step < 4 ? (
             <button
               onClick={() => canNext() && setStep(s => s+1)}
               disabled={!canNext()}

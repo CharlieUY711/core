@@ -124,6 +124,16 @@ export interface FichaCanal {
    * la segunda es un problema.
    */
   mercadoMotivo: string | null;
+  /**
+   * Categoria de Mercado Libre que el canal predice para el titulo, con el
+   * camino completo hasta ella (de la raiz a la hoja).
+   *
+   * Es la categoria QUE USA ML, no la nuestra: nuestro departamento /
+   * categoria / subcategoria son una taxonomia propia y no tienen por que
+   * coincidir en id. Sirve como pista para adivinarlos por nombre, no como
+   * un valor que se pueda guardar directo.
+   */
+  categoriaSugerida: { id: string; nombre: string; path: string[] } | null;
 }
 
 export interface MotorCanal {
@@ -177,7 +187,7 @@ async function authHeader() {
   return `Bearer ${session?.access_token ?? ANON_KEY}`;
 }
 
-async function invocar(fn: string, body: Record<string, unknown>) {
+export async function invocar(fn: string, body: Record<string, unknown>) {
   const res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
     method:  "POST",
     headers: { Authorization: await authHeader(), "Content-Type": "application/json" },
@@ -351,6 +361,10 @@ const motorMercadoLibre: MotorCanal = {
           competencia: Array.isArray(d.competencia) ? d.competencia : [],
         } : null,
         mercadoMotivo: d.mercadoMotivo ?? null,
+        // Este método consulta por variantId (producto ya existente); la
+        // predicción de categoría sólo se calcula al buscar por título, que
+        // es el caso de uso del alta (ver fichaPorTitulo más abajo).
+        categoriaSugerida: null,
       };
     } catch (_) {
       return null;
@@ -448,6 +462,10 @@ export async function fichaPorTitulo(
         competencia: Array.isArray(d.competencia) ? d.competencia : [],
       } : null,
       mercadoMotivo: d.mercadoMotivo ?? null,
+      categoriaSugerida: d.categoriaSugerida
+        ? { id: String(d.categoriaSugerida.id), nombre: String(d.categoriaSugerida.nombre ?? ""),
+            path: Array.isArray(d.categoriaSugerida.path) ? d.categoriaSugerida.path : [] }
+        : null,
     };
   } catch (_) {
     return null;

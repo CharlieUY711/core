@@ -26,6 +26,38 @@ interface Props {
   onChangeVideos: (urls: string[]) => void;
   maxImagenes?: number;
   maxVideos?: number;
+  /** Cantidad de columnas del grid, compartida por imágenes y videos (para que
+   *  ambas filas queden alineadas y formen una sola grilla continua). Si no se
+   *  pasa, se mantiene el ancho original: 9 columnas para imágenes, 5 para
+   *  videos. */
+  columnas?: number;
+  /** Relación de aspecto (ancho/alto) de los tiles de imagen. Por defecto "1"
+   *  (cuadrado, como en el paso 3 completo). Se usa para achicar el alto de
+   *  cada fila cuando el grid tiene pocas columnas y hay que ajustar el total
+   *  a una altura puntual (ej: paso 2, al lado del panel de Información). */
+  imagenAspect?: string;
+  /** Si es true, no muestra los títulos "Imágenes"/"Videos", el contador ni
+   *  el botón "+ Agregar" de cada sección — solo la grilla de tiles. Se sigue
+   *  pudiendo hacer click en un tile vacío para abrir la Biblioteca. */
+  sinEncabezados?: boolean;
+  /** Fracción (0–1) del ancho de columna que ocupa cada tile. Dejar en 1
+   *  (default) para que el tile llene toda su columna sin margen vacío — así
+   *  el gap entre columnas queda 100% controlado por `gapTiles`, sin espacio
+   *  extra escondido. Para achicar el tamaño general de los tiles sin que
+   *  esto rompa el control del gap, usar `anchoGrid` en vez de este prop.
+   */
+  escalaTile?: number;
+  /** Espacio vertical entre el bloque de Imágenes y el de Videos. Por defecto
+   *  "1rem", como en el paso 3 completo. */
+  espacioSecciones?: string;
+  /** Gap entre columnas/filas de tiles, para imágenes y videos por igual. Por
+   *  defecto usa los valores originales (0.35rem imágenes, 0.5rem videos). */
+  gapTiles?: string;
+  /** Ancho del área de tiles (imágenes y videos), como % o px del contenedor.
+   *  Por defecto "100%". Usar un valor menor para achicar el tamaño general
+   *  de los tiles sin dejar margen vacío individual — así `gapTiles` sigue
+   *  controlando el 100% de la distancia visible entre columnas. */
+  anchoGrid?: string;
 }
 
 function getUrl(bucket: string, path: string): string {
@@ -43,7 +75,8 @@ function getThumb(bucket: string, path: string, tipo: string, thumbPath?: string
 export default function SelectorMediaArticulo({
   imagenes, videos,
   onChangeImagenes, onChangeVideos,
-  maxImagenes = 9, maxVideos = 5,
+  maxImagenes = 9, maxVideos = 5, columnas, imagenAspect = "1", sinEncabezados = false, escalaTile = 1,
+  espacioSecciones = "1rem", gapTiles, anchoGrid = "100%",
 }: Props) {
   const [modalOpen, setModalOpen]       = useState(false);
   const [modalTipo, setModalTipo]       = useState<"imagen"|"video">("imagen");
@@ -108,8 +141,8 @@ export default function SelectorMediaArticulo({
   const removeImg = (i: number) => { const next = [...imagenes]; next.splice(i,1); onChangeImagenes(next); };
   const removeVid = (i: number) => { const next = [...videos];   next.splice(i,1); onChangeVideos(next);   };
 
-  const slotStyle = (filled: boolean, first = false): React.CSSProperties => ({
-    width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden",
+  const slotStyle = (filled: boolean, first = false, aspect: string = "1", escala: number = 1): React.CSSProperties => ({
+    width: `${escala * 100}%`, aspectRatio: aspect, borderRadius: 10, overflow: "hidden",
     border: first && filled ? `2px solid ${ACCENT}` : `1.5px solid ${filled ? "var(--border)" : "#F3F4F6"}`,
     background: filled ? "#000" : "var(--gray-50)",
     cursor: "pointer", position: "relative",
@@ -118,28 +151,30 @@ export default function SelectorMediaArticulo({
   });
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:espacioSecciones }}>
 
       {/* IMÁGENES */}
       <div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
-          <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
-            Imágenes <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({imagenes.length}/{maxImagenes}) · primera = principal</span>
-          </span>
-          {imagenes.length < maxImagenes && (
-            <button onClick={() => openModal("imagen")} style={{
-              padding:"0.3rem 0.75rem", background:ACCENT, color:"#fff",
-              border:"none", borderRadius:7, fontSize:"0.78rem", fontWeight:700, cursor:"pointer"
-            }}>+ Agregar</button>
-          )}
-        </div>
+        {!sinEncabezados && (
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
+            <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
+              Imágenes <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({imagenes.length}/{maxImagenes}) · primera = principal</span>
+            </span>
+            {imagenes.length < maxImagenes && (
+              <button onClick={() => openModal("imagen")} style={{
+                padding:"0.3rem 0.75rem", background:ACCENT, color:"#fff",
+                border:"none", borderRadius:7, fontSize:"0.78rem", fontWeight:700, cursor:"pointer"
+              }}>+ Agregar</button>
+            )}
+          </div>
+        )}
 
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(9,1fr)", gap:"0.35rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:`repeat(${columnas ?? 9},1fr)`, gap:gapTiles ?? "0.35rem", width:anchoGrid }}>
           {Array.from({ length: maxImagenes }).map((_, i) => {
             const url = imagenes[i];
             return (
               <div key={i}
-                style={slotStyle(!!url, i === 0)}
+                style={slotStyle(!!url, i === 0, imagenAspect)}
                 draggable={!!url}
                 onDragStart={() => onImgDragStart(i)}
                 onDragOver={e => e.preventDefault()}
@@ -181,24 +216,26 @@ export default function SelectorMediaArticulo({
 
       {/* VIDEOS */}
       <div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
-          <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
-            Videos <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({videos.length}/{maxVideos}) · máx 30s</span>
-          </span>
-          {videos.length < maxVideos && (
-            <button onClick={() => openModal("video")} style={{
-              padding:"0.3rem 0.75rem", background:BLUE, color:"#fff",
-              border:"none", borderRadius:7, fontSize:"0.78rem", fontWeight:700, cursor:"pointer"
-            }}>+ Agregar</button>
-          )}
-        </div>
+        {!sinEncabezados && (
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.5rem" }}>
+            <span style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
+              Videos <span style={{ color:"var(--gray-400)", fontWeight:400 }}>({videos.length}/{maxVideos}) · máx 30s</span>
+            </span>
+            {videos.length < maxVideos && (
+              <button onClick={() => openModal("video")} style={{
+                padding:"0.3rem 0.75rem", background:BLUE, color:"#fff",
+                border:"none", borderRadius:7, fontSize:"0.78rem", fontWeight:700, cursor:"pointer"
+              }}>+ Agregar</button>
+            )}
+          </div>
+        )}
 
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:"0.5rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:`repeat(${columnas ?? 5},1fr)`, gap:gapTiles ?? "0.5rem", width:anchoGrid }}>
           {Array.from({ length: maxVideos }).map((_, i) => {
             const url = videos[i];
             return (
               <div key={i}
-                style={{ ...slotStyle(!!url), aspectRatio:"16/9" }}
+                style={{ ...slotStyle(!!url, false, "1"), aspectRatio:"16/9" }}
                 draggable={!!url}
                 onDragStart={() => onVidDragStart(i)}
                 onDragOver={e => e.preventDefault()}
