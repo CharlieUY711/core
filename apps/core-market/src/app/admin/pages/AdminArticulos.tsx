@@ -883,6 +883,87 @@ export default function AdminArticulos(
   const [precio,      setPrecio]      = useState("");
   const [precioOrig,  setPrecioOrig]  = useState("");
   const [moneda,      setMoneda]      = useState("UYU");
+
+  /**
+   * Cambiar la moneda convierte el precio.
+   *
+   * Antes no lo hacia: `moneda` era una etiqueta al lado del numero, asi que
+   * pasar de UYU a USD dejaba 38.795 USD -el mismo numero, cuarenta veces mas
+   * caro-. No es un detalle de comodidad: es un precio equivocado publicado.
+   *
+   * Se convierte solo, sin preguntar, porque nadie quiere el numero sin
+   * convertir; pero queda dicho en la franja de avisos con que cotizacion se
+   * hizo y de cuando es, y se puede deshacer. Convertir en silencio seria tan
+   * malo como no convertir: el precio cambio y hay que poder verlo.
+   *
+   * Todo pivotea por el peso, que es como el BCU cotiza: monto * tasa(desde) /
+   * tasa(hasta), con el peso valiendo 1.
+   */
+  const [cotizaciones, setCotizaciones] = useState<Record<string, { tasa: number; fecha: string }>>({});
+  const [conversion, setConversion] = useState<
+    { de: string; a: string; tasaUsada: number; fecha: string; antes: { precio: string; precioOrig: string } } | null
+  >(null);
+  const [sinCotizacion, setSinCotizacion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    supabase.rpc("tipos_de_cambio_vigentes", { p_to: "UYU" }).then(({ data, error }) => {
+      if (!vivo || error || !data) return;
+      const mapa: Record<string, { tasa: number; fecha: string }> = { UYU: { tasa: 1, fecha: "" } };
+      for (const f of data as any[]) {
+        mapa[f.from_currency] = { tasa: Number(f.rate), fecha: f.valid_at };
+      }
+      setCotizaciones(mapa);
+    });
+    return () => { vivo = false; };
+  }, []);
+
+  const cambiarMoneda = (nueva: string) => {
+    const anterior = moneda;
+    if (nueva === anterior) return;
+    setMoneda(nueva);
+    setConversion(null);
+    setSinCotizacion(null);
+
+    const hay = parseFloat(precio) > 0 || parseFloat(precioOrig) > 0;
+    if (!hay) return;   // sin precio no hay nada que convertir
+
+    const desde = cotizaciones[anterior];
+    const hasta = cotizaciones[nueva];
+    if (!desde || !hasta) {
+      // Se cambia la moneda igual -es lo que el usuario pidio- pero el numero
+      // queda como estaba y se dice, en vez de convertir con una tasa que no
+      // tenemos o dejarlo pasar como si estuviera bien.
+      setSinCotizacion(!desde ? anterior : nueva);
+      return;
+    }
+
+    // A pesos se redondea al entero, a moneda extranjera a dos decimales: un
+    // precio en pesos con centesimos no existe.
+    const convertir = (v: string) => {
+      const n = parseFloat(v);
+      if (!Number.isFinite(n) || n <= 0) return v;
+      const r = (n * desde.tasa) / hasta.tasa;
+      return nueva === "UYU" ? String(Math.round(r)) : (Math.round(r * 100) / 100).toFixed(2);
+    };
+
+    setConversion({
+      de: anterior, a: nueva,
+      tasaUsada: desde.tasa / hasta.tasa,
+      fecha: (hasta.fecha || desde.fecha),
+      antes: { precio, precioOrig },
+    });
+    setPrecio(convertir(precio));
+    setPrecioOrig(convertir(precioOrig));
+  };
+
+  const deshacerConversion = () => {
+    if (!conversion) return;
+    setPrecio(conversion.antes.precio);
+    setPrecioOrig(conversion.antes.precioOrig);
+    setMoneda(conversion.de);
+    setConversion(null);
+  };
   const descuento = precio && precioOrig && parseFloat(precioOrig) > parseFloat(precio)
     ? Math.round((1 - parseFloat(precio) / parseFloat(precioOrig)) * 100)
     : null;
@@ -1011,7 +1092,25 @@ export default function AdminArticulos(
                  )
                : "",
     medios:      imagenes.length === 0 ? "Sin fotos: Mercado Libre necesita al menos una" : "",
-    precio:      !precio || parseFloat(precio) <= 0 ? "Falta el precio" : "",
+    precio:      sinCotizacion ? (
+                   <span style={{ color:"#92400E" }}>
+                     No hay cotización de {sinCotizacion}: el precio quedó como estaba, revisalo.
+                   </span>
+                 )
+               : conversion ? (
+                   <>
+                     <div>
+                       Convertido de {conversion.de} a {conversion.a} al oficial del BCU
+                       {conversion.fecha ? ` del ${new Date(conversion.fecha).toLocaleDateString("es-UY")}` : ""}.
+                     </div>
+                     <button onClick={deshacerConversion}
+                       style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                         color:ACCENT, textDecoration:"underline", fontSize:"0.78rem" }}>
+                       Deshacer
+                     </button>
+                   </>
+                 )
+               : !precio || parseFloat(precio) <= 0 ? "Falta el precio" : "",
     tarjeta:     "",
   };
 
@@ -1609,7 +1708,7 @@ export default function AdminArticulos(
             <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
               <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:`${RITMO}px 0.75rem` }}>
                 <div>
-                  <select style={inp} value={moneda} onChange={e => setMoneda(e.target.value)}>
+                  <select style={inp} value={moneda} onChange={e => cambiarMoneda(e.target.value)}>
                     {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>

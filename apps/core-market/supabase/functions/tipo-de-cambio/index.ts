@@ -39,10 +39,27 @@ const cors = {
 };
 
 interface CotizacionBcu {
-  fecha: string;   // YYYY-MM-DD, el dia al que corresponde la cotizacion
-  compra: number;  // TCC
-  venta: number;   // TCV
+  fecha: string;    // YYYY-MM-DD, el dia al que corresponde la cotizacion
+  monedaBcu: number;// codigo en el nomenclador del BCU
+  compra: number;   // TCC
+  venta: number;    // TCV
 }
+
+/** Que monedas se piden y con que codigo ISO se guardan. */
+interface MonedaPedida { bcu: number; iso: string }
+
+/**
+ * Las monedas que ofrece el alta de un articulo, salvo el peso.
+ *
+ * Si el formulario deja elegir una moneda, tiene que existir la cotizacion
+ * para convertir a ella: ofrecer EUR y no traer su cotizacion deja al usuario
+ * con un selector que cambia la etiqueta y no el numero. Default por si la
+ * fuente no lo declara; lo que manda es `config.monedas`.
+ */
+const MONEDAS_POR_DEFECTO: MonedaPedida[] = [
+  { bcu: 2222, iso: "USD" },   // DOLAR USA
+  { bcu: 1111, iso: "EUR" },   // EURO
+];
 
 const soloFecha = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -60,8 +77,7 @@ const soloFecha = (d: Date) => d.toISOString().slice(0, 10);
  * inventado en vez de negarse. Sin cotizacion nueva queda la anterior, que es
  * un numero real.
  */
-async function pedirAlBcu(url: string, cfg: any): Promise<CotizacionBcu> {
-  const moneda = Number(cfg?.moneda_bcu ?? 2222);  // "DOLAR USA" en el nomenclador del BCU
+async function pedirAlBcu(url: string, cfg: any, monedas: MonedaPedida[]): Promise<CotizacionBcu[]> {
   const grupo  = Number(cfg?.grupo ?? 0);
   const dias   = Number(cfg?.dias_hacia_atras ?? 10);
 
@@ -73,7 +89,7 @@ async function pedirAlBcu(url: string, cfg: any): Promise<CotizacionBcu> {
  <soapenv:Body>
   <cot:wsbcucotizaciones.Execute>
    <cot:Entrada>
-    <cot:Moneda><cot:item>${moneda}</cot:item></cot:Moneda>
+    <cot:Moneda>${monedas.map(m => `<cot:item>${m.bcu}</cot:item>`).join("")}</cot:Moneda>
     <cot:FechaDesde>${soloFecha(desde)}</cot:FechaDesde>
     <cot:FechaHasta>${soloFecha(hasta)}</cot:FechaHasta>
     <cot:Grupo>${grupo}</cot:Grupo>
@@ -110,10 +126,11 @@ async function pedirAlBcu(url: string, cfg: any): Promise<CotizacionBcu> {
   for (const m of xml.matchAll(bloque)) {
     const cuerpo = m[1];
     const fecha  = /<Fecha>([^<]+)<\/Fecha>/.exec(cuerpo)?.[1];
+    const mon    = parseInt(/<Moneda>([^<]+)<\/Moneda>/.exec(cuerpo)?.[1] ?? "", 10);
     const tcc    = parseFloat(/<TCC>([^<]+)<\/TCC>/.exec(cuerpo)?.[1] ?? "");
     const tcv    = parseFloat(/<TCV>([^<]+)<\/TCV>/.exec(cuerpo)?.[1] ?? "");
-    if (fecha && Number.isFinite(tcc) && Number.isFinite(tcv) && tcv > 0) {
-      filas.push({ fecha, compra: tcc, venta: tcv });
+    if (fecha && Number.isFinite(mon) && Number.isFinite(tcc) && Number.isFinite(tcv) && tcv > 0) {
+      filas.push({ fecha, monedaBcu: mon, compra: tcc, venta: tcv });
     }
   }
 
@@ -121,8 +138,14 @@ async function pedirAlBcu(url: string, cfg: any): Promise<CotizacionBcu> {
     throw new Error(`El BCU no devolvió ninguna cotización entre ${soloFecha(desde)} y ${soloFecha(hasta)}.`);
   }
 
-  filas.sort((a, b) => a.fecha.localeCompare(b.fecha));
-  return filas[filas.length - 1];
+  // La ultima de cada moneda: el rango trae varios dias y solo interesa el mas
+  // reciente que haya de cada una. Se resuelve por moneda y no de una sola vez
+  // porque no todas se publican los mismos dias.
+  const ultima = new Map<number, CotizacionBcu>();
+  for (const f of filas.sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+    ultima.set(f.monedaBcu, f);
+  }
+  return [...ultima.values()];
 }
 
 Deno.serve(async (req) => {
@@ -155,30 +178,45 @@ Deno.serve(async (req) => {
       return responder({ ok: true, omitido: "La fuente BCU está inactiva." });
     }
 
-    const cot = await pedirAlBcu(fuente.url, fuente.config);
+    const monedas: MonedaPedida[] = Array.isArray(fuente.config?.monedas) && fuente.config.monedas.length
+      ? fuente.config.monedas
+      : MONEDAS_POR_DEFECTO;
 
+    const cotizaciones = await pedirAlBcu(fuente.url, fuente.config, monedas);
+    const porCodigo = new Map(monedas.map((m) => [m.bcu, m.iso]));
+
+    // Todo contra el peso: el BCU cotiza cada moneda contra el peso uruguayo,
+    // asi que eso es lo que se guarda. Pasar de dolares a euros se resuelve
+    // pivoteando por el peso, no guardando cada par por separado — n monedas
+    // son n filas y no n².
+    //
     // `rate` es lo que se factura y es `venta`. Para el arbitraje oficial del
     // BCU compra y venta vienen iguales -publica un solo numero-, asi que hoy
     // da lo mismo; se guardan los dos igual porque es lo que la fuente
-    // declara, y el dia que una fuente los distinga la fila ya lo soporta sin
-    // cambiar nada.
-    const fila = {
-      source_id:     fuente.id,
-      from_currency: "USD",
-      to_currency:   "UYU",
-      rate:          cot.venta,
-      compra:        cot.compra,
-      venta:         cot.venta,
-      valid_at:      new Date(`${cot.fecha}T00:00:00Z`).toISOString(),
-    };
+    // declara, y el dia que una fuente los distinga la fila ya lo soporta.
+    const filas = cotizaciones
+      .filter((c) => porCodigo.has(c.monedaBcu))
+      .map((c) => ({
+        source_id:     fuente.id,
+        from_currency: porCodigo.get(c.monedaBcu)!,
+        to_currency:   "UYU",
+        rate:          c.venta,
+        compra:        c.compra,
+        venta:         c.venta,
+        valid_at:      new Date(`${c.fecha}T00:00:00Z`).toISOString(),
+      }));
+
+    if (!filas.length) {
+      throw new Error("El BCU no devolvió ninguna de las monedas pedidas.");
+    }
 
     const { error: errIns } = await supabase
       .from("exchange_rates")
-      .upsert(fila, { onConflict: "source_id,from_currency,to_currency,valid_at" });
+      .upsert(filas, { onConflict: "source_id,from_currency,to_currency,valid_at" });
 
     if (errIns) throw new Error(`No se pudo guardar la cotización: ${errIns.message}`);
 
-    return responder({ ok: true, ...fila });
+    return responder({ ok: true, cotizaciones: filas });
   } catch (e) {
     // Que falle se reporta, no se disimula: si nadie escribe la tabla, el
     // checkout de un carrito mixto deja de funcionar y hay que enterarse acá.
