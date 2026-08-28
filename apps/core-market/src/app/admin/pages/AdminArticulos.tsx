@@ -337,6 +337,7 @@ const ANCHO_MINIMO_FILA =
 function CampoConCheck({
   valor, onChange, placeholder, marcado, onMarcar, etiqueta,
   soloLectura = false, estiloInput, confirmado = false, onCambiar,
+  bloqueado = false, onAbrir,
 }: {
   valor: string;
   onChange: (v: string) => void;
@@ -349,6 +350,10 @@ function CampoConCheck({
   /** Ya hay una eleccion hecha: el check deja lugar a "Cambiar". */
   confirmado?: boolean;
   onCambiar?: () => void;
+  /** El campo todavia no fue abierto: se ve y no se toca. */
+  bloqueado?: boolean;
+  /** El usuario se paro en el campo: a partir de ahi si se edita. */
+  onAbrir?: () => void;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
   const alternar = () => {
@@ -360,8 +365,10 @@ function CampoConCheck({
   return (
     <div style={{ position:"relative", flex:1, minWidth:0 }}>
       <input ref={ref}
-        style={{ ...estiloInput, width:"100%", paddingRight: etiqueta.length * 6.4 + 34 }}
-        value={valor} readOnly={soloLectura}
+        style={{ ...estiloInput, width:"100%", paddingRight: etiqueta.length * 6.4 + 34,
+          ...(bloqueado ? { background:"#F8F9FB", cursor:"text" } : null) }}
+        value={valor} readOnly={soloLectura || bloqueado}
+        onFocus={onAbrir} onMouseDown={onAbrir}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} />
       {confirmado ? (
@@ -569,7 +576,29 @@ export default function AdminArticulos(
 
   // Se espera a que deje de escribir: la sugerencia ahora sale de una
   // búsqueda web real (Serper/Google), no de filtrar una lista en memoria.
+  /**
+   * Campos que el usuario abrio.
+   *
+   * Editar un articulo ya cargado sembraba marca y nombre en el estado, y eso
+   * disparaba las busquedas de catalogo, fotos y videos como si los estuviera
+   * escribiendo en ese momento: sugerencias que nadie pidio sobre campos que
+   * nadie toco, y el riesgo de pisar datos correctos con una coincidencia.
+   *
+   * Un campo se abre cuando el usuario se para en el: hasta entonces se lee
+   * pero no se edita, y ninguna busqueda corre por su cuenta.
+   *
+   * En el alta no hay nada que proteger -los campos arrancan vacios y lo unico
+   * que hay es lo que se acaba de escribir-, asi que todo esta abierto desde
+   * el principio y no cambia nada.
+   */
+  const bloqueaCampos = !!articulo;
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
+  const abrir = (c: string) =>
+    setAbiertos(prev => prev.has(c) ? prev : new Set(prev).add(c));
+  const abierto = (c: string) => !bloqueaCampos || abiertos.has(c);
+
   useEffect(() => {
+    if (!abierto("marca")) { setCandidatosMarca([]); return; }
     if (marcaConfirmada) { setCandidatosMarca([]); return; }
     const q = marca.trim();
     if (q.length < 2) { setCandidatosMarca([]); return; }
@@ -582,7 +611,7 @@ export default function AdminArticulos(
       setBuscandoMarca(false);
     }, 500);
     return () => { vivo = false; clearTimeout(t); };
-  }, [marca, marcaConfirmada]);
+  }, [marca, marcaConfirmada, abiertos]);
 
   const elegirMarcaSugerida = (m: MarcaSugerida) => {
     setMarca(m.nombre);
@@ -755,6 +784,7 @@ export default function AdminArticulos(
   // Se espera a que deje de escribir: buscar en cada tecla castiga la API y
   // hace parpadear la lista sin que nadie llegue a leerla.
   useEffect(() => {
+    if (!abierto("nombre")) { setCandidatos([]); return; }
     if (idElegido) return;              // ya eligio: no se le cambia debajo
     if (articuloPersonalizado) return;  // se tipea a mano, no se buscan coincidencias
     const q = nombre.trim();
@@ -774,7 +804,7 @@ export default function AdminArticulos(
       setBuscandoProd(false);
     }, 600);
     return () => { vivo = false; clearTimeout(t); };
-  }, [nombre, idElegido, articuloPersonalizado, marca, marcaConfirmada, marcaModo]);
+  }, [nombre, idElegido, articuloPersonalizado, marca, marcaConfirmada, marcaModo, abiertos]);
 
   // Imágenes y videos encontrados en la web para marca + artículo. Sólo
   // tiene sentido buscar una vez que hay algo de las dos cosas escrito: son
@@ -787,6 +817,11 @@ export default function AdminArticulos(
 
   useEffect(() => {
     const articulo = nombre.trim();
+    if (!abierto("nombre") && !abierto("marca")) {
+      setImagenesBuscadas([]);
+      setVideosBuscados([]);
+      return;
+    }
     if (!marcaConfirmada || !marca.trim() || articulo.length < 4) {
       setImagenesBuscadas([]);
       setVideosBuscados([]);
@@ -805,7 +840,7 @@ export default function AdminArticulos(
       setBuscandoVideos(false);
     }, 600);
     return () => { vivo = false; clearTimeout(t); };
-  }, [marca, marcaConfirmada, marcaModo, nombre]);
+  }, [marca, marcaConfirmada, marcaModo, nombre, abiertos]);
 
   /**
    * Adopta la version elegida.
@@ -1239,6 +1274,8 @@ export default function AdminArticulos(
                   soloLectura={marcaConfirmada && marcaModo !== "personalizada"}
                   confirmado={marcaConfirmada && marcaModo === "sugerida"}
                   onCambiar={cambiarMarca}
+                  bloqueado={bloqueaCampos && !abiertos.has("marca")}
+                  onAbrir={() => abrir("marca")}
                   estiloInput={inp} />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
@@ -1411,6 +1448,8 @@ export default function AdminArticulos(
                   }}
                   confirmado={!!idElegido}
                   onCambiar={() => { setIdElegido(null); setElegido(null); setCandidatos([]); }}
+                  bloqueado={bloqueaCampos && !abiertos.has("nombre")}
+                  onAbrir={() => abrir("nombre")}
                   estiloInput={inp} />
               </div>
 
@@ -1520,7 +1559,12 @@ export default function AdminArticulos(
             <div>
               <textarea maxLength={MAX_DESCRIPCION}
                 style={{ ...inp, height:"auto", minHeight:100,
-                padding:"0.6rem 0.75rem", resize:"vertical" }}
+                padding:"0.6rem 0.75rem", resize:"vertical",
+                ...(bloqueaCampos && !abiertos.has("descripcion")
+                    ? { background:"#F8F9FB" } : null) }}
+                readOnly={bloqueaCampos && !abiertos.has("descripcion")}
+                onFocus={() => abrir("descripcion")}
+                onMouseDown={() => abrir("descripcion")}
                 value={descripcion} onChange={e => setDescripcion(e.target.value)}
                 placeholder="Descripción: características, uso, accesorios incluidos…" />
               <div style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"right", marginTop:"3px" }}>

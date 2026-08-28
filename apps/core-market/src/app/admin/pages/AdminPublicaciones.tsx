@@ -1017,8 +1017,12 @@ export default function AdminPublicaciones() {
           {(showWizard||exp)&&(
             <>
               <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
-              <Accion label="← Volver" color="var(--mute)"
-                onClick={()=>{setShowWizard(false);setExp(null);}}/>
+              <button onClick={()=>{setShowWizard(false);setExp(null);}}
+                style={{border:"none",background:"none",padding:"0 6px",cursor:"pointer",
+                  color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,
+                  fontFamily:"DM Sans,sans-serif",whiteSpace:"nowrap"}}>
+                ← Volver
+              </button>
             </>
           )}
 
