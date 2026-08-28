@@ -337,7 +337,7 @@ const ANCHO_MINIMO_FILA =
 function CampoConCheck({
   valor, onChange, placeholder, marcado, onMarcar, etiqueta,
   soloLectura = false, estiloInput, confirmado = false, onCambiar,
-  bloqueado = false, onAbrir,
+  bloqueado = false,
 }: {
   valor: string;
   onChange: (v: string) => void;
@@ -350,10 +350,16 @@ function CampoConCheck({
   /** Ya hay una eleccion hecha: el check deja lugar a "Cambiar". */
   confirmado?: boolean;
   onCambiar?: () => void;
-  /** El campo todavia no fue abierto: se ve y no se toca. */
+  /**
+   * El campo todavia no fue abierto: se ve y no se toca.
+   *
+   * Marca y articulo son los dos campos de los que cuelga todo lo demas -las
+   * busquedas de catalogo, las fotos, la categoria-. Pararse encima no alcanza
+   * para editarlos: un clic al pasar no puede ser lo que habilite cambiar la
+   * identidad de un articulo ya publicado. Se abren con "Cambiar", que es una
+   * decision explicita, y los dos se comportan igual.
+   */
   bloqueado?: boolean;
-  /** El usuario se paro en el campo: a partir de ahi si se edita. */
-  onAbrir?: () => void;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
   const alternar = () => {
@@ -368,10 +374,9 @@ function CampoConCheck({
         style={{ ...estiloInput, width:"100%", paddingRight: etiqueta.length * 6.4 + 34,
           ...(bloqueado ? { background:"#F8F9FB", cursor:"text" } : null) }}
         value={valor} readOnly={soloLectura || bloqueado}
-        onFocus={onAbrir} onMouseDown={onAbrir}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} />
-      {confirmado ? (
+      {(confirmado || bloqueado) ? (
         /*
          * Con la marca ya elegida, "Personalizada" no ofrece nada: la decision
          * ya se tomo. Lo unico que puede querer alguien en ese momento es
@@ -1273,9 +1278,8 @@ export default function AdminArticulos(
                   onMarcar={(m) => { if (m) { setMarca(""); elegirMarcaPersonalizada(); } else cambiarMarca(); }}
                   soloLectura={marcaConfirmada && marcaModo !== "personalizada"}
                   confirmado={marcaConfirmada && marcaModo === "sugerida"}
-                  onCambiar={cambiarMarca}
+                  onCambiar={() => { abrir("marca"); cambiarMarca(); }}
                   bloqueado={bloqueaCampos && !abiertos.has("marca")}
-                  onAbrir={() => abrir("marca")}
                   estiloInput={inp} />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
@@ -1447,9 +1451,8 @@ export default function AdminArticulos(
                     if (m) { setNombre(""); setCandidatos([]); setElegido(null); setIdElegido(null); }
                   }}
                   confirmado={!!idElegido}
-                  onCambiar={() => { setIdElegido(null); setElegido(null); setCandidatos([]); }}
+                  onCambiar={() => { abrir("nombre"); setIdElegido(null); setElegido(null); setCandidatos([]); }}
                   bloqueado={bloqueaCampos && !abiertos.has("nombre")}
-                  onAbrir={() => abrir("nombre")}
                   estiloInput={inp} />
               </div>
 
