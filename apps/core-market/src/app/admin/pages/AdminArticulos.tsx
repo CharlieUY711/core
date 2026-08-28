@@ -1201,6 +1201,29 @@ export default function AdminArticulos(
       )}
 
       {/* Contenido del paso */}
+      {/*
+        Volver, arriba y a la vista.
+        El unico camino de salida era el "Cancelar" del pie, y este formulario
+        es largo: quien se arrepiente apenas entra tiene que recorrerlo entero
+        para encontrarlo, o no lo encuentra. La salida tiene que estar donde
+        aparece la decision de irse, no al final del trabajo.
+      */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:"0.75rem",
+        background:"#fff", padding:`${AIRE_MONITOR}px 1.5rem`,
+        borderBottom:"1px solid #EAECF0",
+      }}>
+        <button onClick={() => salir(false)} style={{
+          border:"none", background:"none", padding:0, cursor:"pointer",
+          color:ACCENT, fontSize:"0.82rem", fontWeight:700,
+        }}>
+          ← Volver a la lista
+        </button>
+        <span style={{ color:"var(--gray-400)", fontSize:"0.8rem" }}>
+          {articulo ? `Editando: ${articulo.nombre ?? ""}` : "Nuevo artículo"}
+        </span>
+      </div>
+
       {/* ARRIBA: lo basico, en cuatro columnas. Identidad, imagenes, precio y
           como se va a ver. Es lo que define al articulo, y entra de una. */}
       {true ? (
@@ -1813,7 +1836,7 @@ export default function AdminArticulos(
           style={{ padding:"0.65rem 1.25rem", background:"transparent",
             border:"1.5px solid var(--border)", borderRadius:10,
             color:"var(--mute)", cursor:"pointer", fontSize:"0.875rem" }}>
-          ← Cancelar
+          Descartar y volver
         </button>
 
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
