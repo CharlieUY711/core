@@ -937,6 +937,13 @@ export default function AdminPublicaciones() {
     setSaving(false);
   };
 
+  /**
+   * Mientras hay un articulo abierto, la lista muestra solo ese.
+   *
+   * Las demas filas no aportan nada en ese momento y empujan el formulario
+   * fuera de la pantalla. Se ocultan, no se descartan: el filtro y el orden
+   * siguen intactos y al cerrar la lista vuelve como estaba.
+   */
   let filtered=arts.filter(a=>{
     // Por `tipo` (DEC-012): Market y Second Hand son excluyentes -- un
     // producto vive en una lista o en la otra, nunca en las dos. Antes se
@@ -1122,6 +1129,18 @@ export default function AdminPublicaciones() {
   };
 
   // Panel expandido
+  /**
+   * Filas que se muestran.
+   *
+   * Con un articulo abierto, solo ese. Las demas no aportan en ese momento y
+   * empujan el formulario fuera de la pantalla. Se ocultan, no se descartan:
+   * el filtro y el orden siguen intactos y al cerrar la lista vuelve como
+   * estaba.
+   */
+  const visibles = showWizard ? []
+                 : exp ? filtered.filter(a => a.id === exp)
+                 : filtered;
+
   const renderPanel=(a:Art|null,isNew=false)=>(
     <tr key={(a?.id||"new")+"-p"}>
       <td colSpan={99} style={{padding:0,borderBottom:`2px solid ${color}22`}}>
@@ -1451,17 +1470,18 @@ export default function AdminPublicaciones() {
           </div>
         )}
 
-        {/* El alta reemplaza la tabla, sin cambiar de pantalla ni perder filtros */}
-        {showWizard?(
-          <div style={{overflowY:"auto",flex:1}}>
-            <AdminArticulos
-              key={wizardTipo}
-              tipoInicial={wizardTipo}
-              onCancel={()=>setShowWizard(false)}
-              onFinish={()=>{setShowWizard(false);reload();}}
-            />
-          </div>
-        ):load?(
+        {/*
+          La tabla no se va: se acota.
+
+          Dar de alta o abrir un articulo deja de ser irse a otra pantalla. La
+          tabla queda -con su encabezado, sus filtros y su orden- y solo se
+          muestra la fila en cuestion, con el formulario debajo. Al cerrar, la
+          lista vuelve tal cual estaba.
+
+          Reemplazarla obligaba a reconstruir el contexto al volver: donde
+          estaba, que habia filtrado, cual era la fila. Acotarla no.
+        */}
+        {load?(
           <div style={{textAlign:"center",padding:"3rem",color:"var(--gray-400)",flex:1}}>Cargando...</div>
         ):(
           <div style={{overflowY:"auto",flex:1}}>
@@ -1493,7 +1513,21 @@ export default function AdminPublicaciones() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length===0?(
+                {/* El alta va como una fila mas: la tabla no cambia de forma
+                    para recibirla, y al terminar la fila real ocupa su lugar. */}
+                {showWizard&&(
+                  <tr>
+                    <td colSpan={99} style={{padding:0,background:"#fff"}}>
+                      <AdminArticulos
+                        key={wizardTipo}
+                        tipoInicial={wizardTipo}
+                        onCancel={()=>setShowWizard(false)}
+                        onFinish={()=>{setShowWizard(false);reload();}}
+                      />
+                    </td>
+                  </tr>
+                )}
+                {showWizard?null:filtered.length===0?(
                   <tr><td colSpan={99} style={{textAlign:"center",padding:"3rem"}}>
                     <div style={{fontSize:"2.5rem"}}>📦</div>
                     <div style={{fontWeight:700,color:"#374151",marginTop:"0.5rem"}}>Sin publicaciones</div>
@@ -1501,7 +1535,7 @@ export default function AdminPublicaciones() {
                       Usá el menú Artículo → + Nuevo artículo para empezar
                     </div>
                   </td></tr>
-                ):filtered.map(a=>{
+                ):visibles.map(a=>{
                   const cfg=S[a.status]||S.draft;
                   const isE=exp===a.id;
                   const isS=sel.has(a.id);
