@@ -2,16 +2,17 @@
 // apps/core-market/supabase/functions/publicar-en-ml/index.ts
 //
 // Publica o actualiza una variante en MercadoLibre.
-// Lee datos desde catalog_items + catalog_variants + catalog_listings +
-// catalog_prices (vía resolve_price) + catalog_media.
+// Lee datos desde catalog_producto_base + catalog_variante +
+// catalog_canal_listing. El precio sale de precio_de_canal(), la misma funcion
+// que usan la vidriera y el checkout.
 //
 // Flujo:
 //   1. Valida JWT y extrae storeId
 //   2. Lee variant + item + listing existente (si hay)
-//   3. Resuelve precio vía resolve_price() para canal 'mercadolibre'
+//   3. Resuelve precio vía precio_de_canal() para canal 'mercadolibre'
 //   4. Si listing existe con external_id → PUT /items/{id} (update)
 //      Si no → POST /items (create)
-//   5. Actualiza catalog_listings con nuevo status + external_id
+//   5. Actualiza catalog_canal_listing con nuevo status + external_id
 //   6. Inserta fila en catalog_sync_log
 //
 // Body esperado:
@@ -21,7 +22,9 @@
 // Imports por ruta relativa (Deno Edge no resuelve workspace:*)
 // =============================================================================
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Deno.serve es nativo del runtime: no hace falta bajar `serve` de deno.land.
+// Ademas evita que el deploy dependa de que ese dominio responda, que es lo que
+// lo dejo trabado.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getMLToken } from "../_shared/core-mlmp/TokenManager.ts";
 import { MLModuleError } from "../_shared/core-mlmp/MLModuleError.ts";
@@ -46,7 +49,7 @@ interface PublicarBody {
   titulo?: string;
   /** Version elegida entre las que devolvio la busqueda. */
   productoId?: string;
-  /** Contexto de precio — todos opcionales, se usan como filtros en resolve_price */
+  /** Contexto de precio. Sin uso desde que el precio vive en la variante y el listing. */
   priceContext?: {
     priceList?: string;
     country?: string;
@@ -55,19 +58,40 @@ interface PublicarBody {
   };
 }
 
+/**
+ * Variante ya unida a su producto base.
+ *
+ * En el modelo nuevo marca, modelo, gtin y garantia son columnas y no
+ * atributos sueltos en un jsonb. Eso importa: son justo los datos que Mercado
+ * Libre exige y que antes habia que ir a buscar a channel_attrs.
+ */
 interface ResolvedVariant {
   id: string;
-  sku: string;
-  barcode: string | null;
-  attributes: Record<string, unknown>;
-  weight_g: number | null;
+  sku: string | null;
+  gtin: string | null;
+  motivo_gtin: string | null;
+  nombre_variante: string | null;
+  precio: number | null;
+  moneda: string | null;
+  stock: number | null;
+  fotos_especificas: string[] | null;
+  color: string | null;
+  talla: string | null;
+  capacidad: string | null;
+  variant_status: string;
+
   item_id: string;
   item_title: string;
   item_description: string | null;
-  tags: string[];
   item_status: string;
-  variant_status: string;
   tenant_id: string;
+  marca: string | null;
+  modelo: string | null;
+  mpn: string | null;
+  gtin_base: string | null;
+  fotos_base: string[] | null;
+  peso: string | null;
+  tipo: string | null;
 }
 
 interface ResolvedListing {
@@ -177,7 +201,7 @@ function claimDeJwt(authHeader: string | null, clave: string): string | null {
   }
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -275,7 +299,7 @@ serve(async (req: Request) => {
    *
    * Sin esto, todo error anterior a la llamada a Mercado Libre -precio
    * faltante, variante no encontrada, token- se devolvia al navegador pero no
-   * quedaba en catalog_listings. La tabla mostraba PENDING con la columna de
+   * quedaba en el listing. La tabla mostraba PENDING con la columna de
    * error vacia, y la persona veia un aviso que se desvanecia sin rastro de
    * que habia pasado.
    */
@@ -297,29 +321,63 @@ serve(async (req: Request) => {
 
   const ctx = body.priceContext ?? {};
   // La cuenta conectada es MLU (Uruguay) y los precios del catalogo estan en
-  // UYU. El default anterior era ARS, con lo cual resolve_price no encontraba
+  // UYU. El default anterior era ARS, con lo cual no se encontraba
   // ninguna fila y toda publicacion moria en "No price found". Si en el futuro
   // se conectan otros sitios, esto debe derivarse del site_id (MLA->ARS,
   // MLB->BRL, MLU->UYU) en vez de un default fijo.
   const currency = ctx.currency ?? "UYU";
 
   // -- 2. Leer variante + ítem ----------------------------------------------
+  // v_catalog_variants_full ya no existe: el modelo nuevo une variante y
+  // producto base directo, y con eso alcanza. De paso trae marca, modelo y
+  // gtin, que antes habia que ir a buscar aparte.
   const { data: variant, error: varErr } = await supabase
-    .from("v_catalog_variants_full")
+    .from("catalog_variante")
     .select(`
-      id, sku, barcode, attributes, weight_g,
-      item_id, item_title, item_description:description, tags,
-      item_status, variant_status, tenant_id
+      id, sku_variante, gtin_variante, motivo_gtin_variante, nombre_variante,
+      precio, moneda, stock, fotos_especificas, color, talla, capacidad,
+      status,
+      catalog_producto_base!inner (
+        id, titulo, descripcion, status, tenant_id,
+        marca, modelo, mpn, gtin_base, motivo_gtin, fotos_base, peso, tipo
+      )
     `)
     .eq("id", body.variantId)
-    .eq("tenant_id", storeId)
+    .eq("catalog_producto_base.tenant_id", storeId)
     .single();
 
   if (varErr || !variant) {
     return await fallar("No se encontro la variante en el catalogo", 404, { detail: varErr?.message });
   }
 
-  const v = variant as unknown as ResolvedVariant;
+  const fila = variant as any;
+  const base = fila.catalog_producto_base;
+  const v: ResolvedVariant = {
+    id: fila.id,
+    sku: fila.sku_variante,
+    gtin: fila.gtin_variante ?? base?.gtin_base ?? null,
+    motivo_gtin: fila.motivo_gtin_variante ?? base?.motivo_gtin ?? null,
+    nombre_variante: fila.nombre_variante,
+    precio: fila.precio, moneda: fila.moneda, stock: fila.stock,
+    fotos_especificas: fila.fotos_especificas,
+    color: fila.color, talla: fila.talla, capacidad: fila.capacidad,
+    variant_status: fila.status,
+
+    item_id: base?.id,
+    // El nombre de la variante manda: "iPhone 17 256 GB Azul" es lo que se
+    // publica, no el titulo generico del producto base.
+    item_title: (fila.nombre_variante ?? "").trim() || base?.titulo,
+    item_description: base?.descripcion ?? null,
+    item_status: base?.status,
+    tenant_id: base?.tenant_id,
+    marca: base?.marca ?? null,
+    modelo: base?.modelo ?? null,
+    mpn: base?.mpn ?? null,
+    gtin_base: base?.gtin_base ?? null,
+    fotos_base: base?.fotos_base ?? null,
+    peso: base?.peso ?? null,
+    tipo: base?.tipo ?? null,
+  };
 
   if (v.item_status === "archived" || v.item_status === "discontinued") {
     return await fallar(`El producto esta en estado '${v.item_status}' y no se puede publicar`, 422);
@@ -330,63 +388,52 @@ serve(async (req: Request) => {
 
   // -- 3. Leer listing existente --------------------------------------------
   const { data: listing } = await supabase
-    .from("catalog_listings")
+    .from("catalog_canal_listing")
     .select("id, external_id, status, channel_attrs")
-    .eq("variant_id", body.variantId)
+    .eq("variante_id", body.variantId)
     .eq("channel", CHANNEL)
     .maybeSingle();
 
   const existingListing = listing as ResolvedListing | null;
 
   // -- 4. Resolver precio ---------------------------------------------------
-  // Llamamos resolve_price() como RPC — es una función SQL STABLE definida
-  // en la migración 20260617_catalog_prices.sql.
-  const { data: priceRow, error: priceErr } = await supabase.rpc(
-    "resolve_price",
-    {
-      p_variant_id: body.variantId,
-      p_currency:   currency,
-      p_channel:    CHANNEL,
-      p_price_list: ctx.priceList ?? null,
-      p_country:    ctx.country ?? null,
-      p_campaign:   ctx.campaign ?? null,
-    }
+  // precio_de_canal es la MISMA funcion que usan la vidriera y el checkout: el
+  // precio propio del canal si lo tiene, el de la variante si no. Que sea la
+  // misma es el punto — publicar en Mercado Libre a un precio distinto del que
+  // cobra la caja seria vender a un numero y facturar otro.
+  const { data: precioRows, error: priceErr } = await supabase.rpc(
+    "precio_de_canal",
+    { p_variante_id: body.variantId, p_channel: CHANNEL },
   );
 
   if (priceErr) {
     return await fallar("No se pudo resolver el precio", 500, { detail: priceErr.message });
   }
-  if (!priceRow || (priceRow as ResolvedPrice).amount == null) {
+  const precioFila = Array.isArray(precioRows) ? precioRows[0] : precioRows;
+  if (!precioFila || precioFila.precio == null) {
     return await fallar(
-      `El producto no tiene precio en ${currency} para Mercado Libre`,
+      "El producto no tiene precio cargado",
       422,
-      { detail: `No hay fila en catalog_prices para variant ${body.variantId} channel=${CHANNEL} currency=${currency}` },
+      { detail: `Ni el canal ${CHANNEL} ni la variante ${body.variantId} tienen precio` },
     );
   }
 
-  const resolvedPrice = priceRow as ResolvedPrice;
+  const resolvedPrice = {
+    amount:   Number(precioFila.precio),
+    currency: String(precioFila.moneda ?? v.moneda ?? currency),
+  } as ResolvedPrice;
 
   // -- 5. Leer imágenes -----------------------------------------------------
-  const { data: mediaRows } = await supabase
-    .from("catalog_media")
-    .select("url, sort_order")
-    .eq("item_id", v.item_id)
-    .eq("type", "image")
-    .order("sort_order", { ascending: true })
-    .limit(12); // ML acepta hasta 12 fotos
-
-  const pictures = (mediaRows as MediaRow[] ?? []).map((m) => ({ source: m.url }));
+  // Las fotos ya no viven en una tabla aparte. Las especificas de la variante
+  // van primero: muestran el color y la version que se esta publicando; las del
+  // producto base completan.
+  const pictures = [
+    ...(v.fotos_especificas ?? []),
+    ...(v.fotos_base ?? []),
+  ].filter(Boolean).slice(0, 12).map((url) => ({ source: url }));
 
   // -- 6. Leer inventario disponible ----------------------------------------
-  const { data: invRows } = await supabase
-    .from("catalog_inventory")
-    .select("available")
-    .eq("variant_id", body.variantId);
-
-  const totalAvailable = (invRows ?? []).reduce(
-    (sum: number, row: { available: number }) => sum + (row.available ?? 0),
-    0
-  );
+  const totalAvailable = Number(v.stock ?? 0);
 
   // -- 7. Obtener token ML --------------------------------------------------
   let mlToken: string;
@@ -484,7 +531,21 @@ serve(async (req: Request) => {
   aplicarForma(usaFamilia);
 
   // Atributos de variante (talle, color, etc.) → ML attributes array
-  const mlAttrs = buildMLAttributes(v.attributes, attrs["extra_attributes"] as unknown[] ?? []);
+  const mlAttrs = buildMLAttributes(
+    {
+      // Lo que Mercado Libre exige y el modelo nuevo tiene como columnas. Antes
+      // habia que cargarlo a mano en channel_attrs y era la causa de la mitad
+      // de los rechazos: "exige marca", "exige modelo", "exige GTIN".
+      brand: v.marca, model: v.modelo, color: v.color,
+      size: v.talla, capacity: v.capacidad,
+    },
+    attrs["extra_attributes"] as unknown[] ?? [],
+  );
+
+  // GTIN y su motivo: uno u otro, nunca los dos. Mercado Libre pide el codigo
+  // o, si no hay, por que no lo hay.
+  if (v.gtin) mlAttrs.push({ id: "GTIN", value_name: v.gtin });
+  else if (v.motivo_gtin) mlAttrs.push({ id: "EMPTY_GTIN_REASON", value_name: v.motivo_gtin });
 
   // Lo que el catalogo sabe y nosotros no, se completa. Nunca se pisa un valor
   // cargado: si alguien lo escribio, manda lo suyo.
@@ -603,9 +664,9 @@ serve(async (req: Request) => {
       // dejar el producto peor de lo que estaba.
       if (success) {
         const attrsNuevos = { ...(existingListing?.channel_attrs ?? {}), usa_family_name: usaFamilia };
-        await supabase.from("catalog_listings")
+        await supabase.from("catalog_canal_listing")
           .update({ channel_attrs: attrsNuevos })
-          .eq("variant_id", body.variantId).eq("channel", CHANNEL);
+          .eq("variante_id", body.variantId).eq("channel", CHANNEL);
       }
     } catch (_) { /* se responde con el rechazo original */ }
   }
@@ -1268,12 +1329,16 @@ function buildMLAttributes(
     model:   "MODEL",
     gender:  "GENDER",
     material:"MAIN_MATERIAL",
+    capacity:"CAPACITY",
   };
 
   const result: Array<{ id: string; value_name: string }> = [];
 
   for (const [key, mlId] of Object.entries(ATTR_MAP)) {
-    if (variantAttrs[key] != null) {
+    // Vacio es lo mismo que ausente: mandar un atributo en blanco hace que
+    // Mercado Libre lo rechace por invalido en vez de por faltante, que es
+    // peor porque el mensaje no dice que hay que cargarlo.
+    if (variantAttrs[key] != null && String(variantAttrs[key]).trim() !== "") {
       result.push({ id: mlId, value_name: String(variantAttrs[key]) });
     }
   }
@@ -1291,7 +1356,7 @@ function buildMLAttributes(
   return result;
 }
 
-// Upsert sobre catalog_listings — siempre por (variant_id, channel)
+// Upsert sobre catalog_canal_listing — siempre por (variante_id, channel)
 async function upsertListing(
   supabase: ReturnType<typeof createClient>,
   data: {
@@ -1305,10 +1370,10 @@ async function upsertListing(
   }
 ) {
   return supabase
-    .from("catalog_listings")
+    .from("catalog_canal_listing")
     .upsert(
       {
-        variant_id:   data.variant_id,
+        variante_id:  data.variant_id,
         channel:      data.channel,
         status:       data.status,
         external_id:  data.external_id,
@@ -1316,7 +1381,7 @@ async function upsertListing(
         ...(data.last_error !== undefined ? { last_error: data.last_error } : {}),
         ...(data.synced_at               ? { synced_at: data.synced_at }   : {}),
       },
-      { onConflict: "variant_id,channel" }
+      { onConflict: "variante_id,channel" }
     )
     .select("id")
     .single();
