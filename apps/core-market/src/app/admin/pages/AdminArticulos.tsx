@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { buscarProductos, fichaPorTitulo,
          type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
@@ -97,6 +97,70 @@ const ANCHO_PRECIO  = "clamp(170px, 14vw, 230px)";
  * del alto se queda con el resto; el piso la protege en pantallas chicas.
  */
 const ANCHO_MIN_DESCRIPCION = "clamp(280px, 24vw, 460px)"
+
+/**
+ * Campo con su check "personalizado" adentro, a la derecha.
+ *
+ * El check vivia en un renglon propio arriba del campo. Ese renglon existia
+ * solo para una casilla, y cada renglon de ese tipo es una linea mas que leer
+ * antes de llegar a lo que importa.
+ *
+ * Adentro tambien queda mas cerca de lo que decide: tildarlo cambia el
+ * comportamiento DE ESE campo -deja de buscar y se escribe a mano-, asi que
+ * ponerlo al lado del cursor dice mejor a que se aplica que un renglon aparte.
+ *
+ * Al tildarlo el campo queda vacio y enfocado, listo para escribir. Al
+ * destildarlo vuelve a buscar. En los dos casos el foco termina donde va a
+ * seguir escribiendo, para no obligar a volver a hacer clic.
+ */
+function CampoConCheck({
+  valor, onChange, placeholder, marcado, onMarcar, etiqueta,
+  soloLectura = false, estiloInput,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  marcado: boolean;
+  onMarcar: (m: boolean) => void;
+  etiqueta: string;
+  soloLectura?: boolean;
+  estiloInput: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const alternar = () => {
+    onMarcar(!marcado);
+    // El foco va al campo en los dos sentidos: tildar es "lo escribo yo" y
+    // destildar es "busca de nuevo", y las dos cosas siguen con el teclado.
+    requestAnimationFrame(() => ref.current?.focus());
+  };
+  return (
+    <div style={{ position:"relative", flex:1, minWidth:0 }}>
+      <input ref={ref}
+        style={{ ...estiloInput, width:"100%", paddingRight: etiqueta.length * 6.4 + 34 }}
+        value={valor} readOnly={soloLectura}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder} />
+      <label
+        onClick={(e) => { e.preventDefault(); alternar(); }}
+        title={marcado
+          ? `Lo estás escribiendo a mano. Destildá para volver a buscar.`
+          : `Tildá para escribir ${etiqueta.toLowerCase()} a mano, sin buscar.`}
+        style={{
+          position:"absolute", right:8, top:"50%", transform:"translateY(-50%)",
+          display:"flex", alignItems:"center", gap:5, cursor:"pointer",
+          fontSize:"0.7rem", color: marcado ? "#111" : "var(--gray-400)",
+          fontWeight: marcado ? 700 : 400, userSelect:"none",
+          // Fondo del color del campo: el texto que se escribe pasa por debajo
+          // y sin esto se leerian encimados.
+          background:"#fff", paddingLeft:6,
+        }}>
+        <input type="checkbox" checked={marcado} readOnly
+          style={{ accentColor: ACCENT, margin:0, pointerEvents:"none" }} />
+        {etiqueta}
+      </label>
+    </div>
+  );
+}
 
 export default function AdminArticulos(
   { onFinish, onCancel, tipoInicial }:
@@ -519,14 +583,6 @@ export default function AdminArticulos(
     background: filled ? "#000" : "var(--gray-50)",
     display:"flex", alignItems:"center", justifyContent:"center",
   });
-  // Casillero de check cuadrado, mismo look en todos los selectores tipo
-  // check del formulario (Personalizada/o, condiciones de Market y Second).
-  const checkSq = (active: boolean): React.CSSProperties => ({
-    width:16, height:16, borderRadius:4, flexShrink:0, display:"inline-flex",
-    alignItems:"center", justifyContent:"center",
-    border:`1.5px solid ${active ? ACCENT : "var(--border)"}`,
-    background:"#fff", fontSize:"11px", fontWeight:900, color:ACCENT,
-  });
   // Chip de condición (Market y Second): fila única en vez de lista vertical
   // con título. flex:1 para repartir el ancho disponible entre todas las
   // opciones y que entren siempre en una sola línea.
@@ -614,34 +670,24 @@ export default function AdminArticulos(
                 vive pegada al campo y se ve siempre, incluso mientras se
                 busca o no hay nada cargado todavía. */}
             <div>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
-                  {marcaConfirmada && marcaModo === "sugerida" && (
-                    <button onClick={cambiarMarca} style={{ border:"none", background:"none",
-                      padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
-                      fontSize:"0.72rem" }}>
-                      Cambiar marca
-                    </button>
-                  )}
-                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer",
-                    fontSize:"0.75rem", color:"var(--mute)" }}>
-                    <span
-                      onClick={() => marcaModo === "personalizada" ? cambiarMarca() : elegirMarcaPersonalizada()}
-                      style={checkSq(marcaModo === "personalizada")}>
-                      {marcaModo === "personalizada" ? "✓" : ""}
-                    </span>
-                    <span onClick={() => marcaModo === "personalizada" ? cambiarMarca() : elegirMarcaPersonalizada()}>
-                      Personalizada
-                    </span>
-                  </label>
-                </div>
-              </div>
+              {marcaConfirmada && marcaModo === "sugerida" && (
+                <button onClick={cambiarMarca} style={{ border:"none", background:"none",
+                  padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
+                  fontSize:"0.72rem", marginBottom:4 }}>
+                  Cambiar marca
+                </button>
+              )}
 
               <div style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start" }}>
-                <input style={{ ...inp, flex:1, minWidth:0 }} value={marca}
-                  readOnly={marcaConfirmada && marcaModo !== "personalizada"}
-                  onChange={e => { setMarca(e.target.value); }}
-                  placeholder="Marca" />
+                <CampoConCheck
+                  valor={marca}
+                  onChange={(v) => setMarca(v)}
+                  placeholder="Marca"
+                  etiqueta="Personalizada"
+                  marcado={marcaModo === "personalizada"}
+                  onMarcar={(m) => { if (m) { setMarca(""); elegirMarcaPersonalizada(); } else cambiarMarca(); }}
+                  soloLectura={marcaConfirmada && marcaModo !== "personalizada"}
+                  estiloInput={inp} />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
                     artículo (SelectorMediaArticulo) — vacío muestra "+" y al
@@ -805,30 +851,23 @@ export default function AdminArticulos(
                       Cambiar artículo
                     </button>
                   )}
-                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer",
-                    fontSize:"0.75rem", color:"var(--mute)" }}>
-                    <span
-                      onClick={() => setArticuloPersonalizado(p => {
-                        const n = !p;
-                        if (n) { setCandidatos([]); setElegido(null); setIdElegido(null); }
-                        return n;
-                      })}
-                      style={checkSq(articuloPersonalizado)}>
-                      {articuloPersonalizado ? "✓" : ""}
-                    </span>
-                    <span onClick={() => setArticuloPersonalizado(p => {
-                        const n = !p;
-                        if (n) { setCandidatos([]); setElegido(null); setIdElegido(null); }
-                        return n;
-                      })}>
-                      Personalizado
-                    </span>
-                  </label>
                 </div>
               </div>
-              <input style={inp} value={nombre}
-                onChange={e => { setNombre(e.target.value); setIdElegido(null); setElegido(null); }}
-                placeholder="Artículo" />
+              <div style={{ display:"flex" }}>
+                <CampoConCheck
+                  valor={nombre}
+                  onChange={(v) => { setNombre(v); setIdElegido(null); setElegido(null); }}
+                  placeholder="Artículo"
+                  etiqueta="Personalizado"
+                  marcado={articuloPersonalizado}
+                  onMarcar={(m) => {
+                    setArticuloPersonalizado(m);
+                    // Tildar es "lo escribo yo": se limpia lo que habia y se
+                    // sueltan los candidatos, que ya no aplican.
+                    if (m) { setNombre(""); setCandidatos([]); setElegido(null); setIdElegido(null); }
+                  }}
+                  estiloInput={inp} />
+              </div>
 
               {buscandoProd && !elegido && !articuloPersonalizado && (
                 <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
