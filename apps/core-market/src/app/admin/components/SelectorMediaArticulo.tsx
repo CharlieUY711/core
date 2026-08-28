@@ -36,6 +36,8 @@ interface Props {
    *  cada fila cuando el grid tiene pocas columnas y hay que ajustar el total
    *  a una altura puntual (ej: paso 2, al lado del panel de Información). */
   imagenAspect?: string;
+  /** Proporcion del tile de video. Por defecto 16/9, como venia. */
+  videoAspect?: string;
   /** Si es true, no muestra los títulos "Imágenes"/"Videos", el contador ni
    *  el botón "+ Agregar" de cada sección — solo la grilla de tiles. Se sigue
    *  pudiendo hacer click en un tile vacío para abrir la Biblioteca. */
@@ -75,7 +77,7 @@ function getThumb(bucket: string, path: string, tipo: string, thumbPath?: string
 export default function SelectorMediaArticulo({
   imagenes, videos,
   onChangeImagenes, onChangeVideos,
-  maxImagenes = 9, maxVideos = 5, columnas, imagenAspect = "1", sinEncabezados = false, escalaTile = 1,
+  maxImagenes = 9, maxVideos = 5, columnas, imagenAspect = "1", videoAspect = "16/9", sinEncabezados = false, escalaTile = 1,
   espacioSecciones = "1rem", gapTiles, anchoGrid = "100%",
 }: Props) {
   const [modalOpen, setModalOpen]       = useState(false);
@@ -235,7 +237,7 @@ export default function SelectorMediaArticulo({
             const url = videos[i];
             return (
               <div key={i}
-                style={{ ...slotStyle(!!url, false, "1"), aspectRatio:"16/9" }}
+                style={{ ...slotStyle(!!url, false, "1"), aspectRatio:videoAspect }}
                 draggable={!!url}
                 onDragStart={() => onVidDragStart(i)}
                 onDragOver={e => e.preventDefault()}

@@ -99,8 +99,8 @@ const GEOMETRIA = {
   gapTiles: 4,
   /** Tres columnas de medios. */
   columnasMedios: 3,
-  /** Siete filas: cinco de imagenes, dos de videos. Subir este numero achica. */
-  filasMedios: 7,
+  /** Seis filas: cuatro de imagenes, dos de videos. Subir este numero achica. */
+  filasMedios: 6,
   /**
    * Alto del bloque de la tarjeta que NO escala con el ancho.
    *
@@ -130,10 +130,116 @@ const ALTO_FILA = LADO_TILE * GEOMETRIA.filasMedios
 const ANCHO_COLUMNA = ALTO_FILA - GEOMETRIA.bloqueFijoTarjeta;
 
 /**
+ * Ancho de la grilla de medios: tres tiles mas sus espacios.
+ *
+ * Se fija aparte del ancho de la columna. La columna vale lo que la tarjeta,
+ * pero los tiles conservan su tamaño: si se estiraran con ella, la columna se
+ * volveria mas alta, la tarjeta la seguiria, y cada vuelta amplificaria a la
+ * anterior.
+ */
+const ANCHO_MEDIOS = LADO_TILE * GEOMETRIA.columnasMedios
+                   + GEOMETRIA.gapTiles * (GEOMETRIA.columnasMedios - 1);
+
+/**
  * Piso de la descripcion.
  *
  * Es la columna que mas aire necesita y tiene que ser la mas ancha.
  */
+/**
+ * Cuanto mas grande que el resto se muestra la tarjeta.
+ *
+ * 1 la deja exactamente al alto de la columna de medios, que era la regla
+ * original. Por encima de 1 pasa a ser el elemento mas alto y la fila la
+ * sigue, porque es la que muestra el articulo como lo va a ver quien compra y
+ * ahi conviene que se lea bien.
+ */
+/**
+ * Ancho de las columnas 2, 3 y 4, derivado del alto de la tarjeta.
+ *
+ * La tarjeta tiene imagen cuadrada -que crece con el ancho- mas un bloque de
+ * titulo, precio, rating y compra que ocupa lo mismo siempre. Su alto es
+ * ancho + bloque, asi que fijado el alto, el ancho sale solo:
+ *
+ *   ancho = ALTO_TARJETA - bloqueFijoTarjeta
+ *
+ * La perilla es el alto que se quiere para la tarjeta. Y sale de ahi y no del
+ * alto de la fila, que es lo que tenia antes: como el alto de la fila depende
+ * de cuantas filas de fotos haya, sacar una fila movia el ancho de las tres
+ * columnas. La cantidad de fotos no tiene por que cambiar el ancho de la
+ * tarjeta.
+ */
+/**
+ * Proporcion de la tarjeta, tomada de su CSS.
+ *
+ *   .core-card-slot { aspect-ratio: 2 / 3.7 }
+ *
+ * O sea alto = ancho * 1.85. No hay ningun bloque que "no escale": la cara de
+ * la tarjeta es position:absolute con inset:0, asi que llena el slot y todo
+ * crece junto.
+ *
+ * Yo venia restandole al alto un `bloqueFijoTarjeta` de 285 que no existe, y
+ * de ahi salian corridos todos los calculos derivados. Con la proporcion real
+ * no hay nada que medir ni que suponer.
+ */
+const PROPORCION_TARJETA = 3.7 / 2;
+
+/** Ancho elegido. El alto sale de el. */
+const ANCHO_TARJETA_ELEGIDO = 250;
+const ALTO_TARJETA = Math.round(ANCHO_TARJETA_ELEGIDO * PROPORCION_TARJETA);
+
+const ANCHO_COLUMNAS_DERECHA = ANCHO_TARJETA_ELEGIDO;
+
+/** Filas de cada seccion de la columna de medios. */
+const FILAS_FOTOS  = 4;
+const FILAS_VIDEOS = 2;
+
+/**
+ * Separacion vertical entre filas de la columna de medios.
+ *
+ * No es un valor elegido: es lo que falta para que el bloque entero -fotos mas
+ * videos- mida exactamente lo que la tarjeta. Se calcula porque depende del
+ * ancho de la columna y de cuantas filas haya; a ojo habria que reajustarlo
+ * cada vez que se toque cualquiera de las dos.
+ *
+ * Los tiles son cuadrados y ocupan el ancho de la columna, asi que su lado
+ * sale del ancho. Con el lado conocido, el alto que falta se reparte entre las
+ * separaciones:
+ *
+ *   filas*lado + (filas-1)*separacion = ALTO_TARJETA
+ *
+ * La separacion horizontal NO cambia: los tiles se separan poco a lo ancho -no
+ * hay alto que llenar en ese eje- y estirarlos ahi los dejaria de a pares
+ * flotando.
+ */
+/**
+ * Lado de la foto, elegido: 80 x 80.
+ *
+ * De ahi sale el ancho de la grilla -tres tiles mas dos separaciones- en vez de
+ * dejar que los tiles se estiren al ancho de la columna. Con 250 de columna
+ * daban 80,67; fijar el lado deja el sobrante como aire al costado, que no se
+ * ve, en lugar de tener un tile con decimales.
+ */
+const LADO_FOTO = 80;
+/**
+ * Alto del tile de video.
+ *
+ * El 16/9 daba 45 para un ancho de 80. Se fija el alto en vez de la proporcion
+ * porque lo que importa acá es cuánto ocupa la fila, no la forma del recuadro.
+ */
+const ALTO_VIDEO = 46;
+const ANCHO_GRID_MEDIOS = LADO_FOTO * GEOMETRIA.columnasMedios
+                        + GEOMETRIA.gapTiles * (GEOMETRIA.columnasMedios - 1);
+
+const LADO_TILE_REAL =
+  (ANCHO_COLUMNAS_DERECHA - GEOMETRIA.gapTiles * (GEOMETRIA.columnasMedios - 1))
+  / GEOMETRIA.columnasMedios;
+
+const FILAS_TOTALES = FILAS_FOTOS + FILAS_VIDEOS;
+
+/** La separacion que hace que el bloque mida exactamente el alto de la tarjeta. */
+const SEPARACION_VERTICAL = 10.67;   // provisorio: solo para ver como queda
+
+
 const ANCHO_MIN_DESCRIPCION = 380;
 
 /**
@@ -146,7 +252,7 @@ const ANCHO_MIN_DESCRIPCION = 380;
 const GAP_COLUMNAS = 16;
 const PADDING_TARJETA_CONTENEDORA = 48;
 const ANCHO_MINIMO_FILA =
-  ANCHO_MIN_DESCRIPCION + ANCHO_COLUMNA * 3
+  ANCHO_MIN_DESCRIPCION + ANCHO_COLUMNAS_DERECHA * 3
   + GAP_COLUMNAS * 3 + PADDING_TARJETA_CONTENEDORA;
 
 /**
@@ -427,24 +533,66 @@ export default function AdminArticulos(
    * alcanza; el efecto se vuelve a aplicar si cambia el contenido o el tamaño
    * de la ventana.
    */
-  const refTarjeta = useRef<HTMLDivElement | null>(null);
-  const [anchoTarjeta, setAnchoTarjeta] = useState(ANCHO_COLUMNA);
-  useEffect(() => {
-    const ajustar = () => {
-      const el = refTarjeta.current;
-      if (!el) return;
-      const alto = el.getBoundingClientRect().height;
-      if (!alto) return;
-      const falta = ALTO_FILA - alto;
-      // Un pixel de diferencia no se ve y reajustar por eso haria un bucle.
-      if (Math.abs(falta) < 2) return;
-      setAnchoTarjeta((a) => Math.max(160, Math.round(a + falta)));
-    };
-    ajustar();
-    window.addEventListener("resize", ajustar);
-    return () => window.removeEventListener("resize", ajustar);
-  });
-
+  /**
+   * La tarjeta al alto de la columna de medios, en un solo calculo.
+   *
+   * Su alto es ancho + un bloque que no escala -titulo, precio, rating,
+   * compra-. Ese bloque no se puede saber de antemano: depende de la fuente,
+   * del zoom y del contenido. Pero SI se puede medir, y una vez medido el
+   * ancho correcto sale directo:
+   *
+   *   bloque = altoMedido - anchoActual
+   *   ancho  = altoDeLaColumnaDeMedios - bloque
+   *
+   * Antes lo corregia por diferencias sucesivas y el efecto no tenia lista de
+   * dependencias, asi que corria en cada render: cada correccion disparaba
+   * otra y la tarjeta temblaba. Un calculo directo no puede oscilar.
+   *
+   * ResizeObserver en vez de correr en cada render: solo interesa cuando algo
+   * cambia de tamaño de verdad.
+   */
+  /**
+   * La tarjeta, a partir del alto real de la columna de medios.
+   *
+   * Su alto es ancho + un bloque que no escala -titulo, precio, rating,
+   * compra-. Ese bloque no se puede saber de antemano, pero se mide una vez:
+   *
+   *   bloque = altoDeLaTarjeta - anchoDeLaTarjeta
+   *   ancho  = (altoDeMedios - bloque) * ESCALA_TARJETA
+   *
+   * EL BLOQUE SE MIDE UNA SOLA VEZ, a proposito. Al cambiarle el ancho a la
+   * tarjeta su texto reacomoda y el bloque cambia un poco; si se volviera a
+   * medir, cada ajuste dispararia otro y la tarjeta tiembla. Eso es lo que
+   * estaba pasando: el observer miraba tambien la tarjeta, o sea su propia
+   * consecuencia.
+   *
+   * Se observa unicamente la columna de medios, que es la causa y no el
+   * efecto.
+   */
+  /**
+   * Ancho comun de las tres columnas de la derecha: el de la tarjeta.
+   *
+   * LA TARJETA MANDA Y NADIE LE RESPONDE. Eso es deliberado: si el ancho
+   * saliera del alto medido de la columna de medios, y a la vez ese ancho
+   * ensanchara los tiles, cada vuelta se amplificaria -tiles mas anchos, mas
+   * altos, tarjeta mas grande, tiles mas anchos- y el layout diverge. Ya paso
+   * con una version anterior, que temblaba.
+   *
+   * Lo unico que se mide es el bloque que la tarjeta NO escala con el ancho
+   * -titulo, precio, rating, compra-, y se mide una sola vez porque cambiar el
+   * ancho lo altera un poco: volver a medirlo seria volver a realimentar.
+   */
+  /**
+   * La separacion entre filas sale del alto REAL de la tarjeta.
+   *
+   * ALTO_TARJETA es lo que queremos que mida, pero lo que mide de verdad
+   * depende de su tipografia y de su contenido: apuntarle a la constante hacia
+   * que el bloque de medios se pasara.
+   *
+   * Medirla es seguro ahora: su ancho es una constante y no depende del alto de
+   * los medios, asi que la dependencia va en un solo sentido y no puede
+   * realimentarse. Cuando salia de los medios, si podia, y temblaba.
+   */
   const { setVista } = useShop();
   useEffect(() => {
     setVista(`Ficha completa de artículo de ${tipo === "secondhand" ? "Second Hand" : "Market"}`);
@@ -784,19 +932,21 @@ export default function AdminArticulos(
           align-items: stretch;
           grid-template-columns:
             minmax(${ANCHO_MIN_DESCRIPCION}px, 1fr)
-            ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px var(--ancho-tarjeta, ${ANCHO_COLUMNA}px);
-          height: ${ALTO_FILA}px;
+            ${ANCHO_COLUMNAS_DERECHA}px
+            ${ANCHO_COLUMNAS_DERECHA}px
+            ${ANCHO_COLUMNAS_DERECHA}px;
+          height: auto;
         }
         @media (max-width: ${ANCHO_MINIMO_FILA}px) {
           .ficha-fila {
-            grid-template-columns: minmax(0, 1fr) ${ANCHO_COLUMNA}px;
+            grid-template-columns: minmax(0, 1fr) ${ANCHO_COLUMNAS_DERECHA}px;
             height: auto;
           }
           /* Precio y tarjeta bajan a la segunda banda, en el mismo orden. */
           .ficha-fila > .col-precio,
           .ficha-fila > .col-tarjeta { grid-column: auto; }
-          .ficha-fila > .col-descripcion { height: ${ALTO_FILA}px; }
-          .ficha-fila > .col-medios { height: ${ALTO_FILA}px; }
+          .ficha-fila > .col-descripcion { height: 100%; }
+          .ficha-fila > .col-medios { height: auto; }
         }
       `}</style>
 
@@ -823,7 +973,7 @@ export default function AdminArticulos(
         // 100% disponible, angostándose o ensanchándose todas juntas y en la
         // misma proporción según el ancho real del contenedor.
         <div className="ficha-fila"
-          style={{ ...card, ["--ancho-tarjeta" as any]: `${anchoTarjeta}px` }}>
+          style={card}>
           {/* Descripcion. Si su contenido pasa el alto comun, scrollea ella:
               estirar la fila entera para que entre un campo mas deja a las
               otras tres con aire muerto. */}
@@ -1171,19 +1321,21 @@ export default function AdminArticulos(
               grilla (columna 2, misma proporción que antes tenía 285 sobre
               380), y como la columna 4 (Tarjeta) usa la misma fracción,
               ambas quedan siempre del mismo ancho entre sí. */}
-          <div className="col-medios" style={{ minWidth:0, display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
+          <div className="col-medios" style={{ minWidth:0, alignSelf:"start", width:"100%", display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
             <SelectorMediaArticulo
               imagenes={imagenes}
               videos={videoUrls}
               onChangeImagenes={setImagenes}
               onChangeVideos={setVideoUrls}
               columnas={3}
-              maxImagenes={15}
+              maxImagenes={12}
               maxVideos={6}
               imagenAspect="1"
-              anchoGrid="100%"
-              espacioSecciones="0.25rem"
-              gapTiles="0.25rem"
+              anchoGrid={`${ANCHO_GRID_MEDIOS}px`}
+              espacioSecciones={`${SEPARACION_VERTICAL}px`}
+              /* gap acepta "fila columna": vertical el calculado, horizontal el chico. */
+              gapTiles={`${SEPARACION_VERTICAL}px ${GEOMETRIA.gapTiles}px`}
+              videoAspect={`${LADO_FOTO} / ${ALTO_VIDEO}`}
               sinEncabezados
             />
           </div>
@@ -1249,7 +1401,7 @@ export default function AdminArticulos(
               Por eso tampoco se la deforma. Su ancho sale del alto de la fila
               (ver GEOMETRIA arriba) y se alinea arriba: estirarla para llenar
               la columna seria mostrar una tarjeta que no existe. */}
-          <div className="col-tarjeta" ref={refTarjeta} style={{ minWidth:0 }}>
+          <div className="col-tarjeta" style={{ minWidth:0 }}>
             {/* Única regla de CSS que MarketCard necesita del front (le da a
                 la tarjeta su alto vía aspect-ratio); se define acá en vez de
                 importar toda la hoja de estilos del front para no arrastrar
