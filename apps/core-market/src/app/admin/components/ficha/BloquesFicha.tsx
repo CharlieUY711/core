@@ -47,7 +47,7 @@ export function BloqueMonedas({ form, setForm, color, lbl, inp }: PropsBloque) {
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "0.8fr 0.8fr 0.8fr 2fr", gap: "0.5rem",
+      display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem",
       padding: "0.5rem 0.75rem", background: "#F8F9FB", borderRadius: 8,
       border: "1px solid #EAECF0", alignItems: "end",
     }}>
@@ -67,43 +67,19 @@ export function BloqueMonedas({ form, setForm, color, lbl, inp }: PropsBloque) {
         </select>
       </div>
 
-      {/* El tipo de cambio es automático salvo que alguien lo tome a mano. El
-          campo se ve deshabilitado en ese caso para que se entienda que el
-          número no es suyo, sin ocultarlo. */}
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-          <span style={lbl}>TC</span>
-          <label style={{ display: "flex", alignItems: "center", gap: 3, cursor: "pointer",
-            fontSize: "9px", color: "var(--gray-400)", fontWeight: 600 }}>
-            <input type="checkbox" checked={!attrs.tc_manual}
-              style={{ accentColor: color, width: 10, height: 10 }}
-              onChange={(e) => set("tc_manual", !e.target.checked)} />
-            Auto
-          </label>
-        </div>
-        <input type="number" min={0} step="0.01"
-          readOnly={!attrs.tc_manual}
-          value={attrs.tipo_cambio || ""}
-          placeholder={attrs.tc_manual ? "0.00" : "Auto"}
-          onChange={(e) => set("tipo_cambio", parseFloat(e.target.value) || undefined)}
-          style={{ ...inp,
-            background: attrs.tc_manual ? "#fff" : "#F3F4F6",
-            color: attrs.tc_manual ? "#111" : "var(--gray-400)" }} />
-      </div>
+      {/*
+        Acá había un campo de tipo de cambio, un check "Auto" y una fuente con
+        fecha y hora, guardados en `atributos` de cada artículo — o sea que
+        cada artículo podía tener el suyo.
 
-      {/* De dónde salió el tipo de cambio y cuándo. Un número sin fuente ni
-          fecha no se puede auditar ni discutir. */}
-      <div>
-        <span style={lbl}>Fuente · Actualización</span>
-        <div style={{ ...inp, background: "#F3F4F6", color: "var(--mute)",
-          display: "flex", alignItems: "center", gap: 5, fontSize: "0.72rem" }}>
-          <span style={{ fontWeight: 700, color: "#374151" }}>{attrs.tc_fuente || "BCU"}</span>
-          <span style={{ color: "#D1D5DB" }}>·</span>
-          <span>{attrs.tc_fecha || "—"}</span>
-          <span style={{ color: "#D1D5DB" }}>·</span>
-          <span>{attrs.tc_hora || "—"}</span>
-        </div>
-      </div>
+        Un artículo no tiene tipo de cambio propio. El TC es de la plataforma y
+        es el oficial del BCU: lo escribe la Edge Function `tipo-de-cambio` en
+        `exchange_rates` y lo leen igual la vidriera y el checkout. La tienda
+        lo toma de la plataforma, no lo define.
+
+        Lo que sí es del artículo, y queda, es la moneda: en qué moneda está su
+        precio.
+      */}
     </div>
   );
 }
