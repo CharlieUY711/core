@@ -41,7 +41,14 @@ const CONDICIONES_ARTICULO = [
   { id:"Reacondicionado", label:"Reacondicionado", detalle:"Reparado e inspeccionado. Requiere indicar el grado",
     niveles:["Excelente","Bueno","Aceptable"] as const },
 ] as const;
-const MONEDAS     = ["UYU","USD","EUR"];
+/**
+ * Monedas de respaldo.
+ *
+ * Las de verdad salen de `currencies`, que trae siete activas con su simbolo y
+ * sus decimales. Esta lista es solo para el instante entre que abre el
+ * formulario y contesta la consulta: un selector vacio se ve roto.
+ */
+const MONEDAS_FALLBACK = [{ code:"UYU", decimals:2 }, { code:"USD", decimals:2 }];
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
   { id:"bajo_pedido",  label:"Bajo pedido",   desc:"Se consigue en 3-5 días" },
@@ -899,11 +906,73 @@ export default function AdminArticulos(
    * Todo pivotea por el peso, que es como el BCU cotiza: monto * tasa(desde) /
    * tasa(hasta), con el peso valiendo 1.
    */
+  const [monedas, setMonedas] = useState<{ code: string; decimals: number }[]>(MONEDAS_FALLBACK);
+
+  /**
+   * Impuesto del articulo.
+   *
+   * `tasaId` en null NO significa "sin impuesto": significa "la que le
+   * corresponda por su categoria". Sin impuesto es la tasa Exento, que es una
+   * tasa de verdad -0%- y se elige como cualquier otra. Confundirlas seria
+   * vender sin IVA sin querer.
+   *
+   * `tasaHeredada` es la que resuelve la base -articulo, subcategoria,
+   * categoria, departamento, default- y sirve para poder mostrar cual esta
+   * rigiendo aunque nadie haya elegido nada.
+   */
+  const [tasas, setTasas] = useState<{ id: string; code: string; name: string; rate: number }[]>([]);
+  const [tasaId, setTasaId] = useState<string | null>(null);
+  const [tasaHeredada, setTasaHeredada] = useState<{ name: string; rate: number; origen: string } | null>(null);
+
   const [cotizaciones, setCotizaciones] = useState<Record<string, { tasa: number; fecha: string }>>({});
   const [conversion, setConversion] = useState<
     { de: string; a: string; tasaUsada: number; fecha: string; antes: { precio: string; precioOrig: string } } | null
   >(null);
   const [sinCotizacion, setSinCotizacion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    supabase.from("currencies").select("code, decimals").eq("status", "active")
+      .then(({ data }) => {
+        if (!vivo || !data?.length) return;
+        setMonedas(data.map((c: any) => ({ code: String(c.code).trim(), decimals: Number(c.decimals ?? 2) })));
+      });
+    supabase.from("tax_rates").select("id, code, name, rate").eq("status", "active").order("rate")
+      .then(({ data }) => {
+        if (!vivo || !data?.length) return;
+        setTasas(data.map((t: any) => ({ ...t, rate: Number(t.rate) })));
+      });
+    return () => { vivo = false; };
+  }, []);
+
+  // La tasa que se hereda depende de donde se clasifique el articulo, asi que
+  // se vuelve a resolver cada vez que eso cambia. En un articulo nuevo esto es
+  // lo unico que puede decir que tasa va a regir: todavia no existe la fila.
+  useEffect(() => {
+    let vivo = true;
+    supabase.rpc("tasa_por_taxonomia", {
+      p_departamento_id: deptoId || null,
+      p_categoria_id:    catId    || null,
+      p_subcategoria_id: subcatId || null,
+    }).then(({ data }) => {
+      const f = Array.isArray(data) ? data[0] : data;
+      if (!vivo || !f) return;
+      setTasaHeredada({ name: f.name, rate: Number(f.rate), origen: f.origen });
+    });
+    return () => { vivo = false; };
+  }, [deptoId, catId, subcatId]);
+
+  // Al abrir un articulo existente, si tiene una excepcion declarada hay que
+  // mostrarla: sin esto el selector diria "heredada" sobre un articulo que
+  // decidio otra cosa.
+  useEffect(() => {
+    if (!articulo?.id) return;
+    let vivo = true;
+    supabase.rpc("tasa_de_articulo", { p_variant_id: articulo.id }).then(({ data }) => {
+      if (vivo && data) setTasaId(data as string);
+    });
+    return () => { vivo = false; };
+  }, [articulo?.id]);
 
   useEffect(() => {
     let vivo = true;
@@ -938,13 +1007,15 @@ export default function AdminArticulos(
       return;
     }
 
-    // A pesos se redondea al entero, a moneda extranjera a dos decimales: un
-    // precio en pesos con centesimos no existe.
+    // Cuantos decimales tiene la moneda lo dice `currencies.decimals`, que es
+    // el dato. Antes esto era una regla escrita a mano -"pesos al entero, el
+    // resto dos decimales"- que decia lo mismo pero podia dejar de coincidir.
+    const dec = monedas.find(m => m.code === nueva)?.decimals ?? 2;
     const convertir = (v: string) => {
       const n = parseFloat(v);
       if (!Number.isFinite(n) || n <= 0) return v;
       const r = (n * desde.tasa) / hasta.tasa;
-      return nueva === "UYU" ? String(Math.round(r)) : (Math.round(r * 100) / 100).toFixed(2);
+      return r.toFixed(dec);
     };
 
     setConversion({
@@ -1110,7 +1181,36 @@ export default function AdminArticulos(
                      </button>
                    </>
                  )
-               : !precio || parseFloat(precio) <= 0 ? "Falta el precio" : "",
+               : !precio || parseFloat(precio) <= 0 ? "Falta el precio"
+               : (() => {
+                   // El precio ya incluye el impuesto, asi que esto lo
+                   // descompone hacia atras -neto = bruto / (1 + tasa)-. Es la
+                   // misma cuenta que hace `lineas_de_impuesto` del lado del
+                   // servidor, que es la que factura; aca se muestra para que
+                   // se pueda ver antes de vender.
+                   const elegida = tasas.find(t => t.id === tasaId);
+                   const tasaPct = elegida ? elegida.rate : tasaHeredada?.rate;
+                   if (tasaPct == null) return "";
+                   const bruto = parseFloat(precio);
+                   const neto  = bruto / (1 + tasaPct / 100);
+                   const iva   = bruto - neto;
+                   const nro   = (n: number) =>
+                     n.toLocaleString("es-UY", { maximumFractionDigits: 2 });
+                   const nombre = elegida?.name ?? tasaHeredada?.name ?? "";
+                   return (
+                     <>
+                       <div>
+                         Incluye {moneda} {nro(iva)} de {nombre} · neto {moneda} {nro(neto)}
+                       </div>
+                       <div style={{ color:"var(--gray-400)" }}>
+                         {elegida
+                           ? "Tasa elegida en este artículo."
+                           : `Tasa heredada${tasaHeredada?.origen && tasaHeredada.origen !== "default"
+                               ? ` de la ${tasaHeredada.origen}` : " por defecto"}.`}
+                       </div>
+                     </>
+                   );
+                 })(),
     tarjeta:     "",
   };
 
@@ -1167,6 +1267,12 @@ export default function AdminArticulos(
           p_tipo:        tipo === "secondhand" ? "secondhand" : "market",
         });
         if (eUp) throw eUp;
+        // La tasa va aparte: no es parte de dar de alta un articulo sino una
+        // decision que se toma pocas veces, y meterla en una RPC que ya recibe
+        // ocho parametros no la hacia mas clara.
+        await supabase.rpc("fijar_tasa_articulo", {
+          p_variant_id: articulo.id, p_tax_rate_id: tasaId,
+        });
         notify("Cambios guardados");
         setTimeout(() => salir(true), 900);
         return;
@@ -1186,6 +1292,15 @@ export default function AdminArticulos(
         p_videos:      videoUrls,
       });
       if (error) throw error;
+
+      // La excepcion de tasa, solo si se eligio una. Sin esto el articulo
+      // hereda, que es lo correcto y lo que pasa el 95% de las veces.
+      if (tasaId && nuevaVariante) {
+        const { error: eT } = await supabase.rpc("fijar_tasa_articulo", {
+          p_variant_id: nuevaVariante, p_tax_rate_id: tasaId,
+        });
+        if (eT) console.warn("[tasa]", eT.message);
+      }
 
       // La ficha se guarda apenas existe el articulo. Si se dejara para
       // despues dependeria de que alguien vuelva a abrirlo con el canal
@@ -1706,15 +1821,37 @@ export default function AdminArticulos(
               para que ambas queden siempre del mismo ancho entre sí. */}
           <div style={{ minWidth:0 }}>
             <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
-              <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:`${RITMO}px 0.75rem` }}>
+              {/* Moneda · precio · impuesto, en un renglon.
+                  Moneda y precio se achican para que entre el tercero: los
+                  tres son el mismo dato -cuanto sale- y separarlos en
+                  renglones distintos los haria parecer decisiones aparte. */}
+              <div style={{ display:"grid", gridTemplateColumns:"64px 1fr 96px", gap:`${RITMO}px 0.4rem` }}>
                 <div>
-                  <select style={inp} value={moneda} onChange={e => cambiarMoneda(e.target.value)}>
-                    {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
+                  <select style={{ ...inp, padding:"0.5rem 0.3rem" }} value={moneda}
+                    onChange={e => cambiarMoneda(e.target.value)}>
+                    {monedas.map(m => <option key={m.code} value={m.code}>{m.code}</option>)}
                   </select>
                 </div>
                 <div className="col-precio">
                   <input style={inp} type="number" value={precio}
                     onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
+                </div>
+                {/* El impuesto NO cambia el precio: los precios se publican con
+                    impuestos incluidos, asi que elegir la tasa cambia el
+                    desglose -que se ve abajo- y nada mas. Multiplicar aca
+                    seria cambiar el precio de venta sin que nadie lo pida. */}
+                <div>
+                  <select style={{ ...inp, padding:"0.5rem 0.3rem" }}
+                    title="Impuesto incluido en el precio"
+                    value={tasaId ?? ""}
+                    onChange={e => setTasaId(e.target.value || null)}>
+                    <option value="">
+                      {tasaHeredada ? `${tasaHeredada.rate}%` : "IVA"}
+                    </option>
+                    {tasas.map(t => (
+                      <option key={t.id} value={t.id}>{t.rate}%</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
