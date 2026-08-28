@@ -1201,29 +1201,6 @@ export default function AdminArticulos(
       )}
 
       {/* Contenido del paso */}
-      {/*
-        Volver, arriba y a la vista.
-        El unico camino de salida era el "Cancelar" del pie, y este formulario
-        es largo: quien se arrepiente apenas entra tiene que recorrerlo entero
-        para encontrarlo, o no lo encuentra. La salida tiene que estar donde
-        aparece la decision de irse, no al final del trabajo.
-      */}
-      <div style={{
-        display:"flex", alignItems:"center", gap:"0.75rem",
-        background:"#fff", padding:`${AIRE_MONITOR}px 1.5rem`,
-        borderBottom:"1px solid #EAECF0",
-      }}>
-        <button onClick={() => salir(false)} style={{
-          border:"none", background:"none", padding:0, cursor:"pointer",
-          color:ACCENT, fontSize:"0.82rem", fontWeight:700,
-        }}>
-          ← Volver a la lista
-        </button>
-        <span style={{ color:"var(--gray-400)", fontSize:"0.8rem" }}>
-          {articulo ? `Editando: ${articulo.nombre ?? ""}` : "Nuevo artículo"}
-        </span>
-      </div>
-
       {/* ARRIBA: lo basico, en cuatro columnas. Identidad, imagenes, precio y
           como se va a ver. Es lo que define al articulo, y entra de una. */}
       {true ? (
@@ -1607,25 +1584,11 @@ export default function AdminArticulos(
                   </span>
                 </div>
               )}
-              {precio && (
-                <div style={{ padding:"0.85rem", background:"var(--gray-50)", borderRadius:8, border:"1px solid var(--border)" }}>
-                  <div style={{ fontSize:"0.75rem", color:"var(--mute)", marginBottom:"4px" }}>Vista previa</div>
-                  {precioOrig && parseFloat(precioOrig) > parseFloat(precio) && (
-                    <div style={{ fontSize:"0.85rem", color:"var(--gray-400)", textDecoration:"line-through" }}>
-                      {moneda} {parseFloat(precioOrig).toLocaleString("es-UY")}
-                    </div>
-                  )}
-                  <div style={{ fontSize:"1.3rem", fontWeight:900, color:ACCENT }}>
-                    {moneda} {parseFloat(precio || "0").toLocaleString("es-UY")}
-                  </div>
-                  {descuento && (
-                    <div style={{ display:"inline-block", background:ACCENT, color:"#fff",
-                      fontSize:"0.7rem", fontWeight:700, padding:"2px 8px", borderRadius:20, marginTop:"4px" }}>
-                      -{descuento}% OFF
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* El recuadro de "Vista previa" del precio se elimino: la
+                  tarjeta esta al lado y muestra ese mismo precio -tachado,
+                  con descuento y todo- tal como lo va a ver quien compra.
+                  Repetirlo era pedir que se comparen dos numeros que siempre
+                  dicen lo mismo, y ocupaba el lugar de algo util. */}
             </div>
           </div>
 

@@ -714,7 +714,7 @@ export default function AdminPublicaciones() {
   const renderPanel=(a:Art|null,isNew=false)=>(
     <tr key={(a?.id||"new")+"-p"}>
       <td colSpan={99} style={{padding:0,borderBottom:`2px solid ${color}22`}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 0.48fr",background:"#F8F9FB",
+        <div style={{display:"grid",gridTemplateColumns:"1fr",background:"#F8F9FB",
           borderTop:`2px solid ${color}33`}}>
           {/* Izquierda: que falta + form */}
           <div style={{padding:"1rem 1.25rem",borderRight:"1px solid #EAECF0"}}>
@@ -867,6 +867,27 @@ export default function AdminPublicaciones() {
                   la franja de avisos: es donde se editan las cosas, y tenerlos
                   en dos lugares los habria dejado diciendo distinto. */}
 
+            {/*
+              El mismo formulario que el alta, con el articulo cargado.
+              Antes esto era un editor de pestañas propio: otra implementacion
+              de lo mismo, que quedo atras de cada mejora hecha del lado del
+              alta -el monitor de avisos, la condicion en una linea, las
+              etiquetas adentro de los campos-. Uno solo no puede divergir.
+            */}
+            {a && (
+              <AdminArticulos
+                key={a.id}
+                articulo={a}
+                tipoInicial={(a as any).tipo === "secondhand" ? "secondhand" : "market"}
+                onCancel={()=>setExp(null)}
+                onFinish={()=>{setExp(null);reload();}}
+              />
+            )}
+
+            {/* Canales y metricas, debajo del formulario y por ahora nada mas.
+                Arriba competian con lo que se esta editando: lo primero que se
+                ve al abrir un articulo tiene que ser el articulo. Donde van
+                finalmente es una decision pendiente; abajo no estorban. */}
             {/* Canales del articulo: activar o dar de baja sin salir de aca */}
             {!isNew&&a&&(
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:"0.9rem"}}>
@@ -890,31 +911,13 @@ export default function AdminPublicaciones() {
               </div>
             )}
 
-            {/*
-              El mismo formulario que el alta, con el articulo cargado.
-              Antes esto era un editor de pestañas propio: otra implementacion
-              de lo mismo, que quedo atras de cada mejora hecha del lado del
-              alta -el monitor de avisos, la condicion en una linea, las
-              etiquetas adentro de los campos-. Uno solo no puede divergir.
-            */}
-            {a && (
-              <AdminArticulos
-                key={a.id}
-                articulo={a}
-                tipoInicial={(a as any).tipo === "secondhand" ? "secondhand" : "market"}
-                onCancel={()=>setExp(null)}
-                onFinish={()=>{setExp(null);reload();}}
-              />
-            )}
-          </div>
-          {/* Derecha: métricas */}
-          <div style={{padding:"1rem"}}>
+
             {!isNew&&a&&(
-              <>
+              <div style={{marginTop:"0.9rem"}}>
                 <div style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
                   textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.6rem"}}>Métricas</div>
                 <BloqueMetricas a={a}/>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1004,6 +1007,19 @@ export default function AdminPublicaciones() {
                 cursor:saving?"not-allowed":"pointer",opacity:saving?.7:1,
               }}>{saving?"Guardando...":"Guardar"}</button>
             </div>
+          )}
+
+          {/* Volver: solo con la ficha abierta.
+              Va en la barra y no dentro del formulario porque es una accion
+              sobre la pantalla, no sobre el articulo. Antes la unica salida
+              era el pie de un formulario largo: quien se arrepiente apenas
+              entra tenia que recorrerlo entero para encontrarla. */}
+          {(showWizard||exp)&&(
+            <>
+              <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
+              <Accion label="← Volver" color="var(--mute)"
+                onClick={()=>{setShowWizard(false);setExp(null);}}/>
+            </>
           )}
 
           {/* Columnas — al final de la barra, a la derecha del todo */}
