@@ -38,12 +38,6 @@ const DISPONIBILIDADES = [
   { id:"agotado",      label:"Sin stock",     desc:"Pausar publicación" },
 ];
 
-const STEPS = [
-  { id:2, label:"Información",icon:"📝" },
-  { id:3, label:"Detalles",   icon:"⚙️" },
-  { id:4, label:"Destinos",   icon:"📡" },
-  { id:5, label:"Revisión",   icon:"✅" },
-];
 
 // Canales de publicacion. `listo:false` = sin integracion real todavia: se
 // muestran deshabilitados en vez de fingir que funcionan.
@@ -76,8 +70,6 @@ export default function AdminArticulos(
     if (cb) cb();
     else navigate("/admin/publicaciones");
   };
-  const PRIMER_PASO = 2;
-  const [step, setStep]     = useState(PRIMER_PASO);
   const [loading, setLoading] = useState(false);
   const [toast, setToast]   = useState<{text:string;ok:boolean}|null>(null);
 
@@ -381,13 +373,21 @@ export default function AdminArticulos(
     setTaxonomiaSugerida(true);
   }, [elegido, deptos, cats, subcats, deptoId]);
 
-  const canNext = (): boolean => {
-    if (step === 2) return nombre.trim().length > 0 && descripcion.trim().length > 0
-      && imagenes.length > 0 && precio.length > 0 && parseFloat(precio) > 0;
-    if (step === 3) return true; // departamento opcional temporalmente
-    if (step === 4) return true; // el tipo (Market/Second) ya viene fijo desde afuera
-    return true;
+
+  /**
+   * Que falta para poder guardar, en una frase.
+   *
+   * Antes esto era canNext() por paso: cada pantalla se validaba sola y no
+   * habia forma de saber, parado en la primera, que iba a faltar en la tercera.
+   * Con todo a la vista la pregunta es una sola.
+   */
+  const faltaParaGuardar = (): string => {
+    if (!nombre.trim())      return "Falta el nombre del artículo";
+    if (!descripcion.trim()) return "Falta la descripción";
+    if (!precio || parseFloat(precio) <= 0) return "Falta el precio";
+    return "";
   };
+  const puedeGuardar = () => faltaParaGuardar() === "";
 
   const handlePublicar = async () => {
     setLoading(true);
@@ -519,7 +519,7 @@ export default function AdminArticulos(
   };
 
   return (
-    <div style={{ maxWidth: step === 2 ? "none" : 380, margin:0, display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+    <div style={{ margin:0, display:"flex", flexDirection:"column", gap:"1.25rem" }}>
 
       {toast && (
         <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999,
@@ -533,7 +533,9 @@ export default function AdminArticulos(
       )}
 
       {/* Contenido del paso */}
-      {step === 2 ? (
+      {/* ARRIBA: lo basico, en cuatro columnas. Identidad, imagenes, precio y
+          como se va a ver. Es lo que define al articulo, y entra de una. */}
+      {true ? (
         // Grid en vez de flex: 4 columnas que reparten el 100% del ancho del
         // contenedor en la misma proporción que antes tenían fijada en px
         // (380:285:380:285 → Información y Precio, columna 1 y 3, quedan del
@@ -1041,11 +1043,15 @@ export default function AdminArticulos(
           </div>
 
         </div>
-      ) : (
+      ) : null}
+
+      {/* ABAJO: la informacion ampliada. Toda en la misma pagina.
+          Saltar de pantalla en pantalla obliga a recordar lo que quedo atras
+          para decidir lo que viene, y a volver para comprobarlo. */}
       <div style={card}>
 
-        {/* PASO 3: Detalles */}
-        {step === 3 && (
+        {/* Detalles y disponibilidad */}
+        {true && (
           <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Detalles y disponibilidad</h2>
             <div style={{ maxWidth:160 }}>
@@ -1093,8 +1099,8 @@ export default function AdminArticulos(
           </div>
         )}
 
-        {/* PASO 4: Destinos */}
-        {step === 4 && (
+        {/* Destinos */}
+        {true && (
           <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
             <div>
               <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>
@@ -1177,97 +1183,35 @@ export default function AdminArticulos(
             )}
           </div>
         )}
-        {/* PASO 5: Revisión */}
-        {step === 5 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
-            <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Revisión final</h2>
-
-            {/* Preview imagen */}
-            {imagenes.length > 0 && (
-              <div style={{ display:"flex", gap:"0.5rem" }}>
-                {imagenes.slice(0,5).map((url,i) => (
-                  <img key={i} src={`${url}?width=100`} alt=""
-                    style={{ width:60, height:60, objectFit:"cover", borderRadius:8,
-                      border: i===0 ? `2px solid ${ACCENT}` : "1px solid var(--border)" }} />
-                ))}
-                {imagenes.length > 5 && (
-                  <div style={{ width:60, height:60, borderRadius:8, background:"#F3F4F6",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    fontSize:"0.8rem", color:"var(--mute)", fontWeight:700 }}>
-                    +{imagenes.length-5}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Resumen */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
-              {[
-                { label:"Tipo",          value: tipo === "market" ? "🛍 Market" : "♻️ Second Hand" },
-                { label:"Nombre",        value: nombre },
-                { label:"Precio",        value: `${moneda} ${parseFloat(precio||"0").toLocaleString("es-UY")}${descuento ? ` (-${descuento}%)` : ""}` },
-                { label:"Categoría",     value: [deptos.find(d=>d.id===deptoId)?.nombre, cats.find(c=>c.id===catId)?.nombre].filter(Boolean).join(" › ") || "—" },
-                { label:"Imágenes",      value: `${imagenes.length} imagen(es) · ${videoUrls.length} video(s)` },
-                { label:"Stock",         value: stock },
-                { label:"Disponibilidad",value: DISPONIBILIDADES.find(d=>d.id===disponibilidad)?.label || "—" },
-                { label:"Publicar como", value: publicarComo === "active" ? "🚀 Publicar ahora" : "📋 Borrador" },
-                ...(tipo==="secondhand" ? [{ label:"Condición", value: condicion }] : []),
-              ].map(row => (
-                <div key={row.label} style={{ padding:"0.65rem 0.85rem", background:"var(--gray-50)",
-                  borderRadius:8, border:"1px solid var(--border)" }}>
-                  <div style={{ fontSize:"0.7rem", color:"var(--gray-400)", fontWeight:700,
-                    textTransform:"uppercase", letterSpacing:".05em", marginBottom:"2px" }}>{row.label}</div>
-                  <div style={{ fontSize:"0.875rem", color:"#111", fontWeight:600 }}>{row.value || "—"}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Descripción preview */}
-            {descripcion && (
-              <div style={{ padding:"0.75rem", background:"var(--gray-50)", borderRadius:8, border:"1px solid var(--border)" }}>
-                <div style={{ fontSize:"0.7rem", color:"var(--gray-400)", fontWeight:700,
-                  textTransform:"uppercase", marginBottom:"4px" }}>Descripción</div>
-                <div style={{ fontSize:"0.875rem", color:"#374151", lineHeight:1.5 }}>{descripcion}</div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
-      )}
 
-      {/* Navegación */}
+      {/* Una sola accion: no hay pasos que recorrer. */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <button
-          onClick={() => step > PRIMER_PASO ? setStep(s => s-1) : salir(false)}
+          onClick={() => salir(false)}
           style={{ padding:"0.65rem 1.25rem", background:"transparent",
             border:"1.5px solid var(--border)", borderRadius:10,
             color:"var(--mute)", cursor:"pointer", fontSize:"0.875rem" }}>
-          {step === PRIMER_PASO ? "← Cancelar" : "← Anterior"}
+          ← Cancelar
         </button>
 
-        <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-          <span style={{ fontSize:"0.8rem", color:"var(--gray-400)" }}>
-            Paso {STEPS.findIndex(s => s.id === step) + 1} de {STEPS.length}
-          </span>
-          {step < 4 ? (
-            <button
-              onClick={() => canNext() && setStep(s => s+1)}
-              disabled={!canNext()}
-              style={{ padding:"0.65rem 1.5rem", background: canNext() ? ACCENT : "var(--border)",
-                color: canNext() ? "#fff" : "var(--gray-400)", border:"none",
-                borderRadius:10, fontWeight:700, fontSize:"0.875rem",
-                cursor: canNext() ? "pointer" : "not-allowed", transition:"all .15s" }}>
-              Siguiente →
-            </button>
-          ) : (
-            <button onClick={handlePublicar} disabled={loading} style={{
-              padding:"0.65rem 1.75rem",
-              background: loading ? "#ccc" : publicarComo === "draft" ? BLUE : GREEN,
-              color:"#fff", border:"none", borderRadius:10, fontWeight:800,
-              fontSize:"0.95rem", cursor: loading ? "not-allowed" : "pointer" }}>
-              {loading ? "Guardando..." : publicarComo === "draft" ? "💾 Guardar borrador" : "🚀 Publicar artículo"}
-            </button>
+        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+          {/* Lo que falta se dice antes de apretar, no despues. */}
+          {!puedeGuardar() && (
+            <span style={{ fontSize:"0.8rem", color:"var(--gray-400)" }}>
+              {faltaParaGuardar()}
+            </span>
           )}
+          <button onClick={handlePublicar} disabled={loading || !puedeGuardar()} style={{
+            padding:"0.65rem 1.75rem",
+            background: (loading || !puedeGuardar()) ? "var(--border)"
+                      : publicarComo === "draft" ? BLUE : GREEN,
+            color: (loading || !puedeGuardar()) ? "var(--gray-400)" : "#fff",
+            border:"none", borderRadius:10, fontWeight:800,
+            fontSize:"0.95rem",
+            cursor: (loading || !puedeGuardar()) ? "not-allowed" : "pointer" }}>
+            {loading ? "Guardando..." : publicarComo === "draft" ? "Guardar borrador" : "Publicar artículo"}
+          </button>
         </div>
       </div>
     </div>
