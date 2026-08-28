@@ -59,6 +59,45 @@ const DESTINOS = [
  * abre el formulario (los botones "Market +" / "Second +" de la toolbar de
  * Publicaciones) vía tipoInicial, así que se arranca directo en Información.
  */
+/*
+ * Geometria de las cuatro columnas.
+ *
+ * Una sola medida manda: el alto, que lo fija la columna de medios -es la que
+ * tiene forma propia, cuatro filas de tiles-. Todo lo demas se deriva de ahi.
+ *
+ * VA EN CSS Y NO EN CONSTANTES DE JS a proposito. Con el alto fijo en pixeles
+ * la fila se veia bien en un monitor y ocupaba media pantalla en una notebook:
+ * el alto tiene que seguir a la ventana, y si el alto cambia, los anchos que
+ * salen de el tienen que cambiar con el. calc() lo hace solo, en cada resize,
+ * sin medir nada desde JS.
+ *
+ * La tarjeta de vista previa no se estira: es la misma que ve quien compra, y
+ * deformarla seria mostrar algo que no existe. Mantiene proporcion, y por eso
+ * su ancho sale del alto.
+ */
+const GEOMETRIA = {
+  /** Sigue a la ventana, con piso y techo para que nunca quede absurda. */
+  alto: "clamp(400px, 56vh, 620px)",
+  /** Alto / ancho de la tarjeta de producto, medido sobre la tarjeta real. */
+  proporcionTarjeta: 0.52,
+  /** Espacio entre tiles de la columna de medios. */
+  gapTiles: 12,
+} as const;
+
+/** Dos tiles por fila, cuatro filas: ancho = 2 tiles + un espacio. */
+const ANCHO_MEDIOS  = `calc((${GEOMETRIA.alto} - ${3 * GEOMETRIA.gapTiles}px) / 2 + ${GEOMETRIA.gapTiles}px)`;
+const ANCHO_TARJETA = `calc(${GEOMETRIA.alto} * ${GEOMETRIA.proporcionTarjeta})`;
+/** El precio son dos campos cortos: mas ancho seria espacio muerto. */
+const ANCHO_PRECIO  = "clamp(170px, 14vw, 230px)";
+/**
+ * Piso de la descripcion.
+ *
+ * Es la columna que mas aire necesita -nombre, marca, condicion, taxonomia y
+ * un texto largo- y tiene que ser la mas ancha. Con las otras tres derivadas
+ * del alto se queda con el resto; el piso la protege en pantallas chicas.
+ */
+const ANCHO_MIN_DESCRIPCION = "clamp(280px, 24vw, 460px)"
+
 export default function AdminArticulos(
   { onFinish, onCancel, tipoInicial }:
   { onFinish?: () => void; onCancel?: () => void; tipoInicial?: "market"|"secondhand" } = {}
@@ -543,11 +582,28 @@ export default function AdminArticulos(
         // mismo ancho entre sí). Con fr las 4 columnas se reparten siempre el
         // 100% disponible, angostándose o ensanchándose todas juntas y en la
         // misma proporción según el ancho real del contenedor.
-        <div style={{ ...card, display:"grid", gridTemplateColumns:"380fr 285fr 380fr 285fr", gap:"1rem", alignItems:"stretch" }}>
-          {/* PASO 2: Información */}
-          <div style={{ minWidth:0 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Información del artículo</h2>
+        <div style={{
+          ...card, display:"grid", gap:"1rem", alignItems:"stretch",
+          /*
+           * El alto lo define la columna de medios: es la unica que tiene una
+           * forma fija -dos columnas de tiles- y por lo tanto un alto natural.
+           * Las demas se ajustan a ese alto en vez de estirarlo.
+           *
+           * La tarjeta mantiene su proporcion, asi que con el alto dado su
+           * ancho queda determinado: ALTO_COLUMNAS * PROPORCION_TARJETA. Los
+           * medios ocupan lo que necesitan sus tiles, precio es angosto por
+           * naturaleza, y la descripcion se queda con lo que sobra, que es la
+           * que mas aire necesita.
+           */
+          gridTemplateColumns:
+            `minmax(${ANCHO_MIN_DESCRIPCION}, 1fr) ${ANCHO_MEDIOS} ${ANCHO_PRECIO} ${ANCHO_TARJETA}`,
+          height: GEOMETRIA.alto,
+        }}>
+          {/* Descripcion. Si su contenido pasa el alto comun, scrollea ella:
+              estirar la fila entera para que entre un campo mas deja a las
+              otras tres con aire muerto. */}
+          <div style={{ minWidth:0, height:"100%", overflowY:"auto", paddingRight:4 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
 
             {/* Marca: el input queda más angosto (flex:1) para dejarle lugar,
                 a continuación y siempre presente, a la miniatura del logo.
@@ -559,7 +615,6 @@ export default function AdminArticulos(
                 busca o no hay nada cargado todavía. */}
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
-                <label style={{ ...lbl, marginBottom:0 }}>Marca</label>
                 <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
                   {marcaConfirmada && marcaModo === "sugerida" && (
                     <button onClick={cambiarMarca} style={{ border:"none", background:"none",
@@ -586,7 +641,7 @@ export default function AdminArticulos(
                 <input style={{ ...inp, flex:1, minWidth:0 }} value={marca}
                   readOnly={marcaConfirmada && marcaModo !== "personalizada"}
                   onChange={e => { setMarca(e.target.value); }}
-                  placeholder="Empezá a escribir para buscar la marca…" />
+                  placeholder="Marca" />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
                     artículo (SelectorMediaArticulo) — vacío muestra "+" y al
@@ -742,7 +797,6 @@ export default function AdminArticulos(
 
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
-                <label style={{ ...lbl, marginBottom:0 }}>Artículo *</label>
                 <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
                   {elegido && (
                     <button onClick={() => { setElegido(null); setIdElegido(null); }} style={{ border:"none", background:"none",
@@ -774,7 +828,7 @@ export default function AdminArticulos(
               </div>
               <input style={inp} value={nombre}
                 onChange={e => { setNombre(e.target.value); setIdElegido(null); setElegido(null); }}
-                placeholder="Ej: iPhone 14 Pro 256GB Negro" />
+                placeholder="Artículo" />
 
               {buscandoProd && !elegido && !articuloPersonalizado && (
                 <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
@@ -842,35 +896,45 @@ export default function AdminArticulos(
                 directo en una sola fila de chips, todas visibles a la vez. */}
             {tipo === "market" && (
               <div>
-                <div style={{ display:"flex", gap:"0.5rem" }}>
+                {/* Una linea. La condicion es una eleccion entre pocas
+                    opciones conocidas: cuatro botones grandes y un renglon de
+                    detalle debajo ocupaban el alto de dos campos para decir
+                    algo que entra en uno. Lo que implica cada estado
+                    -garantia, empaque- va en el title, a mano de quien dude,
+                    sin robarle espacio a quien no. */}
+                <div style={{ display:"flex", alignItems:"center", gap:"0.9rem", flexWrap:"wrap",
+                  fontSize:"0.78rem", color:"#374151" }}>
                   {CONDICIONES_MARKET.map(c => (
-                    <div key={c.id} onClick={() => setCondicionMarketId(c.id)}
-                      style={condPill(condicionMarketId === c.id)}>
+                    <label key={c.id}
+                      title={`${c.desc} · Garantía: ${c.garantia} · Empaque: ${c.empaque}`}
+                      style={{ display:"flex", alignItems:"center", gap:5, cursor:"pointer",
+                        fontWeight: condicionMarketId === c.id ? 700 : 400,
+                        color: condicionMarketId === c.id ? "#111" : "var(--mute)" }}>
+                      <input type="radio" name="condicion-market"
+                        checked={condicionMarketId === c.id}
+                        onChange={() => setCondicionMarketId(c.id)}
+                        style={{ accentColor: ACCENT, margin:0 }} />
                       {c.label}
-                    </div>
+                    </label>
                   ))}
                 </div>
-                {condicionMarketId === "reacondicionado" ? (
-                  // Único estado que pide un subestado adicional: se muestra
-                  // debajo de la fila de chips, junto con el detalle del
-                  // estado elegido.
-                  <div style={{ marginTop:"0.5rem", display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-                    <span style={{ fontSize:"0.7rem", color:"var(--gray-400)" }}>
-                      {CONDICIONES_MARKET.find(c => c.id === "reacondicionado")?.desc} · Garantía: 90 días · Empaque: Original o genérica
-                    </span>
-                    <div style={{ display:"flex", gap:"0.5rem" }}>
-                      {SUBESTADOS_RECONDICIONADO.map(s => (
-                        <div key={s} onClick={() => setSubestadoRecond(s)} style={condPill(subestadoRecond === s)}>
-                          {s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ marginTop:"0.4rem", fontSize:"0.7rem", color:"var(--gray-400)" }}>
-                    {CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.desc}
-                    {" · Garantía: "}{CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.garantia}
-                    {" · Empaque: "}{CONDICIONES_MARKET.find(c => c.id === condicionMarketId)?.empaque}
+
+                {/* Reacondicionado es el unico que pide algo mas: aparece solo
+                    cuando se elige, en la misma linea. */}
+                {condicionMarketId === "reacondicionado" && (
+                  <div style={{ display:"flex", alignItems:"center", gap:"0.9rem", flexWrap:"wrap",
+                    marginTop:"0.35rem", fontSize:"0.78rem" }}>
+                    {SUBESTADOS_RECONDICIONADO.map(sub => (
+                      <label key={sub} style={{ display:"flex", alignItems:"center", gap:5, cursor:"pointer",
+                        fontWeight: subestadoRecond === sub ? 700 : 400,
+                        color: subestadoRecond === sub ? "#111" : "var(--mute)" }}>
+                        <input type="radio" name="subestado-recond"
+                          checked={subestadoRecond === sub}
+                          onChange={() => setSubestadoRecond(sub)}
+                          style={{ accentColor: ACCENT, margin:0 }} />
+                        {sub}
+                      </label>
+                    ))}
                   </div>
                 )}
               </div>
@@ -892,35 +956,25 @@ export default function AdminArticulos(
                 selectores. */}
             <div style={{ display:"grid", gridTemplateColumns: filteredSubs.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap:"0.75rem" }}>
               <div>
-                <label style={lbl}>
-                  Departamento *
-                  {taxonomiaSugerida && (
-                    <span style={{ marginLeft:6, fontWeight:600, fontSize:"0.75rem", color: BLUE }}>
-                      · sugerido por ML
-                    </span>
-                  )}
-                </label>
                 <select style={inp} value={deptoId}
                   onChange={e => { setDeptoId(e.target.value); setCatId(""); setSubcatId(""); setTaxonomiaSugerida(false); }}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">Departamento</option>
                   {deptos.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
                 </select>
               </div>
               <div>
-                <label style={lbl}>Categoría</label>
                 <select style={inp} value={catId}
                   onChange={e => { setCatId(e.target.value); setSubcatId(""); setTaxonomiaSugerida(false); }}
                   disabled={!deptoId}>
-                  <option value="">Seleccionar...</option>
+                  <option value="">Categoría</option>
                   {filteredCats.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
               {filteredSubs.length > 0 && (
                 <div>
-                  <label style={lbl}>Subcategoría</label>
                   <select style={inp} value={subcatId}
                     onChange={e => { setSubcatId(e.target.value); setTaxonomiaSugerida(false); }} disabled={!catId}>
-                    <option value="">Seleccionar...</option>
+                    <option value="">Subcategoría</option>
                     {filteredSubs.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                   </select>
                 </div>
@@ -928,10 +982,9 @@ export default function AdminArticulos(
             </div>
 
             <div>
-              <label style={lbl}>Descripción *</label>
               <textarea style={{ ...inp, minHeight:100, resize:"vertical" }}
                 value={descripcion} onChange={e => setDescripcion(e.target.value)}
-                placeholder="Describí el artículo con detalle: características, uso, accesorios incluidos..." />
+                placeholder="Descripción: características, uso, accesorios incluidos…" />
               <div style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"right", marginTop:"3px" }}>
                 {descripcion.length} / 2000
               </div>
@@ -969,21 +1022,18 @@ export default function AdminArticulos(
             <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
               <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:"0.75rem" }}>
                 <div>
-                  <label style={lbl}>Moneda</label>
                   <select style={inp} value={moneda} onChange={e => setMoneda(e.target.value)}>
                     {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Precio *</label>
                   <input style={inp} type="number" value={precio}
-                    onChange={e => setPrecio(e.target.value)} placeholder="0" min="0" />
+                    onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
                 </div>
               </div>
               <div>
-                <label style={lbl}>Precio original <span style={{ fontWeight:400, color:"var(--gray-400)" }}>(sin descuento)</span></label>
                 <input style={inp} type="number" value={precioOrig}
-                  onChange={e => setPrecioOrig(e.target.value)} placeholder="0" min="0" />
+                  onChange={e => setPrecioOrig(e.target.value)} placeholder="Precio original, sin descuento" min="0" />
               </div>
               {descuento && (
                 <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.65rem 0.8rem",
