@@ -71,61 +71,83 @@ const DESTINOS = [
 /*
  * Geometria de las cuatro columnas.
  *
- * TODO SALE DEL LADO DEL TILE. Una sola constante en pixeles, y de ahi el alto
- * de la fila, el ancho de medios y el de la tarjeta.
+ * REGLA
+ *   1. La tarjeta y la columna de medios tienen el mismo alto.
+ *   2. Ese alto es el de las cuatro columnas.
+ *   3. El ancho de la tarjeta define el de las ultimas tres.
+ *   4. La descripcion se queda con el resto: es la que mas aire necesita.
  *
- * Antes el alto era 56vh -relativo a la ventana- mientras el bloque de la
- * tarjeta seguia siendo 285px. Al mezclar unidades su relacion cambiaba con
- * cada pantalla, y por eso se veia distinto en el monitor que en la notebook:
- * no era un ajuste fino que faltaba, era que no podian coincidir en las dos.
+ * Las tres primeras no son independientes: juntas determinan el tamaño del
+ * tile, no lo dejan a eleccion.
  *
- * Con todo en pixeles la fila mide lo mismo en cualquier pantalla. Si la
- * ventana es baja, la pagina scrollea: preferible a que la fila se deforme
- * distinto en cada maquina. El escalado del sistema operativo agranda o achica
- * todo por igual, que es lo que se espera.
+ *   alto  = filas·t + (filas-1)·g          (la grilla de medios)
+ *   ancho = columnas·t + (columnas-1)·g
+ *   alto  = ancho + bloqueFijoTarjeta      (la tarjeta, al mismo alto)
+ *
+ * Despejando:  t = bloqueFijoTarjeta / (filas - columnas) - g
+ *
+ * Por eso el tamaño de las imagenes NO se elige directo: se elige cuantas
+ * filas entran, y el tile sale de ahi. Mas filas, tiles mas chicos y columnas
+ * mas angostas, con la tarjeta siguiendolas sin desalinearse. Antes eso eran
+ * dos numeros que habia que ajustar hasta que casualmente coincidieran.
+ *
+ * Todo en pixeles: mezclar vh con px hacia que la relacion cambiara con la
+ * pantalla, y por eso se veia distinto en el monitor que en la notebook.
  */
 const GEOMETRIA = {
-  /** La unica medida elegida. Todo lo demas se deriva. */
-  ladoTile: 80,
-  /** Espacio entre tiles: un cuarto del original. */
+  /** Espacio entre tiles. */
   gapTiles: 4,
   /** Tres columnas de medios. */
   columnasMedios: 3,
-  /** Seis filas: cuatro de imagenes, dos de videos. */
-  filasMedios: 6,
+  /** Siete filas: cinco de imagenes, dos de videos. Subir este numero achica. */
+  filasMedios: 7,
   /**
    * Alto del bloque de la tarjeta que NO escala con el ancho.
    *
    * MarketCard tiene imagen cuadrada -crece con el ancho- mas titulo, precio,
-   * rating y boton de compra, que ocupan lo mismo sea cual sea el ancho. Su
-   * alto es ancho + este bloque; invertido, el ancho que le corresponde a un
-   * alto dado es alto - bloque.
+   * rating y boton de compra, que ocupan lo mismo sea cual sea el ancho.
    */
   bloqueFijoTarjeta: 285,
 } as const;
 
-/** Seis filas de tiles mas sus espacios. Es el alto de las cuatro columnas. */
-const ALTO_FILA = GEOMETRIA.ladoTile * GEOMETRIA.filasMedios
+/** Sale de igualar el alto de la grilla con el de la tarjeta. */
+const LADO_TILE = Math.round(
+  GEOMETRIA.bloqueFijoTarjeta / (GEOMETRIA.filasMedios - GEOMETRIA.columnasMedios)
+  - GEOMETRIA.gapTiles,
+);
+
+/** Alto de las cuatro columnas. */
+const ALTO_FILA = LADO_TILE * GEOMETRIA.filasMedios
                 + GEOMETRIA.gapTiles * (GEOMETRIA.filasMedios - 1);
 
-/** Tres tiles mas sus espacios. */
-const ANCHO_MEDIOS = GEOMETRIA.ladoTile * GEOMETRIA.columnasMedios
-                   + GEOMETRIA.gapTiles * (GEOMETRIA.columnasMedios - 1);
-
-/** El ancho con el que la tarjeta llega justo al alto de la fila. */
-const ANCHO_TARJETA = ALTO_FILA - GEOMETRIA.bloqueFijoTarjeta;
-
-/** El precio son dos campos cortos: mas ancho seria espacio muerto. */
-const ANCHO_PRECIO = 230;
+/**
+ * Ancho de las tres columnas de la derecha.
+ *
+ * Es el de la tarjeta, y se calcula desde el alto para que la tarjeta llegue
+ * exactamente ahi. Los medios miden lo mismo por construccion, salvo un pixel
+ * de redondeo.
+ */
+const ANCHO_COLUMNA = ALTO_FILA - GEOMETRIA.bloqueFijoTarjeta;
 
 /**
  * Piso de la descripcion.
  *
- * Es la columna que mas aire necesita y tiene que ser la mas ancha. Con las
- * otras tres fijas se queda con el resto; el piso la protege en pantallas
- * angostas, y si no entra, la fila scrollea en vez de apretarla.
+ * Es la columna que mas aire necesita y tiene que ser la mas ancha.
  */
 const ANCHO_MIN_DESCRIPCION = 380;
+
+/**
+ * Ancho que necesita la fila.
+ *
+ * Por debajo no entra, y apretarla no es opcion: deformaria la tarjeta y los
+ * tiles dejarian de ser cuadrados. Se calcula en vez de elegir un breakpoint a
+ * ojo, asi cambiar cualquier medida lo corrige solo.
+ */
+const GAP_COLUMNAS = 16;
+const PADDING_TARJETA_CONTENEDORA = 48;
+const ANCHO_MINIMO_FILA =
+  ANCHO_MIN_DESCRIPCION + ANCHO_COLUMNA * 3
+  + GAP_COLUMNAS * 3 + PADDING_TARJETA_CONTENEDORA;
 
 /**
  * Campo con su check "personalizado" adentro, a la derecha.
@@ -713,6 +735,39 @@ export default function AdminArticulos(
 
   return (
     <div style={{ margin:0, display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+      {/*
+        La grilla va en CSS y no en estilos inline porque necesita una media
+        query: los estilos inline no pueden expresar "si no entra, cambia de
+        forma", y esta fila tiene un ancho minimo real por debajo del cual
+        apretarla deformaria la tarjeta y los tiles.
+
+        Debajo de ese ancho se parte en dos bandas -descripcion con medios, y
+        precio con la tarjeta- en vez de encogerse. Cada banda conserva la
+        relacion que importa: los tiles siguen cuadrados y la tarjeta sigue
+        siendo la del front.
+      */}
+      <style>{`
+        .ficha-fila {
+          display: grid;
+          gap: ${GAP_COLUMNAS}px;
+          align-items: stretch;
+          grid-template-columns:
+            minmax(${ANCHO_MIN_DESCRIPCION}px, 1fr)
+            ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px;
+          height: ${ALTO_FILA}px;
+        }
+        @media (max-width: ${ANCHO_MINIMO_FILA}px) {
+          .ficha-fila {
+            grid-template-columns: minmax(0, 1fr) ${ANCHO_COLUMNA}px;
+            height: auto;
+          }
+          /* Precio y tarjeta bajan a la segunda banda, en el mismo orden. */
+          .ficha-fila > .col-precio,
+          .ficha-fila > .col-tarjeta { grid-column: auto; }
+          .ficha-fila > .col-descripcion { height: ${ALTO_FILA}px; }
+          .ficha-fila > .col-medios { height: ${ALTO_FILA}px; }
+        }
+      `}</style>
 
       {toast && (
         <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999,
@@ -736,27 +791,11 @@ export default function AdminArticulos(
         // mismo ancho entre sí). Con fr las 4 columnas se reparten siempre el
         // 100% disponible, angostándose o ensanchándose todas juntas y en la
         // misma proporción según el ancho real del contenedor.
-        <div style={{
-          ...card, display:"grid", gap:"1rem", alignItems:"stretch",
-          /*
-           * El alto lo define la columna de medios: es la unica que tiene una
-           * forma fija -dos columnas de tiles- y por lo tanto un alto natural.
-           * Las demas se ajustan a ese alto en vez de estirarlo.
-           *
-           * La tarjeta mantiene su proporcion, asi que con el alto dado su
-           * ancho queda determinado: ALTO_COLUMNAS * PROPORCION_TARJETA. Los
-           * medios ocupan lo que necesitan sus tiles, precio es angosto por
-           * naturaleza, y la descripcion se queda con lo que sobra, que es la
-           * que mas aire necesita.
-           */
-          gridTemplateColumns:
-            `minmax(${ANCHO_MIN_DESCRIPCION}px, 1fr) ${ANCHO_MEDIOS}px ${ANCHO_PRECIO}px ${ANCHO_TARJETA}px`,
-          height: ALTO_FILA,
-        }}>
+        <div className="ficha-fila" style={card}>
           {/* Descripcion. Si su contenido pasa el alto comun, scrollea ella:
               estirar la fila entera para que entre un campo mas deja a las
               otras tres con aire muerto. */}
-          <div style={{ minWidth:0, height:"100%", overflowY:"auto", paddingRight:4 }}>
+          <div className="col-descripcion" style={{ minWidth:0, height:"100%", overflowY:"auto", paddingRight:4 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
 
             {/* Marca: el input queda más angosto (flex:1) para dejarle lugar,
@@ -1100,14 +1139,14 @@ export default function AdminArticulos(
               grilla (columna 2, misma proporción que antes tenía 285 sobre
               380), y como la columna 4 (Tarjeta) usa la misma fracción,
               ambas quedan siempre del mismo ancho entre sí. */}
-          <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
+          <div className="col-medios" style={{ minWidth:0, display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
             <SelectorMediaArticulo
               imagenes={imagenes}
               videos={videoUrls}
               onChangeImagenes={setImagenes}
               onChangeVideos={setVideoUrls}
               columnas={3}
-              maxImagenes={12}
+              maxImagenes={15}
               maxVideos={6}
               imagenAspect="1"
               anchoGrid="100%"
@@ -1128,7 +1167,7 @@ export default function AdminArticulos(
                     {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="col-precio">
                   <input style={inp} type="number" value={precio}
                     onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
                 </div>
@@ -1158,7 +1197,7 @@ export default function AdminArticulos(
                     {moneda} {parseFloat(precio || "0").toLocaleString("es-UY")}
                   </div>
                   {descuento && (
-                    <div style={{ display:"inline-block", background:ACCENT, color:"#fff",
+                    <div className="col-tarjeta" style={{ display:"inline-block", background:ACCENT, color:"#fff",
                       fontSize:"0.7rem", fontWeight:700, padding:"2px 8px", borderRadius:20, marginTop:"4px" }}>
                       -{descuento}% OFF
                     </div>
