@@ -4,6 +4,7 @@ import { buscarProductos, fichaPorTitulo,
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
+import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
@@ -17,7 +18,6 @@ const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
 const GREEN  = "var(--color-success)";
 
-const CONDICIONES = ["Nuevo","Excelente","Muy bueno","Bueno","Regular","Para reparar"];
 
 // Condiciones para artículos de Market (no Second Hand). A diferencia de
 // CONDICIONES (Second) cada estado trae su propia descripción, garantía,
@@ -31,6 +31,24 @@ const CONDICIONES_MARKET = [
   { id:"reacondicionado", label:"Reacondicionado", desc:"Reparado/inspeccionado",   garantia:"90 días",    empaque:"Original o genérica",   nota:"Requiere subestado" },
 ];
 const SUBESTADOS_RECONDICIONADO = ["Excelente","Bueno","Aceptable"];
+
+/**
+ * Condiciones de Second Hand.
+ *
+ * Antes eran seis etiquetas sueltas -Nuevo, Excelente, Muy bueno, Bueno,
+ * Regular, Para reparar- que mezclaban dos cosas distintas: QUE es el articulo
+ * y EN QUE ESTADO esta. "Nuevo" y "Usado" son lo primero; "excelente" o
+ * "regular" son lo segundo, y solo tienen sentido dentro de "usado".
+ *
+ * Al separarlas, elegir deja de ser buscar la etiqueta menos mala entre seis:
+ * es decir que es, y despues cuanto.
+ */
+const CONDICIONES_SECOND = [
+  { id:"Nuevo",           label:"Nuevo",           detalle:"Sin uso, con su empaque" },
+  { id:"Usado",           label:"Usado",           detalle:"Tuvo uso: elegí en qué estado está",
+    niveles:["Excelente","Muy bueno","Bueno","Regular"] as const },
+  { id:"Para reparar",    label:"Para reparar",    detalle:"No funciona o le faltan partes" },
+] as const;
 const MONEDAS     = ["UYU","USD","EUR"];
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
@@ -78,15 +96,31 @@ const DESTINOS = [
 const GEOMETRIA = {
   /** Sigue a la ventana, con piso y techo para que nunca quede absurda. */
   alto: "clamp(400px, 56vh, 620px)",
-  /** Alto / ancho de la tarjeta de producto, medido sobre la tarjeta real. */
-  proporcionTarjeta: 0.52,
+  /**
+   * Alto del bloque de la tarjeta que NO escala con el ancho.
+   *
+   * La tarjeta es MarketCard, la misma del front: su imagen es cuadrada, asi
+   * que crece con el ancho, pero abajo lleva titulo, precio, rating y el
+   * boton de compra, que ocupan lo mismo sea cual sea el ancho.
+   *
+   * Por eso su alto NO es una proporcion del ancho -eso fue un error mio al
+   * estimarlo- sino ancho + este bloque. Invertido: dado el alto de la fila,
+   * el ancho que le corresponde es alto - bloque.
+   */
+  bloqueFijoTarjeta: 285,
   /** Espacio entre tiles de la columna de medios. */
   gapTiles: 12,
 } as const;
 
 /** Dos tiles por fila, cuatro filas: ancho = 2 tiles + un espacio. */
 const ANCHO_MEDIOS  = `calc((${GEOMETRIA.alto} - ${3 * GEOMETRIA.gapTiles}px) / 2 + ${GEOMETRIA.gapTiles}px)`;
-const ANCHO_TARJETA = `calc(${GEOMETRIA.alto} * ${GEOMETRIA.proporcionTarjeta})`;
+/**
+ * Ancho de la tarjeta: el que hace que su alto sea el de la fila.
+ *
+ * Se acota por abajo para que en pantallas bajas no quede una tarjeta
+ * ridicula: antes que deformarla, se la deja mas chica que la fila.
+ */
+const ANCHO_TARJETA = `clamp(210px, calc(${GEOMETRIA.alto} - ${GEOMETRIA.bloqueFijoTarjeta}px), 340px)`;
 /** El precio son dos campos cortos: mas ancho seria espacio muerto. */
 const ANCHO_PRECIO  = "clamp(170px, 14vw, 230px)";
 /**
@@ -158,6 +192,72 @@ function CampoConCheck({
           style={{ accentColor: ACCENT, margin:0, pointerEvents:"none" }} />
         {etiqueta}
       </label>
+    </div>
+  );
+}
+
+/**
+ * Condicion del articulo, en una linea.
+ *
+ * Cuando la condicion elegida tiene niveles propios, las demas desaparecen: ya
+ * no son una eleccion pendiente, y dejarlas ahi obliga a leer seis opciones
+ * para ver las tres que importan ahora. La elegida queda a la izquierda y sus
+ * niveles siguen en la misma linea, que es el orden en que se decide: primero
+ * que es, despues cuanto.
+ *
+ * Se vuelve tocando la condicion elegida. No hay un boton aparte para eso: el
+ * mismo lugar que la eligio la suelta.
+ */
+function LineaCondicion({ opciones, valor, onChange, subValor, onSubValor }: {
+  opciones: readonly { readonly id: string; readonly label: string;
+                       readonly niveles?: readonly string[]; readonly detalle?: string }[];
+  valor: string;
+  onChange: (id: string) => void;
+  subValor: string;
+  onSubValor: (v: string) => void;
+}) {
+  const elegida = opciones.find((o) => o.id === valor);
+  const conNiveles = elegida && elegida.niveles && elegida.niveles.length > 0;
+
+  const opcion = (activo: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+    fontWeight: activo ? 700 : 400,
+    color: activo ? "#111" : "var(--mute)",
+  });
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"0.9rem", flexWrap:"wrap",
+      fontSize:"0.78rem", color:"#374151" }}>
+
+      {conNiveles ? (
+        <>
+          {/* La elegida, a la izquierda. Tocarla vuelve a la lista completa. */}
+          <span onClick={() => onChange("")} title="Cambiar la condición"
+            style={{ ...opcion(true), cursor:"pointer" }}>
+            <input type="radio" checked readOnly style={{ accentColor: ACCENT, margin:0, pointerEvents:"none" }} />
+            {elegida!.label}
+          </span>
+          <span style={{ color:"var(--gray-400)" }}>›</span>
+          {elegida!.niveles!.map((n) => (
+            <label key={n} style={opcion(subValor === n)}>
+              <input type="radio" name="nivel-condicion"
+                checked={subValor === n} onChange={() => onSubValor(n)}
+                style={{ accentColor: ACCENT, margin:0 }} />
+              {n}
+            </label>
+          ))}
+        </>
+      ) : (
+        opciones.map((o) => (
+          <label key={o.id} title={o.detalle} style={opcion(valor === o.id)}>
+            <input type="radio" name="condicion-articulo"
+              checked={valor === o.id}
+              onChange={() => { onChange(o.id); if (o.niveles?.length) onSubValor(o.niveles[0]); }}
+              style={{ accentColor: ACCENT, margin:0 }} />
+            {o.label}
+          </label>
+        ))
+      )}
     </div>
   );
 }
@@ -288,6 +388,20 @@ export default function AdminArticulos(
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
+
+  /**
+   * Nombre de la vista, para el encabezado.
+   *
+   * La URL es la misma que la de la lista, asi que la ruta no puede decir que
+   * se esta viendo una ficha ni de que tipo es el articulo. Lo declara esta
+   * pantalla, y se limpia al salir para no dejar el encabezado hablando de algo
+   * que ya no esta en pantalla.
+   */
+  const { setVista } = useShop();
+  useEffect(() => {
+    setVista(`Ficha completa de artículo de ${tipo === "secondhand" ? "Second Hand" : "Market"}`);
+    return () => setVista("");
+  }, [tipo, setVista]);
   // Artículo "Personalizado": igual que la marca, se tipea a mano y no se
   // buscan sugerencias/coincidencias de catálogo mientras esté marcado.
   const [articuloPersonalizado, setArticuloPersonalizado] = useState(false);
@@ -582,17 +696,6 @@ export default function AdminArticulos(
     border: `1.5px solid ${filled ? "var(--border)" : "#F3F4F6"}`,
     background: filled ? "#000" : "var(--gray-50)",
     display:"flex", alignItems:"center", justifyContent:"center",
-  });
-  // Chip de condición (Market y Second): fila única en vez de lista vertical
-  // con título. flex:1 para repartir el ancho disponible entre todas las
-  // opciones y que entren siempre en una sola línea.
-  const condPill = (active: boolean): React.CSSProperties => ({
-    flex:1, textAlign:"center", cursor:"pointer", whiteSpace:"nowrap",
-    padding:"0.5rem 0.6rem", borderRadius:8, fontSize:"0.8rem",
-    fontWeight: active ? 700 : 500,
-    color: active ? ACCENT : "var(--mute)",
-    border:`1.5px solid ${active ? ACCENT : "var(--border)"}`,
-    background: active ? "color-mix(in srgb, var(--brand-madre) 8%, transparent)" : "#fff",
   });
 
   // Paso 2 · Vista previa: arma el mismo objeto que consume la tarjeta real
@@ -935,57 +1038,26 @@ export default function AdminArticulos(
                 directo en una sola fila de chips, todas visibles a la vez. */}
             {tipo === "market" && (
               <div>
-                {/* Una linea. La condicion es una eleccion entre pocas
-                    opciones conocidas: cuatro botones grandes y un renglon de
-                    detalle debajo ocupaban el alto de dos campos para decir
-                    algo que entra en uno. Lo que implica cada estado
-                    -garantia, empaque- va en el title, a mano de quien dude,
-                    sin robarle espacio a quien no. */}
-                <div style={{ display:"flex", alignItems:"center", gap:"0.9rem", flexWrap:"wrap",
-                  fontSize:"0.78rem", color:"#374151" }}>
-                  {CONDICIONES_MARKET.map(c => (
-                    <label key={c.id}
-                      title={`${c.desc} · Garantía: ${c.garantia} · Empaque: ${c.empaque}`}
-                      style={{ display:"flex", alignItems:"center", gap:5, cursor:"pointer",
-                        fontWeight: condicionMarketId === c.id ? 700 : 400,
-                        color: condicionMarketId === c.id ? "#111" : "var(--mute)" }}>
-                      <input type="radio" name="condicion-market"
-                        checked={condicionMarketId === c.id}
-                        onChange={() => setCondicionMarketId(c.id)}
-                        style={{ accentColor: ACCENT, margin:0 }} />
-                      {c.label}
-                    </label>
-                  ))}
-                </div>
-
-                {/* Reacondicionado es el unico que pide algo mas: aparece solo
-                    cuando se elige, en la misma linea. */}
-                {condicionMarketId === "reacondicionado" && (
-                  <div style={{ display:"flex", alignItems:"center", gap:"0.9rem", flexWrap:"wrap",
-                    marginTop:"0.35rem", fontSize:"0.78rem" }}>
-                    {SUBESTADOS_RECONDICIONADO.map(sub => (
-                      <label key={sub} style={{ display:"flex", alignItems:"center", gap:5, cursor:"pointer",
-                        fontWeight: subestadoRecond === sub ? 700 : 400,
-                        color: subestadoRecond === sub ? "#111" : "var(--mute)" }}>
-                        <input type="radio" name="subestado-recond"
-                          checked={subestadoRecond === sub}
-                          onChange={() => setSubestadoRecond(sub)}
-                          style={{ accentColor: ACCENT, margin:0 }} />
-                        {sub}
-                      </label>
-                    ))}
-                  </div>
-                )}
+                <LineaCondicion
+                  opciones={CONDICIONES_MARKET.map(c => ({
+                    id: c.id, label: c.label,
+                    detalle: `${c.desc} · Garantía: ${c.garantia} · Empaque: ${c.empaque}`,
+                    niveles: c.id === "reacondicionado" ? SUBESTADOS_RECONDICIONADO : undefined,
+                  }))}
+                  valor={condicionMarketId}
+                  onChange={setCondicionMarketId}
+                  subValor={subestadoRecond}
+                  onSubValor={setSubestadoRecond} />
               </div>
             )}
+
             {tipo === "secondhand" && (
-              <div style={{ display:"flex", gap:"0.5rem" }}>
-                {CONDICIONES.map(c => (
-                  <div key={c} onClick={() => setCondicion(c)} style={condPill(condicion === c)}>
-                    {c}
-                  </div>
-                ))}
-              </div>
+              <LineaCondicion
+                opciones={CONDICIONES_SECOND}
+                valor={condicion}
+                onChange={setCondicion}
+                subValor={subestadoRecond}
+                onSubValor={setSubestadoRecond} />
             )}
 
             {/* Categorización: Departamento/Categoría/Subcategoría. Se
@@ -1105,19 +1177,16 @@ export default function AdminArticulos(
             </div>
           </div>
 
-          {/* Tarjeta del artículo: la misma que se usa en el front (MarketCard,
-              importada directamente desde ahí) con sus mismas funcionalidades
-              -dar vuelta, galería, selector de cantidad-.
-              Antes el ancho de esta columna salía del alto (aspect-ratio al
-              revés) para que no se disparara más alta que el resto cuando le
-              sobraba ancho libre. Ahora ya no puede sobrarle ancho: la
-              grilla le da la misma fracción que a la columna de Imágenes
-              (col 2 y col 4 comparten "285fr"), así que ambas quedan siempre
-              del mismo ancho entre sí — y con eso alcanza para que la
-              tarjeta no se dispare de alto: vuelve a ser el aspect-ratio
-              normal (ancho → alto). Si se modifica MarketCard.tsx, esta
-              vista previa se actualiza sola porque es el mismo componente,
-              no una copia. */}
+          {/* Tarjeta del artículo.
+              Es MarketCard, importada del front: la misma que ve quien compra,
+              con sus mismas funcionalidades -dar vuelta, galería, cantidad,
+              agregar al carrito-. No una copia parecida: una copia se
+              desactualiza y entonces la vista previa deja de mostrar lo que
+              realmente va a ver el comprador, que es lo unico que justifica
+              tenerla.
+              Por eso tampoco se la deforma. Su ancho sale del alto de la fila
+              (ver GEOMETRIA arriba) y se alinea arriba: estirarla para llenar
+              la columna seria mostrar una tarjeta que no existe. */}
           <div style={{ minWidth:0 }}>
             {/* Única regla de CSS que MarketCard necesita del front (le da a
                 la tarjeta su alto vía aspect-ratio); se define acá en vez de

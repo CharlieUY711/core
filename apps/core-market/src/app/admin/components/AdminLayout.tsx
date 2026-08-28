@@ -9,9 +9,22 @@ interface ShopCtx {
   isSH: boolean; setIsSH: (v: boolean) => void;
   topStats: { label: string; value: number | string; color: string }[];
   setTopStats: (s: { label: string; value: number | string; color: string }[]) => void;
+  /**
+   * Que se esta viendo dentro del modulo.
+   *
+   * La ruta alcanza para decir "Mis publicaciones", pero no distingue la lista
+   * de la ficha de un articulo, ni si ese articulo es de Market o de Second
+   * Hand: son la misma URL. Eso lo sabe la pantalla, asi que lo declara ella y
+   * el encabezado lo muestra al lado del modulo.
+   *
+   * Vacio = no hay nada que aclarar y el encabezado queda como estaba.
+   */
+  vista: string;
+  setVista: (v: string) => void;
 }
 export const ShopContext = createContext<ShopCtx>({
   isSH: false, setIsSH: () => {}, topStats: [], setTopStats: () => {},
+  vista: "", setVista: () => {},
 });
 export const useShop = () => useContext(ShopContext);
 
@@ -225,7 +238,7 @@ function Sidebar({ user, isAdmin, location }: { user: any; isAdmin: boolean; loc
 }
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
-function Topbar({ location }: { location: any }) {
+function Topbar({ location, vista }: { location: any; vista: string }) {
   const allItems = [...commonMenu, ...adminSections.flatMap(s => s.items)];
 
   const activeSection = adminSections.find(s =>
@@ -254,6 +267,14 @@ function Topbar({ location }: { location: any }) {
           </>
         )}
         <span style={{ fontWeight: 600 }}>{moduleLabel}</span>
+        {/* Lo que la ruta no puede decir: si se esta viendo la lista o la
+            ficha de un articulo, y de que tipo. */}
+        {vista && (
+          <>
+            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.75rem" }}>·</span>
+            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 400 }}>{vista}</span>
+          </>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -280,6 +301,7 @@ export default function AdminLayout() {
   const { user, isAdmin, loading } = useUserRole();
   const [isSH, setIsSH] = useState(false);
   const [topStats, setTopStats] = useState<{ label: string; value: number | string; color: string }[]>([]);
+  const [vista, setVista] = useState("");
 
   if (loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
@@ -295,9 +317,9 @@ export default function AdminLayout() {
       fontFamily: "DM Sans, sans-serif", background: "#F4F5F7" }}>
       <Sidebar user={user} isAdmin={isAdmin} location={location} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <Topbar location={location} />
+        <Topbar location={location} vista={vista} />
         <main style={{ flex: 1, overflow: "auto", padding: "1.5rem 2rem" }}>
-          <ShopContext.Provider value={{ isSH, setIsSH, topStats, setTopStats }}>
+          <ShopContext.Provider value={{ isSH, setIsSH, topStats, setTopStats, vista, setVista }}>
             <Outlet context={{ user, isAdmin }} />
           </ShopContext.Provider>
         </main>
