@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
-import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
-import { BloqueMonedas, BloqueDetalles, BloqueInventario, BloqueMetricas }
-  from "../components/ficha/BloquesFicha";
+import { BloqueMetricas } from "../components/ficha/BloquesFicha";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          fichasDeCanales, type ProblemaPublicacion, type FichaCanal } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
@@ -16,8 +14,6 @@ const BLUE   = "var(--brand-navy)";
 const TABS = ["Información","Multimedia","Moneda y Precio","Detalles","Inventario","Vista previa"];
 // Pestañas cuyos campos aún no tienen destino en catalog_*: se avisa en el
 // formulario en vez de descartar lo que el usuario escribe sin decir nada.
-const PENDIENTES = ["Multimedia","Detalles","Vista previa"];
-const CONDICIONES = ["Nuevo","Excelente","Muy bueno","Bueno","Regular","Para reparar"];
 const MONEDAS = ["UYU","USD","EUR"];
 // `key` es la propiedad sintética que la UI ya renderiza; `channel` es el
 // valor real de catalog_listings.channel. El adaptador deriva una de la otra,
@@ -977,157 +973,6 @@ export default function AdminPublicaciones() {
   const lbl:React.CSSProperties={fontSize:"10px",color:"var(--gray-400)",fontWeight:700,
     textTransform:"uppercase",marginBottom:3,display:"block"};
 
-
-
-  // Render form tabs
-  const renderForm=(form:Partial<Art>,setForm:(f:Partial<Art>)=>void,tab:string,setTab:(t:string)=>void)=>{
-    const cf=cats.filter(c=>c.departamento_id===form.departamento_id);
-    return(
-      <>
-        <div style={{display:"flex",marginBottom:"0.9rem",gap:"2px",flexWrap:"nowrap",overflow:"hidden"}}>
-          {TABS.map(t=>(
-            <button key={t} onClick={()=>setTab(t)} style={{
-              padding:"0.35rem 0.7rem",border:"none",cursor:"pointer",
-              fontSize:"0.72rem",fontWeight:tab===t?800:500,whiteSpace:"nowrap",
-              color:tab===t?color:"var(--gray-400)",
-              background:tab===t?`${color}12`:"transparent",
-              borderRadius:6, transition:"all .15s",
-            }}>{t}</button>
-          ))}
-        </div>
-        {PENDIENTES.includes(tab)&&(
-          <div style={{marginBottom:"0.8rem",padding:"0.5rem 0.7rem",borderRadius:7,
-            fontSize:"0.72rem",lineHeight:1.5,color:"#854d0e",background:"#fef9c3",
-            border:"1px solid #fde68a"}}>
-            Los campos de esta pestaña <strong>todavía no se guardan</strong>. La publicación
-            se crea con título, descripción, SKU, precio, moneda, stock y canales.
-            Categorías, imágenes y detalles se conectan en la próxima fase.
-          </div>
-        )}
-        {tab==="Información"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:"0.6rem"}}>
-            <div><span style={lbl}>Nombre *</span>
-              <input style={inp} value={form.nombre||""} placeholder="Ej: iPhone 14 Pro 256GB Negro"
-                onChange={e=>setForm({...form,nombre:e.target.value})}/>
-            </div>
-            <div><span style={lbl}>Descripción</span>
-              <textarea style={{...inp,minHeight:75,resize:"vertical"}} value={form.descripcion||""}
-                onChange={e=>setForm({...form,descripcion:e.target.value})}/>
-            </div>
-            <div style={{fontSize:"0.68rem",color:"var(--gray-400)",marginBottom:4}}>
-              Departamento y categoria todavia no se guardan: la taxonomia del
-              modelo multicanal se conecta en la proxima fase.
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
-              <div><span style={lbl}>Departamento</span>
-                <select style={inp} value={form.departamento_id||""} onChange={e=>{
-                  const d=deptos.find(x=>x.id===e.target.value);
-                  setForm({...form,departamento_id:e.target.value,departamento_nombre:d?.nombre||"",categoria_id:"",categoria_nombre:""});
-                }}>
-                  <option value="">Seleccionar...</option>
-                  {deptos.map(d=><option key={d.id} value={d.id}>{d.nombre}</option>)}
-                </select>
-              </div>
-              <div><span style={lbl}>Categoría</span>
-                <select style={inp} value={form.categoria_id||""} onChange={e=>{
-                  const c=cats.find(x=>x.id===e.target.value);
-                  setForm({...form,categoria_id:e.target.value,categoria_nombre:c?.nombre||""});
-                }}>
-                  <option value="">Seleccionar...</option>
-                  {cf.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
-            </div>
-            {isSH&&<div><span style={lbl}>Condición *</span>
-              <select style={inp} value={form.condicion||""} onChange={e=>setForm({...form,condicion:e.target.value})}>
-                <option value="">Seleccionar...</option>
-                {CONDICIONES.map(c=><option key={c}>{c}</option>)}
-              </select>
-            </div>}
-
-          </div>
-        )}
-        {tab==="Multimedia"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            {/* Preview de imágenes seleccionadas */}
-            {(form.imagenes||[]).length>0&&(
-              <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
-                {(form.imagenes||[]).map((img:any,i:number)=>{
-                  const url = typeof img==="string"?img:img?.url;
-                  return url?(
-                    <div key={i} style={{position:"relative",width:64,height:64,borderRadius:8,
-                      overflow:"hidden",border:i===0?`2.5px solid ${color}`:"1.5px solid var(--border)",
-                      flexShrink:0}}>
-                      <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
-                        onError={e=>(e.currentTarget.style.display="none")}/>
-                      {i===0&&<div style={{position:"absolute",bottom:0,left:0,right:0,
-                        background:"rgba(0,0,0,.5)",color:"#fff",fontSize:"8px",
-                        textAlign:"center",padding:"1px",fontWeight:700}}>PRINCIPAL</div>}
-                      <button onClick={()=>{
-                        const imgs=(form.imagenes||[]).filter((_:any,j:number)=>j!==i);
-                        setForm({...form,imagenes:imgs,imagen_principal:(imgs[0] as any)?.url||undefined});
-                      }} style={{position:"absolute",top:1,right:1,width:16,height:16,borderRadius:"50%",
-                        background:"rgba(0,0,0,.6)",color:"#fff",border:"none",cursor:"pointer",
-                        fontSize:"9px",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                    </div>
-                  ):null;
-                })}
-              </div>
-            )}
-            {/* Selector biblioteca */}
-            <SelectorMediaArticulo
-              imagenes={(form.imagenes||[]).map((i:any)=>typeof i==="string"?i:i?.url).filter(Boolean)}
-              videos={(form.videos||[]).map((v:any)=>typeof v==="string"?v:v?.url).filter(Boolean)}
-              onChangeImagenes={(imgs:string[])=>{
-                const imgObjs=imgs.map((url,i)=>({url,orden:i,principal:i===0}));
-                setForm({...form, imagenes:imgObjs, imagen_principal:imgs[0]||form.imagen_principal});
-              }}
-              onChangeVideos={(vids:string[])=>{
-                const vidObjs=vids.map((url,i)=>({url,orden:i}));
-                setForm({...form, videos:vidObjs});
-              }}
-            />
-          </div>
-        )}
-        {tab==="Moneda y Precio"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:"0.85rem"}}>
-
-            <BloqueMonedas form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
-
-            {/* PRECIOS */}
-            <PreciosEditor form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
-
-          </div>
-        )}
-        {tab==="Detalles"&&(
-          <BloqueDetalles form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
-        )}
-        {tab==="Inventario"&&(
-          <BloqueInventario form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
-        )}
-        {tab==="Vista previa"&&(
-          <div style={{display:"flex",gap:"1rem",alignItems:"flex-start",padding:"0.75rem",
-            background:"#fff",borderRadius:10,border:"1px solid var(--border)"}}>
-            {form.imagen_principal&&<img src={form.imagen_principal} alt="" style={{width:84,height:84,objectFit:"cover",borderRadius:8}} onError={e=>(e.currentTarget.style.display="none")}/>}
-            <div style={{flex:1}}>
-              <div style={{fontWeight:800,fontSize:"1rem",color:"#111"}}>{form.nombre||"Sin nombre"}</div>
-              <div style={{color,fontWeight:700,fontSize:"0.95rem",margin:"4px 0"}}>
-                {form.moneda} {Number(form.precio||0).toLocaleString("es-UY")}
-                {form.precio_original&&form.precio_original>0&&<span style={{textDecoration:"line-through",color:"var(--gray-400)",marginLeft:8,fontSize:"0.8rem"}}>{form.moneda} {Number(form.precio_original).toLocaleString("es-UY")}</span>}
-              </div>
-              <div style={{fontSize:"0.78rem",color:"var(--mute)"}}>
-                {form.departamento_nombre||"Sin departamento"}
-                {form.condicion&&" · "+form.condicion}
-                {" · Stock: "+(form.stock_ilimitado?"∞":form.stock||0)}
-              </div>
-              {form.descripcion&&<div style={{fontSize:"0.78rem",color:"#374151",marginTop:6,lineHeight:1.5}}>{form.descripcion.slice(0,180)}</div>}
-            </div>
-          </div>
-        )}
-      </>
-    );
-  };
-
   // Panel expandido
   /**
    * Filas que se muestran.
@@ -1324,7 +1169,22 @@ export default function AdminPublicaciones() {
               </div>
             )}
 
-            {renderForm(eForm,(f)=>{setEForm(f);setDirty(true);},eTab,setETab)}
+            {/*
+              El mismo formulario que el alta, con el articulo cargado.
+              Antes esto era un editor de pestañas propio: otra implementacion
+              de lo mismo, que quedo atras de cada mejora hecha del lado del
+              alta -el monitor de avisos, la condicion en una linea, las
+              etiquetas adentro de los campos-. Uno solo no puede divergir.
+            */}
+            {a && (
+              <AdminArticulos
+                key={a.id}
+                articulo={a}
+                tipoInicial={(a as any).tipo === "secondhand" ? "secondhand" : "market"}
+                onCancel={()=>setExp(null)}
+                onFinish={()=>{setExp(null);reload();}}
+              />
+            )}
           </div>
           {/* Derecha: métricas */}
           <div style={{padding:"1rem"}}>

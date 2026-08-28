@@ -474,8 +474,32 @@ function LineaCondicion({ opciones, valor, onChange, subValor, onSubValor }: {
 }
 
 export default function AdminArticulos(
-  { onFinish, onCancel, tipoInicial }:
-  { onFinish?: () => void; onCancel?: () => void; tipoInicial?: "market"|"secondhand" } = {}
+  { onFinish, onCancel, tipoInicial, onResumen, articulo }:
+  {
+    onFinish?: () => void;
+    onCancel?: () => void;
+    tipoInicial?: "market"|"secondhand";
+    /**
+     * Avisa lo que se lleva cargado, para que quien monte el formulario pueda
+     * mostrarlo -por ejemplo, como la fila de la tabla que se va completando-.
+     *
+     * Es un aviso, no un estado compartido: el formulario sigue siendo dueño
+     * de sus datos. Levantar el estado para que otro lo dibuje ataria las dos
+     * cosas y cualquier cambio en el formulario obligaria a tocar la pantalla.
+     */
+    /**
+     * Articulo a editar. Sin esto, el formulario crea uno nuevo.
+     *
+     * Es el mismo formulario en los dos casos: alta y edicion no son dos cosas
+     * distintas sino el mismo formulario con o sin datos. Tener dos pantallas
+     * garantizaba que se separaran, y se separaron.
+     */
+    articulo?: any;
+    onResumen?: (r: {
+      nombre: string; precio: number; moneda: string; stock: number;
+      imagen: string | null; estado: string; canales: string[]; tipo: string;
+    }) => void;
+  } = {}
 ) {
   const { isAdmin } = useOutletContext<any>() || {};
   const navigate    = useNavigate();
@@ -681,6 +705,39 @@ export default function AdminArticulos(
    * los medios, asi que la dependencia va en un solo sentido y no puede
    * realimentarse. Cuando salia de los medios, si podia, y temblaba.
    */
+  /**
+   * Carga el articulo en el formulario.
+   *
+   * Una sola vez, al abrirlo: si se resembrara en cada render, escribir un
+   * campo lo pisaria con el valor guardado en la siguiente vuelta.
+   */
+  const sembrado = useRef<string | null>(null);
+  useEffect(() => {
+    if (!articulo || sembrado.current === articulo.id) return;
+    sembrado.current = articulo.id;
+
+    setNombre(articulo.nombre ?? "");
+    setDescripcion(articulo.descripcion ?? "");
+    setPrecio(articulo.precio != null ? String(articulo.precio) : "");
+    setPrecioOrig(articulo.precio_original != null ? String(articulo.precio_original) : "");
+    setMoneda(articulo.moneda ?? "UYU");
+    setStock(articulo.stock != null ? String(articulo.stock) : "1");
+    setImagenes(Array.isArray(articulo.imagenes)
+      ? articulo.imagenes.map((x: any) => (typeof x === "string" ? x : x?.url)).filter(Boolean)
+      : (articulo.imagen_principal ? [articulo.imagen_principal] : []));
+    setVideoUrls(Array.isArray(articulo.videos)
+      ? articulo.videos.map((x: any) => (typeof x === "string" ? x : x?.url)).filter(Boolean)
+      : []);
+    setDeptoId(articulo.departamento_id ?? "");
+    setCatId(articulo.categoria_id ?? "");
+    setPublicarComo(articulo.status === "draft" ? "draft" : "active");
+    if (articulo.condicion) { setCondicion(articulo.condicion); setCondicionMarketId(articulo.condicion); }
+    setCanales((articulo.canales ?? [])
+      .filter((c: any) => c?.status !== "delisted")
+      .map((c: any) => c.channel)
+      .filter((c: string) => c !== "market" && c !== "secondhand"));
+  }, [articulo]);
+
   const { setVista } = useShop();
   useEffect(() => {
     setVista(`Ficha completa de artículo de ${tipo === "secondhand" ? "Second Hand" : "Market"}`);
@@ -917,6 +974,19 @@ export default function AdminArticulos(
     tarjeta:     "",
   };
 
+  // Se avisa en cada cambio de lo que importa para la fila, no en cada tecla:
+  // la lista de dependencias es lo que hace la diferencia.
+  useEffect(() => {
+    onResumen?.({
+      nombre, precio: parseFloat(precio) || 0, moneda,
+      stock: parseInt(stock) || 0,
+      imagen: imagenes[0] ?? null,
+      estado: publicarComo === "draft" ? "draft"
+            : disponibilidad === "agotado" ? "archived" : "active",
+      canales, tipo,
+    });
+  }, [nombre, precio, moneda, stock, imagenes, publicarComo, disponibilidad, canales, tipo]);
+
   const faltaParaGuardar = (): string => {
     if (!nombre.trim())      return "Falta el nombre del artículo";
     if (!descripcion.trim()) return "Falta la descripción";
@@ -941,6 +1011,26 @@ export default function AdminArticulos(
       if (precioOrig)            atributos.precio_original = parseFloat(precioOrig);
       if (disponibilidad)        atributos.disponibilidad = disponibilidad;
       if (deptoId)               atributos.departamento = { id: deptoId, nombre: depto?.nombre ?? null };
+
+      // Editar y crear no son dos flujos: es el mismo formulario resolviendo a
+      // que RPC ir. Con articulo se actualiza; sin el, se crea.
+      if (articulo?.id) {
+        const { error: eUp } = await supabase.rpc("actualizar_publicacion", {
+          p_variant_id:  articulo.id,
+          p_title:       nombre.trim(),
+          p_description: descripcion.trim() || null,
+          p_price:       parseFloat(precio),
+          p_currency:    moneda,
+          p_stock:       parseInt(stock) || 0,
+          p_status:      publicarComo === "draft" ? "draft"
+                         : disponibilidad === "agotado" ? "archived" : "active",
+          p_tipo:        tipo === "secondhand" ? "secondhand" : "market",
+        });
+        if (eUp) throw eUp;
+        notify("Cambios guardados");
+        setTimeout(() => salir(true), 900);
+        return;
+      }
 
       const { data: nuevaVariante, error } = await supabase.rpc("crear_publicacion", {
         p_title:       nombre.trim(),
@@ -1723,7 +1813,9 @@ export default function AdminArticulos(
             border:"none", borderRadius:10, fontWeight:800,
             fontSize:"0.95rem",
             cursor: (loading || !puedeGuardar()) ? "not-allowed" : "pointer" }}>
-            {loading ? "Guardando..." : publicarComo === "draft" ? "Guardar borrador" : "Publicar artículo"}
+            {loading ? "Guardando..."
+              : articulo ? "Guardar cambios"
+              : publicarComo === "draft" ? "Guardar borrador" : "Publicar artículo"}
           </button>
         </div>
       </div>
