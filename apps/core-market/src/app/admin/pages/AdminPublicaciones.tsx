@@ -3,6 +3,8 @@ import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import SelectorMediaArticulo from "../components/SelectorMediaArticulo";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
+import { BloqueMonedas, BloqueDetalles, BloqueInventario, BloqueMetricas }
+  from "../components/ficha/BloquesFicha";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          fichasDeCanales, type ProblemaPublicacion, type FichaCanal } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
@@ -1083,58 +1085,7 @@ export default function AdminPublicaciones() {
         {tab==="Moneda y Precio"&&(
           <div style={{display:"flex",flexDirection:"column",gap:"0.85rem"}}>
 
-            {/* MONEDAS */}
-            <div style={{display:"grid",gridTemplateColumns:"0.8fr 0.8fr 0.8fr 2fr",gap:"0.5rem",
-              padding:"0.5rem 0.75rem",background:"#F8F9FB",borderRadius:8,border:"1px solid #EAECF0",alignItems:"end"}}>
-              {/* Moneda principal */}
-              <div><span style={lbl}>Moneda principal</span>
-                <select style={inp} value={form.moneda||"UYU"}
-                  onChange={e=>setForm({...form,moneda:e.target.value})}>
-                  {["UYU","USD","EUR","ARS","BRL"].map(m=><option key={m}>{m}</option>)}
-                </select>
-              </div>
-              {/* Moneda secundaria */}
-              <div><span style={lbl}>Moneda secundaria</span>
-                <select style={inp} value={(form.atributos as any)?.moneda_sec||"USD"}
-                  onChange={e=>setForm({...form,atributos:{...(form.atributos||{}),moneda_sec:e.target.value}})}>
-                  {["USD","EUR","UYU","ARS","BRL"].map(m=><option key={m}>{m}</option>)}
-                </select>
-              </div>
-              {/* Tipo de cambio + fuente — ocupa todo el ancho */}
-              {/* TC */}
-              <div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                  <span style={lbl}>TC</span>
-                  <label style={{display:"flex",alignItems:"center",gap:3,cursor:"pointer",fontSize:"9px",color:"var(--gray-400)",fontWeight:600}}>
-                    <input type="checkbox"
-                      checked={!(form.atributos as any)?.tc_manual}
-                      style={{accentColor:color,width:10,height:10}}
-                      onChange={e=>setForm({...form,atributos:{...(form.atributos||{}),tc_manual:!e.target.checked}})}/>
-                    Auto
-                  </label>
-                </div>
-                <input type="number" style={{...inp,
-                  background:(form.atributos as any)?.tc_manual?"#fff":"#F3F4F6",
-                  color:(form.atributos as any)?.tc_manual?"#111":"var(--gray-400)",
-                }} min={0} step="0.01"
-                  readOnly={!(form.atributos as any)?.tc_manual}
-                  value={(form.atributos as any)?.tipo_cambio||""}
-                  placeholder={(form.atributos as any)?.tc_manual?"0.00":"Auto"}
-                  onChange={e=>setForm({...form,atributos:{...(form.atributos||{}),tipo_cambio:parseFloat(e.target.value)||undefined}})}/>
-              </div>
-              {/* Fuente */}
-              <div>
-                <span style={lbl}>Fuente · Actualización</span>
-                <div style={{...inp,background:"#F3F4F6",color:"var(--mute)",
-                  display:"flex",alignItems:"center",gap:5,fontSize:"0.72rem"}}>
-                  <span style={{fontWeight:700,color:"#374151"}}>{(form.atributos as any)?.tc_fuente||"BCU"}</span>
-                  <span style={{color:"#D1D5DB"}}>·</span>
-                  <span>{(form.atributos as any)?.tc_fecha||"—"}</span>
-                  <span style={{color:"#D1D5DB"}}>·</span>
-                  <span>{(form.atributos as any)?.tc_hora||"—"}</span>
-                </div>
-              </div>
-            </div>
+            <BloqueMonedas form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
 
             {/* PRECIOS */}
             <PreciosEditor form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
@@ -1142,68 +1093,10 @@ export default function AdminPublicaciones() {
           </div>
         )}
         {tab==="Detalles"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:"0.6rem"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
-              <div><span style={lbl}>SKU</span>
-                <input style={inp} value={form.sku||""} onChange={e=>setForm({...form,sku:e.target.value})}/>
-              </div>
-              <div><span style={lbl}>Garantía tipo</span>
-                <select style={inp} value={form.garantia_tipo||""} onChange={e=>setForm({...form,garantia_tipo:e.target.value})}>
-                  <option value="">Sin garantía</option>
-                  <option value="vendedor">Del vendedor</option>
-                  <option value="fabrica">De fábrica</option>
-                </select>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
-              <div><span style={lbl}>Garantía (meses)</span>
-                <input type="number" style={inp} value={form.garantia_meses||""} min={0}
-                  onChange={e=>setForm({...form,garantia_meses:parseInt(e.target.value)||undefined})}/>
-              </div>
-              <div><span style={lbl}>Peso kg</span>
-                <input type="number" style={inp} value={form.peso_kg||""} min={0} step="0.1"
-                  onChange={e=>setForm({...form,peso_kg:parseFloat(e.target.value)||undefined})}/>
-              </div>
-            </div>
-            <div><span style={lbl}>Tipo de envío</span>
-              <select style={inp} value={form.envio_tipo||"retiro"} onChange={e=>setForm({...form,envio_tipo:e.target.value})}>
-                <option value="retiro">Solo retiro</option>
-                <option value="custom">Envío propio</option>
-                <option value="meli_like">Tipo MercadoEnvíos</option>
-                <option value="pickup">Pickup point</option>
-              </select>
-            </div>
-            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:"0.82rem"}}>
-              <input type="checkbox" checked={!!form.envio_gratis} style={{accentColor:color}}
-                onChange={e=>setForm({...form,envio_gratis:e.target.checked})}/>
-              Envío gratis
-            </label>
-          </div>
+          <BloqueDetalles form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
         )}
         {tab==="Inventario"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:"0.6rem"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
-              <div><span style={lbl}>Stock</span>
-                <input type="number" style={inp} value={form.stock||1} min={0}
-                  disabled={!!form.stock_ilimitado}
-                  onChange={e=>setForm({...form,stock:parseInt(e.target.value)||0})}/>
-              </div>
-              <div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:"0.82rem"}}>
-                  <input type="checkbox" checked={!!form.stock_ilimitado} style={{accentColor:color}}
-                    onChange={e=>setForm({...form,stock_ilimitado:e.target.checked})}/>
-                  Ilimitado
-                </label>
-              </div>
-            </div>
-            <div><span style={lbl}>Estado de publicación</span>
-              <select style={inp} value={form.status||"draft"} onChange={e=>setForm({...form,status:e.target.value})}>
-                <option value="draft">Borrador</option>
-                <option value="active">Publicar ahora</option>
-                <option value="paused">Pausado</option>
-              </select>
-            </div>
-          </div>
+          <BloqueInventario form={form} setForm={setForm} color={color} lbl={lbl} inp={inp}/>
         )}
         {tab==="Vista previa"&&(
           <div style={{display:"flex",gap:"1rem",alignItems:"flex-start",padding:"0.75rem",
@@ -1420,22 +1313,7 @@ export default function AdminPublicaciones() {
               <>
                 <div style={{fontSize:"10px",fontWeight:700,color:"var(--gray-400)",
                   textTransform:"uppercase",letterSpacing:".08em",marginBottom:"0.6rem"}}>Métricas</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"5px"}}>
-                  {[
-                    {l:"Impresiones",v:a.impresiones||0},
-                    {l:"Clicks",     v:a.clicks||0},
-                    {l:"CTR",        v:(a.impresiones?(((a.clicks||0)/a.impresiones)*100).toFixed(1):0)+"%"},
-                    {l:"Ranking",    v:a.ranking_score?Number(a.ranking_score).toFixed(3):"—"},
-                    {l:"Rating",     v:a.rating_promedio?Number(a.rating_promedio).toFixed(1)+" ★":"—"},
-                    {l:"Reseñas",    v:a.rating_count||0},
-                  ].map(m=>(
-                    <div key={m.l} style={{background:"#fff",borderRadius:7,
-                      padding:"0.38rem 0.5rem",border:"1px solid var(--border)"}}>
-                      <div style={{fontSize:"9px",color:"var(--gray-400)",textTransform:"uppercase"}}>{m.l}</div>
-                      <div style={{fontWeight:700,color:"#374151",fontSize:"0.85rem"}}>{m.v}</div>
-                    </div>
-                  ))}
-                </div>
+                <BloqueMetricas a={a}/>
               </>
             )}
           </div>

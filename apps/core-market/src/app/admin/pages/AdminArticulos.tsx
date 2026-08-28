@@ -237,7 +237,70 @@ const LADO_TILE_REAL =
 const FILAS_TOTALES = FILAS_FOTOS + FILAS_VIDEOS;
 
 /** La separacion que hace que el bloque mida exactamente el alto de la tarjeta. */
-const SEPARACION_VERTICAL = 10.67;   // provisorio: solo para ver como queda
+/**
+ * Ritmo vertical de la pagina.
+ *
+ * Todo se mide en unidades de la separacion entre filas de fotos. Una sola
+ * medida y sus multiplos se leen como una grilla; varias parecidas -13, 16,
+ * 20- se leen como desprolijidad, aunque nadie sepa decir por que.
+ *
+ *   entre elementos      1.5 unidades
+ *   campo y su condicion 1 unidad
+ *
+ * La condicion va mas pegada a proposito: no es un campo aparte sino una
+ * precision sobre el articulo que esta justo arriba, y la distancia lo dice
+ * antes que cualquier titulo.
+ */
+const SEPARACION_VERTICAL = 10.67;
+const RITMO       = SEPARACION_VERTICAL * 1.5;
+const RITMO_JUNTO = SEPARACION_VERTICAL;
+
+/**
+ * Aire entre la linea horizontal y el contenido de la fila.
+ *
+ * El mismo arriba y abajo: la linea de arriba la traza la barra de acciones y
+ * la de abajo la cierra la fila. Dos lineas iguales a distinta distancia se
+ * leen como un error antes que como una decision.
+ */
+const AIRE_LINEA = 24;
+
+/**
+ * Franja de avisos, debajo de la ficha.
+ *
+ * Tres renglones, y fijo. Si creciera con lo que hay para decir, la pagina se
+ * moveria cada vez que aparece o se va un aviso y lo que uno estaba mirando
+ * cambia de lugar. Cuando un aviso no entra, scrollea el aviso; la franja no
+ * se mueve.
+ *
+ * Adentro se repiten las mismas cuatro columnas de arriba, sin lineas que las
+ * separen: los avisos caen debajo de la columna a la que se refieren, y esa
+ * coincidencia es lo que dice a que campo apuntan sin tener que nombrarlo.
+ */
+/** Aire de la franja de avisos: menos que el de la ficha, para que las lineas
+ *  queden pegadas al texto en vez de encerrar una banda casi vacia. */
+/**
+ * Tope de la descripcion.
+ *
+ * El contador ya decia "/ 2000" pero nada lo impedia: se podia escribir de mas
+ * y descubrirlo al guardar, o peor, al publicar. El limite se aplica donde se
+ * escribe.
+ */
+const MAX_DESCRIPCION = 2000;
+
+const AIRE_MONITOR  = 8;
+const LINEA_TEXTO   = 20;
+const ALTO_MONITOR  = LINEA_TEXTO * 3;
+
+/**
+ * Alto de todo control de una linea: inputs, selects, el tile del logo.
+ *
+ * Sin esto cada uno resolvia su alto por su cuenta -el input por su padding, el
+ * select por lo que decide el navegador, el tile por un 44 fijo- y quedaban
+ * desparejos por unos pocos pixeles. Esa diferencia no se lee como "este
+ * control es mas alto": se lee como que la distancia al elemento de abajo es
+ * mayor, que fue justamente lo que se noto entre Marca y Articulo.
+ */
+const ALTO_CAMPO = 40;
 
 
 const ANCHO_MIN_DESCRIPCION = 380;
@@ -272,7 +335,7 @@ const ANCHO_MINIMO_FILA =
  */
 function CampoConCheck({
   valor, onChange, placeholder, marcado, onMarcar, etiqueta,
-  soloLectura = false, estiloInput,
+  soloLectura = false, estiloInput, confirmado = false, onCambiar,
 }: {
   valor: string;
   onChange: (v: string) => void;
@@ -282,6 +345,9 @@ function CampoConCheck({
   etiqueta: string;
   soloLectura?: boolean;
   estiloInput: React.CSSProperties;
+  /** Ya hay una eleccion hecha: el check deja lugar a "Cambiar". */
+  confirmado?: boolean;
+  onCambiar?: () => void;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
   const alternar = () => {
@@ -297,6 +363,27 @@ function CampoConCheck({
         value={valor} readOnly={soloLectura}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} />
+      {confirmado ? (
+        /*
+         * Con la marca ya elegida, "Personalizada" no ofrece nada: la decision
+         * ya se tomo. Lo unico que puede querer alguien en ese momento es
+         * cambiarla, asi que eso es lo que va, y en el mismo lugar donde
+         * estaba el check.
+         *
+         * Tambien saca el "Cambiar marca" que vivia en un renglon aparte
+         * arriba del campo: un renglon entero para una accion que entra al
+         * lado del dato.
+         */
+        <button
+          onClick={() => { onCambiar?.(); requestAnimationFrame(() => ref.current?.focus()); }}
+          style={{
+            position:"absolute", right:8, top:"50%", transform:"translateY(-50%)",
+            border:"none", background:"#fff", paddingLeft:6, cursor:"pointer",
+            fontSize:"0.72rem", fontWeight:700, color:ACCENT, textDecoration:"underline",
+          }}>
+          Cambiar
+        </button>
+      ) : (
       <label
         onClick={(e) => { e.preventDefault(); alternar(); }}
         title={marcado
@@ -315,6 +402,7 @@ function CampoConCheck({
           style={{ accentColor: ACCENT, margin:0, pointerEvents:"none" }} />
         {etiqueta}
       </label>
+      )}
     </div>
   );
 }
@@ -678,7 +766,10 @@ export default function AdminArticulos(
     setIdElegido(id);
     setCandidatos([]);
     if (f.nombre) setNombre(f.nombre);
-    if (!descripcion.trim() && f.descripcionSugerida) setDescripcion(f.descripcionSugerida);
+    // La sugerida del catalogo puede pasarse: se recorta al mismo tope que
+    // acepta el campo, para no dejar un texto que despues no se puede guardar.
+    if (!descripcion.trim() && f.descripcionSugerida)
+      setDescripcion(f.descripcionSugerida.slice(0, MAX_DESCRIPCION));
     if (!imagenes.length && f.imagenes.length) setImagenes(f.imagenes.slice(0, 8));
     if (!precio && f.mercado?.mediana) setPrecio(String(Math.round(f.mercado.mediana)));
   };
@@ -794,6 +885,38 @@ export default function AdminArticulos(
    * habia forma de saber, parado en la primera, que iba a faltar en la tercera.
    * Con todo a la vista la pregunta es una sola.
    */
+  /**
+   * Que dice el monitor, por columna.
+   *
+   * Vacio es un estado valido y frecuente: la franja queda en blanco pero
+   * ocupa su lugar. Preferible a que aparezca y desaparezca moviendo todo.
+   */
+  const avisos: Record<string, React.ReactNode> = {
+    descripcion: !nombre.trim() ? "Escribí el nombre del artículo para buscarlo"
+               : buscandoProd     ? "Buscando el producto…"
+               : elegido          ? (
+                   <>
+                     <div style={{ fontWeight:700, color:"#166534" }}>{elegido.nombre}</div>
+                     <div>
+                       Se completaron los datos que estaban vacíos.
+                       {elegido.mercado &&
+                         ` Hoy hay ${elegido.mercado.ofertas} publicaciones del mismo producto,`
+                         + ` entre ${elegido.mercado.moneda} ${elegido.mercado.min.toLocaleString("es-UY")}`
+                         + ` y ${elegido.mercado.moneda} ${elegido.mercado.max.toLocaleString("es-UY")}.`}
+                     </div>
+                     <button onClick={() => { setElegido(null); setIdElegido(null); }}
+                       style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                         color:"#166534", textDecoration:"underline", fontSize:"0.78rem" }}>
+                       No es este
+                     </button>
+                   </>
+                 )
+               : "",
+    medios:      imagenes.length === 0 ? "Sin fotos: Mercado Libre necesita al menos una" : "",
+    precio:      !precio || parseFloat(precio) <= 0 ? "Falta el precio" : "",
+    tarjeta:     "",
+  };
+
   const faltaParaGuardar = (): string => {
     if (!nombre.trim())      return "Falta el nombre del artículo";
     if (!descripcion.trim()) return "Falta la descripción";
@@ -858,7 +981,14 @@ export default function AdminArticulos(
     }
   };
   const inp: React.CSSProperties = {
-    width:"100%", padding:"0.6rem 0.75rem", border:"1.5px solid var(--border)",
+    /*
+     * display block a proposito. Un input es inline: su caja deja unos pixeles
+     * de descender debajo, dentro del contenedor. Con eso el bloque de Marca
+     * medía 44 aunque el campo midiera 40, y esos 4 pixeles se leian como
+     * "hasta Articulo hay mas distancia que entre los demas".
+     */
+    display:"block",
+    width:"100%", height:ALTO_CAMPO, padding:"0 0.75rem", border:"1.5px solid var(--border)",
     borderRadius:"8px", fontSize:"0.875rem", outline:"none",
     boxSizing:"border-box", fontFamily:"DM Sans, sans-serif", background:"#fff",
   };
@@ -881,8 +1011,26 @@ export default function AdminArticulos(
     fontSize:"0.875rem", fontFamily:"DM Sans, sans-serif",
     background:"transparent", boxSizing:"border-box", color:"#111", display:"block",
   };
+  /**
+   * La fila cerrada arriba y abajo por la misma linea.
+   *
+   * Arriba la traza la barra de acciones -borderBottom 1px #EAECF0-. Abajo se
+   * repite igual, y con el mismo aire de cada lado, para que la ficha quede
+   * contenida entre dos lineas iguales en vez de terminar en el aire.
+   *
+   * El padding lateral queda como estaba: lo que se iguala es el ritmo
+   * vertical, que es lo que se ve.
+   */
+  /** Celda del monitor: no crece, y si el aviso no entra, scrollea el aviso. */
+  const celdaAviso: React.CSSProperties = {
+    minWidth:0, height:ALTO_MONITOR, overflowY:"auto",
+    fontSize:"0.8rem", lineHeight:`${LINEA_TEXTO}px`, color:"#374151",
+  };
+
   const card: React.CSSProperties = {
-    background:"#fff", borderRadius:14, padding:"1.5rem",
+    background:"#fff", borderRadius:0,
+    padding:`${AIRE_LINEA}px 1.5rem`,
+    borderBottom:"1px solid #EAECF0",
   };
   // Mismo look que los slots de SelectorMediaArticulo (paso Imágenes): tile
   // redondeado, fondo gris cuando está vacío, negro detrás de la foto/video
@@ -913,7 +1061,7 @@ export default function AdminArticulos(
   };
 
   return (
-    <div style={{ margin:0, display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+    <div style={{ margin:0, display:"flex", flexDirection:"column", gap:RITMO }}>
       {/*
         La grilla va en CSS y no en estilos inline porque necesita una media
         query: los estilos inline no pueden expresar "si no entra, cambia de
@@ -978,7 +1126,7 @@ export default function AdminArticulos(
               estirar la fila entera para que entre un campo mas deja a las
               otras tres con aire muerto. */}
           <div className="col-descripcion" style={{ minWidth:0, height:"100%", overflowY:"auto", paddingRight:4 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
 
             {/* Marca: el input queda más angosto (flex:1) para dejarle lugar,
                 a continuación y siempre presente, a la miniatura del logo.
@@ -989,14 +1137,6 @@ export default function AdminArticulos(
                 vive pegada al campo y se ve siempre, incluso mientras se
                 busca o no hay nada cargado todavía. */}
             <div>
-              {marcaConfirmada && marcaModo === "sugerida" && (
-                <button onClick={cambiarMarca} style={{ border:"none", background:"none",
-                  padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
-                  fontSize:"0.72rem", marginBottom:4 }}>
-                  Cambiar marca
-                </button>
-              )}
-
               <div style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start" }}>
                 <CampoConCheck
                   valor={marca}
@@ -1006,6 +1146,8 @@ export default function AdminArticulos(
                   marcado={marcaModo === "personalizada"}
                   onMarcar={(m) => { if (m) { setMarca(""); elegirMarcaPersonalizada(); } else cambiarMarca(); }}
                   soloLectura={marcaConfirmada && marcaModo !== "personalizada"}
+                  confirmado={marcaConfirmada && marcaModo === "sugerida"}
+                  onCambiar={cambiarMarca}
                   estiloInput={inp} />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
@@ -1022,7 +1164,7 @@ export default function AdminArticulos(
                     <div
                       onClick={() => !logoActual && puedeBuscar && abrirBuscadorLogo()}
                       style={{
-                        width:44, height:44, borderRadius:8, flexShrink:0, overflow:"hidden", position:"relative",
+                        width:ALTO_CAMPO, height:ALTO_CAMPO, borderRadius:8, flexShrink:0, overflow:"hidden", position:"relative",
                         border: logoActual ? "1px solid var(--border)" : "1.5px dashed var(--border)",
                         background: logoActual ? "#000" : "var(--gray-50)",
                         display:"flex", alignItems:"center", justifyContent:"center",
@@ -1125,7 +1267,7 @@ export default function AdminArticulos(
                         Buscando en la web…
                       </div>
                     ) : logoResultados.length > 0 ? (
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.75rem" }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:`${RITMO}px 0.75rem` }}>
                         {logoResultados.filter(r => r.imagen).map((r, i) => (
                           <button key={i} onClick={() => elegirLogoBuscado(r)} title={r.nombre}
                             style={{ aspectRatio:"1", borderRadius:10, overflow:"hidden", padding:6,
@@ -1160,18 +1302,9 @@ export default function AdminArticulos(
               </div>
             )}
 
+            {/* Sin renglon propio arriba: "Cambiar" vive adentro del campo,
+                y asi todos los campos arrancan en la misma linea. */}
             <div>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"4px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"0.85rem" }}>
-                  {elegido && (
-                    <button onClick={() => { setElegido(null); setIdElegido(null); }} style={{ border:"none", background:"none",
-                      padding:0, cursor:"pointer", color:ACCENT, textDecoration:"underline",
-                      fontSize:"0.72rem" }}>
-                      Cambiar artículo
-                    </button>
-                  )}
-                </div>
-              </div>
               <div style={{ display:"flex" }}>
                 <CampoConCheck
                   valor={nombre}
@@ -1185,6 +1318,8 @@ export default function AdminArticulos(
                     // sueltan los candidatos, que ya no aplican.
                     if (m) { setNombre(""); setCandidatos([]); setElegido(null); setIdElegido(null); }
                   }}
+                  confirmado={!!idElegido}
+                  onCambiar={() => { setIdElegido(null); setElegido(null); setCandidatos([]); }}
                   estiloInput={inp} />
               </div>
 
@@ -1226,26 +1361,11 @@ export default function AdminArticulos(
                 </div>
               )}
 
-              {elegido && (
-                <div style={{ marginTop:7, padding:"7px 10px", borderRadius:8,
-                  background:"rgba(22,163,74,.07)", border:"1px solid rgba(22,163,74,.35)",
-                  fontSize:"0.76rem", color:"#166534" }}>
-                  <div style={{ fontWeight:700 }}>{elegido.nombre}</div>
-                  <div style={{ color:"#374151", marginTop:2 }}>
-                    Se completaron los datos que estaban vacíos.
-                    {elegido.mercado &&
-                      ` Hoy hay ${elegido.mercado.ofertas} publicaciones del mismo producto,`
-                      + ` entre ${elegido.mercado.moneda} ${elegido.mercado.min.toLocaleString("es-UY")}`
-                      + ` y ${elegido.mercado.moneda} ${elegido.mercado.max.toLocaleString("es-UY")}.`}
-                  </div>
-                  <button onClick={() => { setElegido(null); setIdElegido(null); }}
-                    style={{ marginTop:5, border:"none", background:"none", padding:0,
-                      cursor:"pointer", color:"#166534", textDecoration:"underline",
-                      fontSize:"0.73rem" }}>
-                    No es este
-                  </button>
-                </div>
-              )}
+              {/* La confirmacion de la version elegida no vive aca: va al
+                  monitor, debajo de esta misma columna. Un cartel intercalado
+                  entre dos campos empuja todo lo de abajo cada vez que aparece
+                  y desaparece, y ademas rompe el renglonado que hace que los
+                  campos se lean como una lista. */}
             </div>
 
             {/* Condición: entre Artículo y Descripción. Market y Second Hand
@@ -1253,7 +1373,7 @@ export default function AdminArticulos(
                 propia escala. Sin título "Condición *": las opciones van
                 directo en una sola fila de chips, todas visibles a la vez. */}
             {tipo === "market" && (
-              <div>
+              <div style={{ marginTop: RITMO_JUNTO - RITMO }}>
                 <LineaCondicion
                   opciones={CONDICIONES_ARTICULO}
                   valor={condicionMarketId}
@@ -1264,12 +1384,14 @@ export default function AdminArticulos(
             )}
 
             {tipo === "secondhand" && (
+              <div style={{ marginTop: RITMO_JUNTO - RITMO }}>
               <LineaCondicion
                 opciones={CONDICIONES_ARTICULO}
                 valor={condicion}
                 onChange={setCondicion}
                 subValor={subestadoRecond}
                 onSubValor={setSubestadoRecond} />
+              </div>
             )}
 
             {/* Categorización: Departamento/Categoría/Subcategoría. Se
@@ -1277,7 +1399,7 @@ export default function AdminArticulos(
                 (ver el useEffect más arriba); el aviso "sugerido por ML" se
                 apaga en cuanto la persona toca cualquiera de los tres
                 selectores. */}
-            <div style={{ display:"grid", gridTemplateColumns: filteredSubs.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap:"0.75rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns: filteredSubs.length > 0 ? "1fr 1fr 1fr" : "1fr 1fr", gap:`${RITMO}px 0.75rem` }}>
               <div>
                 <select style={inp} value={deptoId}
                   onChange={e => { setDeptoId(e.target.value); setCatId(""); setSubcatId(""); setTaxonomiaSugerida(false); }}>
@@ -1305,11 +1427,13 @@ export default function AdminArticulos(
             </div>
 
             <div>
-              <textarea style={{ ...inp, minHeight:100, resize:"vertical" }}
+              <textarea maxLength={MAX_DESCRIPCION}
+                style={{ ...inp, height:"auto", minHeight:100,
+                padding:"0.6rem 0.75rem", resize:"vertical" }}
                 value={descripcion} onChange={e => setDescripcion(e.target.value)}
                 placeholder="Descripción: características, uso, accesorios incluidos…" />
               <div style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"right", marginTop:"3px" }}>
-                {descripcion.length} / 2000
+                {descripcion.length} / {MAX_DESCRIPCION}
               </div>
             </div>
           </div>
@@ -1321,7 +1445,7 @@ export default function AdminArticulos(
               grilla (columna 2, misma proporción que antes tenía 285 sobre
               380), y como la columna 4 (Tarjeta) usa la misma fracción,
               ambas quedan siempre del mismo ancho entre sí. */}
-          <div className="col-medios" style={{ minWidth:0, alignSelf:"start", width:"100%", display:"flex", flexDirection:"column", gap:"calc(0.35rem / 3)" }}>
+          <div className="col-medios" style={{ minWidth:0, alignSelf:"start", width:"100%", display:"flex", flexDirection:"column", gap:RITMO }}>
             <SelectorMediaArticulo
               imagenes={imagenes}
               videos={videoUrls}
@@ -1344,8 +1468,8 @@ export default function AdminArticulos(
               Misma fracción de grilla que la columna de Información (col 1)
               para que ambas queden siempre del mismo ancho entre sí. */}
           <div style={{ minWidth:0 }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:"0.75rem" }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
+              <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:`${RITMO}px 0.75rem` }}>
                 <div>
                   <select style={inp} value={moneda} onChange={e => setMoneda(e.target.value)}>
                     {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1417,6 +1541,23 @@ export default function AdminArticulos(
         </div>
       ) : null}
 
+      {/* MONITOR: la misma grilla, sin delimitar, para avisos.
+          Se alinea con las columnas de arriba a proposito. Un aviso debajo de
+          la columna de precio se entiende referido al precio; el mismo aviso
+          suelto obligaria a decir "en el precio…" en cada mensaje. */}
+      <div style={{
+        background:"#fff",
+        padding:`${AIRE_MONITOR}px 1.5rem`,
+        borderBottom:"1px solid #EAECF0",
+      }}>
+        <div className="ficha-fila" style={{ height:ALTO_MONITOR, alignItems:"start" }}>
+          <div style={celdaAviso}>{avisos.descripcion}</div>
+          <div style={celdaAviso}>{avisos.medios}</div>
+          <div style={celdaAviso}>{avisos.precio}</div>
+          <div style={celdaAviso}>{avisos.tarjeta}</div>
+        </div>
+      </div>
+
       {/* ABAJO: la informacion ampliada. Toda en la misma pagina.
           Saltar de pantalla en pantalla obliga a recordar lo que quedo atras
           para decidir lo que viene, y a volver para comprobarlo. */}
@@ -1424,7 +1565,7 @@ export default function AdminArticulos(
 
         {/* Detalles y disponibilidad */}
         {true && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Detalles y disponibilidad</h2>
             <div style={{ maxWidth:160 }}>
               <label style={lbl}>Stock</label>
@@ -1473,7 +1614,7 @@ export default function AdminArticulos(
 
         {/* Destinos */}
         {true && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
             <div>
               <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>
                 ¿Dónde lo publicamos?
@@ -1514,7 +1655,7 @@ export default function AdminArticulos(
               </button>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:"0.6rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:`${RITMO}px 0.6rem` }}>
               {DESTINOS.map(d => {
                 const on = canales.includes(d.channel);
                 return (
