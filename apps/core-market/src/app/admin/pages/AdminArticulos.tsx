@@ -19,35 +19,26 @@ const BLUE   = "var(--brand-navy)";
 const GREEN  = "var(--color-success)";
 
 
-// Condiciones para artículos de Market (no Second Hand). A diferencia de
-// CONDICIONES (Second) cada estado trae su propia descripción, garantía,
-// empaque y nota — el estándar de a qué se compromete quien publica según
-// el estado que declara. "Reacondicionado" no es un estado final: pide
-// además uno de los 3 subestados de SUBESTADOS_RECONDICIONADO.
-const CONDICIONES_MARKET = [
-  { id:"nuevo",           label:"Nuevo",           desc:"Sin uso, 100% original",   garantia:"Fabricante", empaque:"Sellada",              nota:"Estado más estricto" },
-  { id:"caja_abierta",    label:"Caja abierta",    desc:"Nuevo sin sello",          garantia:"Fabricante", empaque:"Abierta",               nota:"Accesorios originales" },
-  { id:"usado",           label:"Usado",           desc:"Con uso, desgaste",        garantia:"Opcional",   empaque:"Opcional",              nota:"Puede faltar accesorios" },
-  { id:"reacondicionado", label:"Reacondicionado", desc:"Reparado/inspeccionado",   garantia:"90 días",    empaque:"Original o genérica",   nota:"Requiere subestado" },
-];
-const SUBESTADOS_RECONDICIONADO = ["Excelente","Bueno","Aceptable"];
 
 /**
- * Condiciones de Second Hand.
+ * Condicion del articulo, con el vocabulario de Mercado Libre.
  *
- * Antes eran seis etiquetas sueltas -Nuevo, Excelente, Muy bueno, Bueno,
- * Regular, Para reparar- que mezclaban dos cosas distintas: QUE es el articulo
- * y EN QUE ESTADO esta. "Nuevo" y "Usado" son lo primero; "excelente" o
- * "regular" son lo segundo, y solo tienen sentido dentro de "usado".
+ * Son los valores de su atributo ITEM_CONDITION, y los niveles de
+ * Reacondicionado son los de GRADING. No una escala propia: guardar una
+ * obligaria a traducirla al publicar, y toda traduccion entre vocabularios
+ * pierde algo -"como nuevo" no es ninguno de los cuatro, y elegir a cual se
+ * parece mas es una decision que despues nadie recuerda haber tomado-.
  *
- * Al separarlas, elegir deja de ser buscar la etiqueta menos mala entre seis:
- * es decir que es, y despues cuanto.
+ * Vale igual para Market y para Second: la condicion es del articulo, no del
+ * canal. Que "Nuevo" pareciera lo contrario de "Second Hand" era la confusion
+ * que habia.
  */
-const CONDICIONES_SECOND = [
-  { id:"Nuevo",           label:"Nuevo",           detalle:"Sin uso, con su empaque" },
-  { id:"Usado",           label:"Usado",           detalle:"Tuvo uso: elegí en qué estado está",
-    niveles:["Excelente","Muy bueno","Bueno","Regular"] as const },
-  { id:"Para reparar",    label:"Para reparar",    detalle:"No funciona o le faltan partes" },
+const CONDICIONES_ARTICULO = [
+  { id:"Nuevo",           label:"Nuevo",           detalle:"Sin uso, en su empaque sellado" },
+  { id:"Caja abierta",    label:"Caja abierta",    detalle:"Nuevo, sin sello. Accesorios originales" },
+  { id:"Usado",           label:"Usado",           detalle:"Tuvo uso" },
+  { id:"Reacondicionado", label:"Reacondicionado", detalle:"Reparado e inspeccionado. Requiere indicar el grado",
+    niveles:["Excelente","Bueno","Aceptable"] as const },
 ] as const;
 const MONEDAS     = ["UYU","USD","EUR"];
 const DISPONIBILIDADES = [
@@ -108,19 +99,39 @@ const GEOMETRIA = {
    * el ancho que le corresponde es alto - bloque.
    */
   bloqueFijoTarjeta: 285,
-  /** Espacio entre tiles de la columna de medios. */
-  gapTiles: 12,
+  /** Espacio entre tiles. Un cuarto del anterior: los tiles vacios ya se
+   *  leen como grilla sin necesidad de tanto aire entre ellos. */
+  gapTiles: 4,
+  /** Columnas de la grilla de medios. */
+  columnasMedios: 3,
+  /** Cuatro filas de imagenes y dos de videos. */
+  filasMedios: 6,
 } as const;
 
-/** Dos tiles por fila, cuatro filas: ancho = 2 tiles + un espacio. */
-const ANCHO_MEDIOS  = `calc((${GEOMETRIA.alto} - ${3 * GEOMETRIA.gapTiles}px) / 2 + ${GEOMETRIA.gapTiles}px)`;
+/**
+ * Ancho de la columna de medios.
+ *
+ * El alto la define: cuatro filas de tiles cuadrados mas sus espacios. De ahi
+ * sale el lado del tile, y el ancho son tres de esos lados mas dos espacios.
+ */
+const LADO_TILE    = `((${GEOMETRIA.alto} - ${(GEOMETRIA.filasMedios - 1) * GEOMETRIA.gapTiles}px) / ${GEOMETRIA.filasMedios})`;
+const ANCHO_MEDIOS = `calc(${LADO_TILE} * ${GEOMETRIA.columnasMedios} + ${(GEOMETRIA.columnasMedios - 1) * GEOMETRIA.gapTiles}px)`;
 /**
  * Ancho de la tarjeta: el que hace que su alto sea el de la fila.
  *
  * Se acota por abajo para que en pantallas bajas no quede una tarjeta
  * ridicula: antes que deformarla, se la deja mas chica que la fila.
  */
-const ANCHO_TARJETA = `clamp(210px, calc(${GEOMETRIA.alto} - ${GEOMETRIA.bloqueFijoTarjeta}px), 340px)`;
+/**
+ * Ancho de la tarjeta: el que hace que su alto sea el de la fila.
+ *
+ * MarketCard tiene imagen cuadrada -crece con el ancho- mas un bloque de
+ * titulo, precio, rating y compra que ocupa lo mismo siempre. Su alto es
+ * ancho + ese bloque, asi que dado el alto de la fila el ancho correcto es
+ * alto - bloque. Con eso la tarjeta llega justo al alto de la columna de
+ * medios, que es la que manda.
+ */
+const ANCHO_TARJETA = `clamp(200px, calc(${GEOMETRIA.alto} - ${GEOMETRIA.bloqueFijoTarjeta}px), 360px)`;
 /** El precio son dos campos cortos: mas ancho seria espacio muerto. */
 const ANCHO_PRECIO  = "clamp(170px, 14vw, 230px)";
 /**
@@ -1039,11 +1050,7 @@ export default function AdminArticulos(
             {tipo === "market" && (
               <div>
                 <LineaCondicion
-                  opciones={CONDICIONES_MARKET.map(c => ({
-                    id: c.id, label: c.label,
-                    detalle: `${c.desc} · Garantía: ${c.garantia} · Empaque: ${c.empaque}`,
-                    niveles: c.id === "reacondicionado" ? SUBESTADOS_RECONDICIONADO : undefined,
-                  }))}
+                  opciones={CONDICIONES_ARTICULO}
                   valor={condicionMarketId}
                   onChange={setCondicionMarketId}
                   subValor={subestadoRecond}
@@ -1053,7 +1060,7 @@ export default function AdminArticulos(
 
             {tipo === "secondhand" && (
               <LineaCondicion
-                opciones={CONDICIONES_SECOND}
+                opciones={CONDICIONES_ARTICULO}
                 valor={condicion}
                 onChange={setCondicion}
                 subValor={subestadoRecond}
@@ -1115,13 +1122,13 @@ export default function AdminArticulos(
               videos={videoUrls}
               onChangeImagenes={setImagenes}
               onChangeVideos={setVideoUrls}
-              columnas={2}
-              maxImagenes={6}
-              maxVideos={2}
+              columnas={3}
+              maxImagenes={12}
+              maxVideos={6}
               imagenAspect="1"
               anchoGrid="100%"
-              espacioSecciones="1rem"
-              gapTiles="1rem"
+              espacioSecciones="0.25rem"
+              gapTiles="0.25rem"
               sinEncabezados
             />
           </div>
