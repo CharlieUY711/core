@@ -414,6 +414,37 @@ export default function AdminArticulos(
    * pantalla, y se limpia al salir para no dejar el encabezado hablando de algo
    * que ya no esta en pantalla.
    */
+  /**
+   * La tarjeta llega al alto de la columna de medios midiendose.
+   *
+   * Su alto es ancho + un bloque que no escala -titulo, precio, rating,
+   * compra-. Yo estimaba ese bloque a ojo y por eso la tarjeta quedaba corta:
+   * el numero dependia de la fuente, del zoom y del contenido, y no hay
+   * constante que acierte en todos los casos.
+   *
+   * Se mide lo que realmente ocupa y se corrige el ancho por la diferencia.
+   * Como el alto crece exactamente lo que crece el ancho, una sola correccion
+   * alcanza; el efecto se vuelve a aplicar si cambia el contenido o el tamaño
+   * de la ventana.
+   */
+  const refTarjeta = useRef<HTMLDivElement | null>(null);
+  const [anchoTarjeta, setAnchoTarjeta] = useState(ANCHO_COLUMNA);
+  useEffect(() => {
+    const ajustar = () => {
+      const el = refTarjeta.current;
+      if (!el) return;
+      const alto = el.getBoundingClientRect().height;
+      if (!alto) return;
+      const falta = ALTO_FILA - alto;
+      // Un pixel de diferencia no se ve y reajustar por eso haria un bucle.
+      if (Math.abs(falta) < 2) return;
+      setAnchoTarjeta((a) => Math.max(160, Math.round(a + falta)));
+    };
+    ajustar();
+    window.addEventListener("resize", ajustar);
+    return () => window.removeEventListener("resize", ajustar);
+  });
+
   const { setVista } = useShop();
   useEffect(() => {
     setVista(`Ficha completa de artículo de ${tipo === "secondhand" ? "Second Hand" : "Market"}`);
@@ -753,7 +784,7 @@ export default function AdminArticulos(
           align-items: stretch;
           grid-template-columns:
             minmax(${ANCHO_MIN_DESCRIPCION}px, 1fr)
-            ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px;
+            ${ANCHO_COLUMNA}px ${ANCHO_COLUMNA}px var(--ancho-tarjeta, ${ANCHO_COLUMNA}px);
           height: ${ALTO_FILA}px;
         }
         @media (max-width: ${ANCHO_MINIMO_FILA}px) {
@@ -791,7 +822,8 @@ export default function AdminArticulos(
         // mismo ancho entre sí). Con fr las 4 columnas se reparten siempre el
         // 100% disponible, angostándose o ensanchándose todas juntas y en la
         // misma proporción según el ancho real del contenedor.
-        <div className="ficha-fila" style={card}>
+        <div className="ficha-fila"
+          style={{ ...card, ["--ancho-tarjeta" as any]: `${anchoTarjeta}px` }}>
           {/* Descripcion. Si su contenido pasa el alto comun, scrollea ella:
               estirar la fila entera para que entre un campo mas deja a las
               otras tres con aire muerto. */}
@@ -1197,7 +1229,7 @@ export default function AdminArticulos(
                     {moneda} {parseFloat(precio || "0").toLocaleString("es-UY")}
                   </div>
                   {descuento && (
-                    <div className="col-tarjeta" style={{ display:"inline-block", background:ACCENT, color:"#fff",
+                    <div style={{ display:"inline-block", background:ACCENT, color:"#fff",
                       fontSize:"0.7rem", fontWeight:700, padding:"2px 8px", borderRadius:20, marginTop:"4px" }}>
                       -{descuento}% OFF
                     </div>
@@ -1217,7 +1249,7 @@ export default function AdminArticulos(
               Por eso tampoco se la deforma. Su ancho sale del alto de la fila
               (ver GEOMETRIA arriba) y se alinea arriba: estirarla para llenar
               la columna seria mostrar una tarjeta que no existe. */}
-          <div style={{ minWidth:0 }}>
+          <div className="col-tarjeta" ref={refTarjeta} style={{ minWidth:0 }}>
             {/* Única regla de CSS que MarketCard necesita del front (le da a
                 la tarjeta su alto vía aspect-ratio); se define acá en vez de
                 importar toda la hoja de estilos del front para no arrastrar
