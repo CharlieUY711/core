@@ -3,6 +3,7 @@ import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
 import { BloqueMetricas } from "../components/ficha/BloquesFicha";
+import { NUMERICO } from "../ui/numeros";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          type ProblemaPublicacion } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
@@ -275,7 +276,7 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
   const s8:React.CSSProperties = {fontSize:"8px",color:"var(--gray-400)",fontWeight:700,textTransform:"uppercase",display:"block",marginBottom:2};
   const ic:React.CSSProperties = {...inp,padding:"0.3rem 0.4rem",fontSize:"0.78rem"};
   // Los importes van a la derecha, igual que en el formulario y en la tabla.
-  const icNum:React.CSSProperties = {...ic,textAlign:"right",fontVariantNumeric:"tabular-nums"};
+  const icNum:React.CSSProperties = {...ic,...NUMERICO};
   // Placeholder watermark style inyectado globalmente una sola vez
   const placeholderStyle = `input::placeholder,textarea::placeholder{color:#D1D5DB!important;font-style:italic;font-size:0.72rem}`;
   return (
@@ -1130,7 +1131,7 @@ export default function AdminPublicaciones() {
                       de numeros se compara de un vistazo solo si las unidades
                       caen todas en la misma linea. */}
                   <th style={{...thS("precio"),textAlign:"right"}} onClick={()=>sort("precio")}>Precio{si("precio")}</th>
-                  <th style={thS("stock")}  onClick={()=>sort("stock")}>Stock{si("stock")}</th>
+                  <th style={{...thS("stock"),textAlign:"right"}}  onClick={()=>sort("stock")}>Stock{si("stock")}</th>
                   <th style={{...thS("status"),cursor:"pointer"}} onClick={cycleSt}>
                     Estado{fst?" · "+S[fst]?.label:"↕"}
                   </th>
@@ -1139,8 +1140,8 @@ export default function AdminPublicaciones() {
                   <th style={thS("alta")} onClick={()=>sort("alta")}>Alta{si("alta")}</th>
                   {vcols.has("categoria")&&<th style={thB}>Categoría</th>}
                   {vcols.has("marca")    &&<th style={thB}>Marca</th>}
-                  {vcols.has("ranking")  &&<th style={thB}>Ranking</th>}
-                  {vcols.has("ctr")      &&<th style={thB}>CTR</th>}
+                  {vcols.has("ranking")  &&<th style={{...thB,textAlign:"right"}}>Ranking</th>}
+                  {vcols.has("ctr")      &&<th style={{...thB,textAlign:"right"}}>CTR</th>}
                   {vcols.has("baja")     &&<th style={thB}>Baja</th>}
                   {vcols.has("mkt1")     &&<th style={thB}>MKT 1</th>}
                   {vcols.has("mkt2")     &&<th style={thB}>MKT 2</th>}
@@ -1186,12 +1187,11 @@ export default function AdminPublicaciones() {
                           {resumen?.nombre||"Sin título todavía"}
                         </div>
                       </td>
-                      <td style={{...td,fontWeight:700,textAlign:"right",
-                        fontVariantNumeric:"tabular-nums",
+                      <td style={{...td,fontWeight:700,...NUMERICO,
                         color:resumen?.precio?color:"var(--gray-400)"}}>
                         {resumen?.precio?fmtP(resumen.precio,resumen.moneda):"—"}
                       </td>
-                      <td style={{...td,textAlign:"center",color:"var(--gray-400)"}}>
+                      <td style={{...td,...NUMERICO,color:"var(--gray-400)"}}>
                         {resumen?.stock??"—"}
                       </td>
                       <td style={td}>
@@ -1272,9 +1272,8 @@ export default function AdminPublicaciones() {
                           <div style={{fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.nombre}</div>
                           {a.condicion&&<div style={{fontSize:"10px",color:"var(--gray-400)"}}>{a.condicion}</div>}
                         </td>
-                        <td style={{...td,fontWeight:700,color,textAlign:"right",
-                          fontVariantNumeric:"tabular-nums"}}>{fmtP(a.precio,a.moneda)}</td>
-                        <td style={{...td,textAlign:"center"}}>
+                        <td style={{...td,fontWeight:700,color,...NUMERICO}}>{fmtP(a.precio,a.moneda)}</td>
+                        <td style={{...td,...NUMERICO}}>
                           <span style={{color:a.stock===0?"#EF4444":a.stock<5?"#F59E0B":"#374151",fontWeight:a.stock<5?700:400}}>{a.stock}</span>
                         </td>
                         <td style={td}>
@@ -1306,8 +1305,8 @@ export default function AdminPublicaciones() {
                         <td style={td}>{fmt(a.published_at||a.created_at)}</td>
                         {vcols.has("categoria")&&<td style={td}>{a.categoria_nombre||"—"}</td>}
                         {vcols.has("marca")    &&<td style={td}>{a.atributos?.marca||"—"}</td>}
-                        {vcols.has("ranking")  &&<td style={td}>{a.ranking_score?Number(a.ranking_score).toFixed(2):"—"}</td>}
-                        {vcols.has("ctr")      &&<td style={td}>{ctr}%</td>}
+                        {vcols.has("ranking")  &&<td style={{...td,...NUMERICO}}>{a.ranking_score?Number(a.ranking_score).toFixed(2):"—"}</td>}
+                        {vcols.has("ctr")      &&<td style={{...td,...NUMERICO}}>{ctr}%</td>}
                         {vcols.has("baja")     &&<td style={td}>{fmt(a.baja_prevista||a.deleted_at)}</td>}
                         {vcols.has("mkt1")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
                         {vcols.has("mkt2")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}

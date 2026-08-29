@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAdminProducts } from "../hooks/useAdminProducts";
 import { supabase } from "../../../utils/supabase/client";
+import { NUMERICO } from "../ui/numeros";
 
 export default function AdminProducts() {
   const { products, loading, error, refetch, pauseProduct, fixStock } = useAdminProducts();
@@ -92,7 +93,7 @@ export default function AdminProducts() {
                     {editId === p.id ? (
                       <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
                         <input type="number" value={editStock} onChange={e => setEditStock(e.target.value)} min="0"
-                          style={{ width: "64px", padding: "4px 8px", border: "2px solid #FF6835", borderRadius: "6px", fontSize: "0.85rem", outline: "none" }}
+                          style={{ width: "64px", padding: "4px 8px", border: "2px solid #FF6835", borderRadius: "6px", fontSize: "0.85rem", outline: "none", ...NUMERICO }}
                           onKeyDown={e => e.key === "Enter" && handleFixStock(p.id)} autoFocus />
                         <button onClick={() => handleFixStock(p.id)} disabled={isSaving}
                           style={{ padding: "4px 8px", background: "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}>✓</button>

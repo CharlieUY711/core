@@ -187,3 +187,34 @@ package.json   (only to register the three "agent:*" scripts)
 
 Nothing else. No component, schema, API, UI, or business-logic file is to
 be modified as part of installing or operating this system.
+
+## Números — regla inamovible
+
+**Todo valor numérico va alineado a la derecha.** Sin excepciones: precios,
+stock, porcentajes, tasas, métricas, cantidades.
+
+Un número se lee de atrás para adelante —unidades, decenas, centenas—. A la
+izquierda, las unidades caen en un lugar distinto según cuántos dígitos tenga
+cada uno, y una columna de importes deja de poder compararse de un vistazo.
+
+Va siempre con `tabular-nums`: sin él los dígitos tienen anchos distintos, el
+número se corre mientras se escribe y las columnas no alinean aunque estén a la
+derecha.
+
+```tsx
+import { NUMERICO, NUMERICO_SELECT } from "@/app/admin/ui/numeros";
+
+<input type="number" style={{ ...inp, ...NUMERICO }} />
+<td style={{ ...td, ...NUMERICO }}>{precio}</td>
+<select style={{ ...inp, ...NUMERICO_SELECT }}>   {/* deja lugar a la flecha */}
+```
+
+No es una convención: `scripts/check-numeros.mjs` corre en `pnpm run
+agent:verify` y **falla** si aparece un `<input type="number">` que no use
+`NUMERICO`. Una excepción se marca con `// numeros-ok: <motivo>` en la línea de
+arriba — el motivo es obligatorio, porque una excepción sin razón es la regla
+rota.
+
+El chequeo cubre inputs, no textos: un número dentro de un `<td>` o un `<div>`
+no se distingue de una palabra sin entender el código. Esos siguen siendo
+responsabilidad de quien los escribe.

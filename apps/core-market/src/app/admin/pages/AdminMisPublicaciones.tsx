@@ -37,6 +37,7 @@ function SyncDropdown({ onSyncML }: { onSyncML: () => void }) {
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
+import { NUMERICO } from "../ui/numeros";
 
 const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
@@ -635,12 +636,12 @@ export default function AdminPublicaciones() {
                                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
                                     <div>
                                       <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Precio</div>
-                                      <input type="number" style={inpStyle} value={editForm.precio||""}
+                                      <input type="number" style={{...inpStyle, ...NUMERICO}} value={editForm.precio||""}
                                         onChange={e=>setEditForm(f=>({...f,precio:parseFloat(e.target.value)}))} />
                                     </div>
                                     <div>
                                       <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"2px" }}>Stock</div>
-                                      <input type="number" style={inpStyle} value={editForm.stock||""}
+                                      <input type="number" style={{...inpStyle, ...NUMERICO}} value={editForm.stock||""}
                                         onChange={e=>setEditForm(f=>({...f,stock:parseInt(e.target.value)}))} />
                                     </div>
                                   </div>

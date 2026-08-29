@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "../../../utils/supabase/client";
+import { NUMERICO } from "../ui/numeros";
 
 const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
@@ -129,7 +130,7 @@ function VariantRow({
                        borderRadius:6, fontSize:"0.75rem", background:"#FAFAFA" }}>
               {["UYU","USD","ARS","BRL","EUR"].map(c => <option key={c}>{c}</option>)}
             </select>
-            <input type="number" style={{...inp(), width:80}}
+            <input type="number" style={{...inp(), width:80, ...NUMERICO}}
               value={v.price}
               onChange={e => onChange(v.id, "price", parseFloat(e.target.value)||0)} />
           </div>
@@ -187,7 +188,7 @@ function VariantRow({
               <div>
                 <div style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-400)",
                   textTransform:"uppercase", marginBottom:6 }}>Stock</div>
-                <input type="number" style={inp()}
+                <input type="number" style={{...inp(), ...NUMERICO}}
                   value={v.stock ?? ""}
                   placeholder="Sin stock definido"
                   onChange={e => onChange(v.id, "stock",

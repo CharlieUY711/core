@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck:full": "tsc --noEmit",
+    "lint": "node scripts/lint.mjs",
     "preview": "vite preview",
     "agent:status": "node scripts/agent-status.js",
     "agent:handoff": "node scripts/agent-handoff.js",

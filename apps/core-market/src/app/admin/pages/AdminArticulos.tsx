@@ -6,6 +6,7 @@ import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcas
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
+import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
 import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
@@ -1934,7 +1935,7 @@ export default function AdminArticulos(
                       digitos tenga. `tabular-nums` ademas les da a todos los
                       digitos el mismo ancho, asi el numero no se mueve mientras
                       se escribe. */}
-                  <input style={{ ...inp, textAlign:"right", fontVariantNumeric:"tabular-nums" }}
+                  <input style={{ ...inp, ...NUMERICO }}
                     type="number" value={precio}
                     onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
                 </div>
@@ -1943,7 +1944,7 @@ export default function AdminArticulos(
                     desglose -que se ve abajo- y nada mas. Multiplicar aca
                     seria cambiar el precio de venta sin que nadie lo pida. */}
                 <div>
-                  <select style={{ ...inp, padding:"0.5rem 0.15rem" }}
+                  <select style={{ ...inp, padding:"0.5rem 0.15rem", ...NUMERICO_SELECT }}
                     title="Impuesto incluido en el precio"
                     value={tasaId ?? ""}
                     onChange={e => setTasaId(e.target.value || null)}>
@@ -2068,7 +2069,7 @@ export default function AdminArticulos(
             <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>Detalles y disponibilidad</h2>
             <div style={{ maxWidth:160 }}>
               <label style={lbl}>Stock</label>
-              <input style={inp} type="number" value={stock}
+              <input style={{ ...inp, ...NUMERICO }} type="number" value={stock}
                 onChange={e => setStock(e.target.value)} min="0" />
             </div>
             <div>
