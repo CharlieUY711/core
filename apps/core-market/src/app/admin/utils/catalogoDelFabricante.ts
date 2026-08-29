@@ -92,16 +92,30 @@ async function traer(url: string): Promise<string | null> {
  * suele encontrarla, aunque después la descarte por no ser un producto—. Sin
  * ella se prueban las rutas habituales.
  */
+export interface LecturaDeCatalogo {
+  items: ResultadoBusqueda[];
+  /**
+   * Por qué no se pudo, en palabras de quien lo está usando.
+   *
+   * Va a la pantalla, no sólo a la consola: quien carga no tiene por qué abrir
+   * las herramientas del navegador para enterarse de que el sitio del
+   * representante está hecho en JavaScript. Y sin esto, cuatro fallas
+   * distintas se veían todas como "no pude".
+   */
+  motivo: string | null;
+}
+
 export async function catalogoDelFabricante(
   dominio: string,
   paginaConocida?: string | null,
-): Promise<ResultadoBusqueda[]> {
+): Promise<LecturaDeCatalogo> {
   const candidatas = paginaConocida
     ? [paginaConocida, ...RUTAS_DE_CATALOGO.map((r) => `https://${dominio}${r}`)]
     : RUTAS_DE_CATALOGO.map((r) => `https://${dominio}${r}`);
 
   let texto = "";
   let dominioLeido = dominio;
+  let motivo: string | null = null;
   for (const url of candidatas) {
     const html = await traer(url);
     if (!html) continue;
@@ -109,8 +123,9 @@ export async function catalogoDelFabricante(
     // Una página de error, o un sitio hecho en JavaScript, dejan poco texto: no
     // vale la pena mandarle eso al modelo.
     if (t.length < 400) {
-      console.warn(`[catalogo] ${url}: sólo ${t.length} caracteres de texto. ` +
-        `Probablemente sea un sitio hecho en JavaScript.`);
+      motivo = `${dominio} no publica su catálogo como texto: su sitio se arma ` +
+               `con JavaScript y no hay nada que leer.`;
+      console.warn(`[catalogo] ${url}: sólo ${t.length} caracteres de texto.`);
       continue;
     }
     console.info(`[catalogo] leyendo ${url} — ${t.length} caracteres`);
@@ -120,7 +135,7 @@ export async function catalogoDelFabricante(
   }
   if (!texto) {
     console.warn(`[catalogo] ${dominio}: ninguna de las rutas devolvió texto legible.`);
-    return [];
+    return { items: [], motivo: motivo ?? `No pude abrir ninguna página de ${dominio}.` };
   }
 
   try {
@@ -129,12 +144,13 @@ export async function catalogoDelFabricante(
     const d = await invocar("extract-catalog", { chunk: texto.slice(0, 12000) });
     if (d?.error) {
       console.warn("[catalogo] el extractor falló:", d.error);
-      return [];
+      return { items: [], motivo: `Leí ${dominioLeido} pero no pude extraer los ` +
+                                  `productos: ${String(d.error).slice(0, 120)}` };
     }
     const filas = Array.isArray(d?.rows) ? d.rows : [];
     console.info(`[catalogo] ${dominioLeido}: ${filas.length} filas extraídas`);
 
-    return filas
+    const items = filas
       .filter((f: any) => typeof f?.nombre === "string" && f.nombre.trim().length > 1)
       .map((f: any): ResultadoBusqueda => ({
         nombre: String(f.nombre).trim(),
@@ -166,9 +182,15 @@ export async function catalogoDelFabricante(
           ? f.categoria.trim() : null,
       }))
       .slice(0, 30);
+
+    return {
+      items,
+      motivo: items.length ? null
+        : `Leí ${dominioLeido} pero no encontré productos en esa página.`,
+    };
   } catch (err) {
     console.warn("[catalogo] no se pudo llamar al extractor:", err);
-    return [];
+    return { items: [], motivo: "No se pudo usar el extractor de catálogos." };
   }
 }
 

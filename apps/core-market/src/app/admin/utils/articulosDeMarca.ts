@@ -21,7 +21,8 @@
  * es peor que mostrar uno dudoso al final.
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
-import { catalogoDelFabricante, tiendasOficialesLocales } from "./catalogoDelFabricante";
+import { catalogoDelFabricante, tiendasOficialesLocales,
+         type LecturaDeCatalogo } from "./catalogoDelFabricante";
 
 /** Caminos donde los sitios publican sus productos. */
 const CAMINOS_DE_PRODUCTO = [
@@ -110,6 +111,8 @@ const normalizar = (s: string): string =>
 
 export interface ArticulosEncontrados {
   items: ResultadoBusqueda[];
+  /** Por qué vino vacío, para poder decirlo en pantalla. */
+  motivo?: string | null;
   /**
    * `true` cuando lo que se muestra es el catálogo de la marca y no
    * coincidencias con lo escrito. La pantalla tiene que decirlo: ver una lista
@@ -160,7 +163,8 @@ export async function buscarArticulosDeMarca(
   const filtrar = (crudos: ResultadoBusqueda[]) => filtrarProductos(crudos, marca, dominio);
 
   if (marca.trim() && q.length < 3) {
-    return { items: await catalogoDeMarca(marca, dominio), esCatalogo: true };
+    const c = await catalogoDeMarca(marca, dominio);
+    return { items: c.items, motivo: c.motivo, esCatalogo: true };
   }
   if (q.length < 3) return { items: [], esCatalogo: false };
 
@@ -179,7 +183,8 @@ export async function buscarArticulosDeMarca(
   // SIN `filtrar`: lo leído del catálogo no tiene URL —viene del texto de la
   // página— y `puntajeDeProducto` descarta todo lo que no tiene camino. Con el
   // filtro puesto, el catálogo llegaba vacío siempre.
-  return { items: await catalogoDeMarca(marca, dominio), esCatalogo: true };
+  const c = await catalogoDeMarca(marca, dominio);
+  return { items: c.items, motivo: c.motivo, esCatalogo: true };
 }
 
 /**
@@ -192,7 +197,7 @@ export async function buscarArticulosDeMarca(
  */
 export async function catalogoDeMarca(
   _marca: string, dominio: string | null,
-): Promise<ResultadoBusqueda[]> {
+): Promise<LecturaDeCatalogo> {
   /*
    * EL CATÁLOGO SE LEE DEL SITIO, O NO HAY CATÁLOGO.
    *
@@ -232,10 +237,16 @@ export async function catalogoDeMarca(
    */
   const oficiales = await tiendasOficialesLocales(_marca, dominio);
   console.info("[catalogo] representantes a probar:", oficiales.length ? oficiales : "(ninguno)");
+
+  let ultimoMotivo: string | null = oficiales.length
+    ? null
+    : `No encontré un representante oficial de ${_marca.trim()} en Uruguay.`;
+
   for (const oficial of oficiales) {
     const paginaOficial = await ubicarPaginaDeProductos(oficial);
     const delOficial = await catalogoDelFabricante(oficial, paginaOficial);
-    if (delOficial.length > 0) return delOficial;
+    if (delOficial.items.length > 0) return delOficial;
+    ultimoMotivo = delOficial.motivo ?? ultimoMotivo;
   }
 
   // El fabricante queda de respaldo: para marcas locales —Colinas de Garzón,
@@ -244,10 +255,11 @@ export async function catalogoDeMarca(
   if (dominio) {
     const paginaProductos = await ubicarPaginaDeProductos(dominio);
     const delFabricante = await catalogoDelFabricante(dominio, paginaProductos);
-    if (delFabricante.length > 0) return delFabricante;
+    if (delFabricante.items.length > 0) return delFabricante;
+    ultimoMotivo = delFabricante.motivo ?? ultimoMotivo;
   }
 
-  return [];
+  return { items: [], motivo: ultimoMotivo };
 }
 
 /**

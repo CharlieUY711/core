@@ -1633,23 +1633,29 @@ export default function AdminArticulos(
    * "Donde estamos" y "Cultura y Salud". Pasa por el mismo filtro que la lista
    * de sugerencias, que es el que sabe distinguir un producto de una pagina.
    */
-  const otrosDeLaMarca = async (): Promise<ResultadoBusqueda[]> => {
-    const { items } = await buscarArticulosDeMarca({
+  const otrosDeLaMarca = async (): Promise<{ items: ResultadoBusqueda[]; motivo?: string | null }> => {
+    const { items, motivo } = await buscarArticulosDeMarca({
       marca, dominio: marcaDominio, texto: "",
     });
     const yaCargado = nombre.trim().toLowerCase();
-    return items.filter(r => r.nombre.trim().toLowerCase() !== yaCargado);
+    return { items: items.filter(r => r.nombre.trim().toLowerCase() !== yaCargado), motivo };
   };
 
   /** Abrir el cuadro a pedido, sin tener que guardar primero. */
   const abrirCargaDeMarca = async () => {
     setMasivoCargando(true);
-    const otros = await otrosDeLaMarca();
+    const { items: otros, motivo } = await otrosDeLaMarca();
     setMasivoCargando(false);
-    // Sin catalogo legible no se abre un cuadro vacio: se dice por que.
+    /*
+     * Sin catálogo no se abre un cuadro vacío: se dice POR QUÉ.
+     *
+     * "No pude" a secas no le sirve a nadie: cuatro fallas distintas —el sitio
+     * hecho en JavaScript, un 404, el extractor sin cupo, no haber encontrado
+     * representante— se veían todas igual, y ni quien lo usa ni quien lo
+     * programa podían saber cuál era.
+     */
     if (!otros.length) {
-      notify(`No pude leer el catálogo de ${marca.trim()} desde su sitio. ` +
-             `Cargalos de a uno.`, false);
+      notify(motivo ?? `No pude armar el catálogo de ${marca.trim()}. Cargalos de a uno.`, false);
       return;
     }
     abrirCuadroCon(otros, false);
@@ -2209,8 +2215,8 @@ export default function AdminArticulos(
        */
       if (puedeLeerCatalogos() && marcaConfirmada && marca.trim()) {
         const otros = await otrosDeLaMarca();
-        if (otros.length > 0) {
-          abrirCuadroCon(otros, true);
+        if (otros.items.length > 0) {
+          abrirCuadroCon(otros.items, true);
           return;                       // se sale al cerrar el cuadro, no antes
         }
       }
@@ -2585,13 +2591,23 @@ export default function AdminArticulos(
                   caso obvio: ya identifiqué la marca y quiero su catálogo. */}
               {puedeLeerCatalogos() && marcaConfirmada && marca.trim() && !masivoAbierto && (
                 <button type="button" onClick={abrirCargaDeMarca} disabled={masivoCargando}
-                  style={{ border:"none", background:"none", padding:0, marginTop:6,
-                    cursor: masivoCargando ? "wait" : "pointer", color:ACCENT,
-                    fontSize:"0.75rem", fontWeight:700, textDecoration:"underline",
-                    fontFamily:"inherit" }}>
-                  {masivoCargando
-                    ? "Buscando el catálogo…"
-                    : `Cargar varios productos de ${marca.trim()}`}
+                  style={{ marginTop:6, padding:"0.45rem 0.85rem", borderRadius:9,
+                    border:`1.5px solid ${masivoCargando ? "var(--border)" : ACCENT}`,
+                    background: masivoCargando ? "var(--gray-50)" : "#fff",
+                    color: masivoCargando ? "var(--gray-400)" : ACCENT,
+                    cursor: masivoCargando ? "wait" : "pointer",
+                    fontSize:"0.78rem", fontWeight:700, fontFamily:"inherit",
+                    display:"flex", alignItems:"center", gap:7 }}>
+                  {masivoCargando ? (
+                    <>
+                      {/* Leer un catalogo son varias llamadas encadenadas y
+                          puede tardar. Sin este aviso parece que no paso nada. */}
+                      <span style={{ width:11, height:11, borderRadius:"50%", flexShrink:0,
+                        border:"2px solid var(--border)", borderTopColor:ACCENT,
+                        animation:"girar .7s linear infinite" }} />
+                      Generando catálogo…
+                    </>
+                  ) : `¿Generar el catálogo de ${marca.trim()}?`}
                 </button>
               )}
 
@@ -3093,7 +3109,11 @@ export default function AdminArticulos(
                 la tarjeta su alto vía aspect-ratio); se define acá en vez de
                 importar toda la hoja de estilos del front para no arrastrar
                 sus reglas globales (html, body) al panel de admin. */}
-            <style>{`.core-card-slot{aspect-ratio:2/3.7;position:relative;width:100%;box-sizing:border-box}`}</style>
+            <style>{`.core-card-slot{aspect-ratio:2/3.7;position:relative;width:100%;box-sizing:border-box}
+              @keyframes girar{to{transform:rotate(360deg)}}
+              @media (prefers-reduced-motion:reduce){
+                [style*="girar"]{animation:none!important}
+              }`}</style>
             <MarketCard
               p={previewProduct}
               context={tipo === "secondhand" ? "second" : "market"}
