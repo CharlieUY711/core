@@ -6,7 +6,8 @@ import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcas
 import { canalesDisponibles } from "../utils/canalesSync";
 import { clasificarProducto } from "@core/tax";
 import { decidir, hayDatosSuficientes, type Decision } from "../tax/decidir";
-import { buscar, buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
+import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
+import { buscarArticulosDeMarca } from "../utils/articulosDeMarca";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
@@ -1015,24 +1016,21 @@ export default function AdminArticulos(
        * búsqueda de marca.
        */
       /*
-       * Primero en el sitio del fabricante, despues afuera.
+       * Articulos de la marca, no paginas de la marca.
        *
-       * Con la marca confirmada tenemos su dominio, y `site:` restringe la
-       * busqueda a el. Es la diferencia entre "las versiones del iPhone 17 que
-       * Apple publica" y "todo lo que Google conoce donde aparezca iPhone 17"
-       * — reviews, foros, tiendas de terceros.
-       *
-       * Si el sitio oficial no devuelve nada -no todas las marcas tienen
-       * catalogo en linea, ni todos los productos estan- se abre a la web. Es
-       * mejor que quedarse sin sugerencias, y la lista dice de donde salio
-       * cada una.
+       * Restringir al dominio del fabricante no alcanzaba: su sitio tiene el
+       * catalogo pero tambien "Turismo", "Calidad" y la portada, y esas
+       * volvian mezcladas con los productos. `buscarArticulosDeMarca` filtra
+       * por lo que dice la URL —`/producto/`, `/supermercado/` son catalogo;
+       * `/turismo`, `/noticias` y la raiz no— y exige que el nombre mencione
+       * la marca, porque buscando "Colinas de Garzon aceite" Google trae
+       * tambien aceites de otras marcas: eso es competencia, no este articulo.
        */
-      const oficial = marcaDominio
-        ? await buscar(`site:${marcaDominio} ${q}`, { incluirCanales: false })
-        : [];
-      const web = oficial.length > 0
-        ? oficial
-        : await buscar(conMarca, { incluirCanales: false });
+      const web = await buscarArticulosDeMarca({
+        marca: marcaConfirmada ? marca : "",
+        dominio: marcaDominio,
+        texto: q,
+      });
       if (!vivo) return;
       setCandidatos(web.map(r => ({
         id: r.url ?? r.nombre,
