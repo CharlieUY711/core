@@ -4,6 +4,8 @@ import { buscarProductos, fichaPorTitulo,
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
 import { canalesDisponibles } from "../utils/canalesSync";
+import { clasificarProducto } from "@core/tax";
+import { decidir, hayDatosSuficientes, type Decision } from "../tax/decidir";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
@@ -1164,6 +1166,15 @@ export default function AdminArticulos(
   const [tasas, setTasas] = useState<{ id: string; code: string; name: string; rate: number }[]>([]);
   const [tasaId, setTasaId] = useState<string | null>(null);
   const [tasaHeredada, setTasaHeredada] = useState<{ name: string; rate: number; origen: string } | null>(null);
+  /** Codigo de la tasa heredada -basica/minima/exento-, que es lo que compara
+   *  el motor. `rate` es para mostrar; el codigo es para decidir. */
+  const [codigoHeredado, setCodigoHeredado] = useState<string>("basica");
+  /** De donde salio la clasificacion que tiene hoy el articulo. */
+  const [origenFiscal, setOrigenFiscal] = useState<
+    "SUGGESTED" | "CONFIRMED" | "MANUAL" | "REVIEW_REQUIRED" | null>(null);
+  /** La sugerencia del motor y que hacer con ella. Null = no se corrio. */
+  const [sugerencia, setSugerencia] = useState<
+    { clasificacion: ReturnType<typeof clasificarProducto>; decision: Decision } | null>(null);
 
   /**
    * El precio como lo escribio el usuario, en la moneda en que lo escribio.
@@ -1216,8 +1227,11 @@ export default function AdminArticulos(
   useEffect(() => {
     if (!articulo?.id) return;
     let vivo = true;
-    supabase.rpc("tasa_de_articulo", { p_variant_id: articulo.id }).then(({ data }) => {
-      if (vivo && data) setTasaId(data as string);
+    supabase.rpc("clasificacion_de_articulo", { p_variant_id: articulo.id }).then(({ data }) => {
+      const f = Array.isArray(data) ? data[0] : data;
+      if (!vivo || !f) return;
+      setTasaId(f.tax_rate_id ?? null);
+      setOrigenFiscal(f.tax_source ?? null);
     });
     supabase.rpc("hay_deshacer", { p_variant_id: articulo.id }).then(({ data }) => {
       if (vivo) setDeshacerDesde((data as string) ?? null);
@@ -1314,6 +1328,82 @@ export default function AdminArticulos(
       p_tipo_envio:  detalles.tipo_envio  ?? null,
     });
     if (error) console.warn("[detalles]", error.message);
+  };
+
+  /**
+   * Sugerir el IVA.
+   *
+   * Se ejecuta a pedido y solo con nombre y categoria: sin categoria el motor
+   * llega como mucho a confianza MEDIA, y ofrecer una sugerencia floja como si
+   * fuera un resultado es peor que no ofrecer nada.
+   *
+   * NO guarda: deja la sugerencia a la vista con su fundamento para que el
+   * usuario decida. Aplicarla es otro clic.
+   */
+  const sugerirIva = () => {
+    const cat = cats.find(c => c.id === catId)?.nombre
+             ?? deptos.find(d => d.id === deptoId)?.nombre
+             ?? "";
+    if (!hayDatosSuficientes(nombre, cat)) return;
+
+    const clasificacion = clasificarProducto({
+      nombre: nombre.trim(),
+      categoria: cat,
+      descripcion: descripcion.trim() || undefined,
+      marca: marca.trim() || undefined,
+    });
+    const decision = decidir(clasificacion, {
+      heredada:  codigoHeredado as any,
+      excepcion: (tasas.find(t => t.id === tasaId)?.code ?? null) as any,
+      origen:    origenFiscal,
+    });
+    setSugerencia({ clasificacion, decision });
+  };
+
+  /**
+   * Aplicar la sugerencia.
+   *
+   * `CONFIRMAR_HERENCIA` guarda `null` en la tasa a proposito: coincidir con la
+   * taxonomia no justifica una copia en el articulo. Materializarla igual lo
+   * dejaria sin poder seguir a su categoria cuando esa cambie.
+   */
+  const aplicarSugerencia = async (forzar = false) => {
+    if (!sugerencia || !articulo?.id) return;
+    const { decision, clasificacion } = forzar
+      ? { decision: decidir(sugerencia.clasificacion,
+            { heredada: codigoHeredado as any,
+              excepcion: (tasas.find(t => t.id === tasaId)?.code ?? null) as any,
+              origen: origenFiscal }, true),
+          clasificacion: sugerencia.clasificacion }
+      : sugerencia;
+
+    if (decision.accion === "PEDIR_REVISION" || decision.accion === "RESPETAR_MANUAL") return;
+
+    const idTasa = decision.tasaAGuardar
+      ? (tasas.find(t => t.code === decision.tasaAGuardar)?.id ?? null)
+      : null;
+
+    const { data, error } = await supabase.rpc("guardar_clasificacion_fiscal", {
+      p_variant_id:      articulo.id,
+      p_tax_rate_id:     idTasa,
+      p_source:          decision.origen,
+      p_confidence:      clasificacion.confianza,
+      p_rule:            clasificacion.reglas.join(","),
+      p_reason:          clasificacion.razon,
+      p_version:         clasificacion.versionMotor,
+      p_respetar_manual: !forzar,
+    });
+    if (error) { notify(error.message, false); return; }
+    if (data === false) {
+      notify("Este artículo tiene una tasa puesta a mano. Confirmá para reemplazarla.", false);
+      return;
+    }
+    setTasaId(idTasa);
+    setOrigenFiscal(decision.origen);
+    setSugerencia(null);
+    notify(decision.accion === "CONFIRMAR_HERENCIA"
+      ? "Confirmado: sigue heredando la tasa de su categoría"
+      : "Excepción aplicada a este artículo");
   };
 
   const deshacer = async () => {
@@ -1442,6 +1532,7 @@ export default function AdminArticulos(
       const f = Array.isArray(data) ? data[0] : data;
       if (!vivo || !f) return;
       setTasaHeredada({ name: f.name, rate: Number(f.rate), origen: f.origen });
+      setCodigoHeredado(f.code ?? "basica");
     });
     return () => { vivo = false; };
   }, [deptoId, catId, subcatId]);
@@ -2293,6 +2384,108 @@ export default function AdminArticulos(
                   </select>
                 </div>
               </div>
+              {/* Sugerir IVA.
+                  A pedido y no automatico: la sugerencia se muestra con su
+                  fundamento y decide una persona. Solo con nombre y categoria,
+                  porque sin categoria el motor llega como mucho a confianza
+                  media, y ofrecer una sugerencia floja como si fuera un
+                  resultado es peor que no ofrecer nada. */}
+              {articulo?.id && (
+                <div style={{ display:"flex", flexDirection:"column", gap:RITMO_JUNTO }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                    <button type="button" onClick={sugerirIva}
+                      disabled={!hayDatosSuficientes(nombre,
+                        cats.find(c => c.id === catId)?.nombre
+                        ?? deptos.find(d => d.id === deptoId)?.nombre ?? "")}
+                      style={{ border:"none", background:"none", padding:0,
+                        cursor: hayDatosSuficientes(nombre,
+                          cats.find(c => c.id === catId)?.nombre
+                          ?? deptos.find(d => d.id === deptoId)?.nombre ?? "")
+                          ? "pointer" : "not-allowed",
+                        color: hayDatosSuficientes(nombre,
+                          cats.find(c => c.id === catId)?.nombre
+                          ?? deptos.find(d => d.id === deptoId)?.nombre ?? "")
+                          ? ACCENT : "var(--gray-400)",
+                        fontSize:"0.78rem", fontWeight:700, textDecoration:"underline",
+                        fontFamily:"inherit" }}>
+                      Sugerir IVA
+                    </button>
+                    {origenFiscal === "MANUAL" && (
+                      <span style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>
+                        Puesta a mano
+                      </span>
+                    )}
+                  </div>
+
+                  {sugerencia && (
+                    <div style={{ padding:"0.6rem 0.7rem", borderRadius:8,
+                      border:`1px solid ${sugerencia.decision.accion === "PEDIR_REVISION"
+                        ? "#FCD34D" : "var(--border)"}`,
+                      background: sugerencia.decision.accion === "PEDIR_REVISION"
+                        ? "#FFFBEB" : "var(--gray-50)",
+                      display:"flex", flexDirection:"column", gap:6 }}>
+
+                      <div style={{ fontSize:"0.8rem", fontWeight:700, color:"#111" }}>
+                        {sugerencia.clasificacion.codigoTasa
+                          ? `IVA sugerido: ${tasas.find(t =>
+                              t.code === sugerencia.clasificacion.codigoTasa)?.name
+                              ?? sugerencia.clasificacion.codigoTasa}`
+                          : "Hace falta revisarlo"}
+                      </div>
+
+                      <div style={{ fontSize:"0.74rem", color:"var(--mute)" }}>
+                        Confianza: {sugerencia.clasificacion.confianza.toLowerCase()}
+                        {" · "}Regla: {sugerencia.clasificacion.reglas.join(", ")}
+                      </div>
+
+                      <div style={{ fontSize:"0.74rem", color:"var(--mute)" }}>
+                        {sugerencia.decision.mensaje}
+                      </div>
+
+                      {/* El fundamento se muestra tal como esta: sin verificar
+                          se dice sin verificar. Una cita legal presentada como
+                          hecho, cuando nadie la confirmo, se cree. */}
+                      <div style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>
+                        Fundamento:{" "}
+                        {sugerencia.clasificacion.fuente
+                          ? `${sugerencia.clasificacion.fuente.referencia}` +
+                            (sugerencia.clasificacion.fuente.verificado
+                              ? "" : " — pendiente de verificación")
+                          : "sin fundamento aplicable"}
+                      </div>
+
+                      <div style={{ display:"flex", gap:"0.7rem", alignItems:"center" }}>
+                        {sugerencia.decision.accion === "PEDIR_REVISION" ? (
+                          <span style={{ fontSize:"0.74rem", color:"#92400E", fontWeight:700 }}>
+                            Elegí la tasa a mano en el selector de arriba.
+                          </span>
+                        ) : sugerencia.decision.accion === "RESPETAR_MANUAL" ? (
+                          <button type="button" onClick={() => aplicarSugerencia(true)}
+                            style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                              color:"#92400E", fontSize:"0.78rem", fontWeight:700,
+                              textDecoration:"underline", fontFamily:"inherit" }}>
+                            Reemplazar la tasa que puse a mano
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => aplicarSugerencia()}
+                            style={{ border:"none", background:ACCENT, color:"#fff",
+                              padding:"0.35rem 0.8rem", borderRadius:8, cursor:"pointer",
+                              fontSize:"0.78rem", fontWeight:700, fontFamily:"inherit" }}>
+                            Aplicar sugerencia
+                          </button>
+                        )}
+                        <button type="button" onClick={() => setSugerencia(null)}
+                          style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                            color:"var(--gray-400)", fontSize:"0.78rem",
+                            textDecoration:"underline", fontFamily:"inherit" }}>
+                          Cerrar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* A donde va este precio, y el "+" para cotizar distinto.
 
                   Los bullets van debajo del renglon y no adentro porque son de

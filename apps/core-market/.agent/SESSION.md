@@ -93,6 +93,7 @@ MercadoPago/PayPal/Resend anything, META, RLS policies, `package.json`,
 
 ## Tests
 - lint (lint): PASS
+- test (test): PASS
 - build (build): PASS
 
 ## Errors
