@@ -63,13 +63,24 @@ function aTexto(html: string): string {
     .trim();
 }
 
-/** Trae una URL por el proxy. `null` si no se pudo. */
+/**
+ * Trae una URL por el proxy. `null` si no se pudo.
+ *
+ * DEJA DICHO POR QUÉ FALLÓ.
+ * Antes cada error se tragaba en silencio y el usuario veía "no pude leer el
+ * catálogo" sin ninguna forma de saber si fue el proxy, un 404, un sitio hecho
+ * en JavaScript o el extractor. Diagnosticarlo desde afuera era imposible: se
+ * adivinaba. Ahora la consola dice el paso exacto.
+ */
 async function traer(url: string): Promise<string | null> {
   try {
     const d = await invocar("import-proxy", { url });
-    if (!d?.ok || typeof d.body !== "string") return null;
+    if (d?.error) { console.warn("[catalogo] proxy:", url, "→", d.error); return null; }
+    if (!d?.ok)   { console.warn("[catalogo] proxy no ok:", url, d); return null; }
+    if (typeof d.body !== "string") { console.warn("[catalogo] sin cuerpo:", url); return null; }
     return d.body;
-  } catch (_) {
+  } catch (err) {
+    console.warn("[catalogo] no se pudo llamar al proxy:", url, err);
     return null;
   }
 }
@@ -95,20 +106,33 @@ export async function catalogoDelFabricante(
     const html = await traer(url);
     if (!html) continue;
     const t = aTexto(html);
-    // Una página de error o un redirect a la portada dejan poco texto: no vale
-    // la pena mandarle eso al modelo.
-    if (t.length < 400) continue;
+    // Una página de error, o un sitio hecho en JavaScript, dejan poco texto: no
+    // vale la pena mandarle eso al modelo.
+    if (t.length < 400) {
+      console.warn(`[catalogo] ${url}: sólo ${t.length} caracteres de texto. ` +
+        `Probablemente sea un sitio hecho en JavaScript.`);
+      continue;
+    }
+    console.info(`[catalogo] leyendo ${url} — ${t.length} caracteres`);
     texto = t;
     try { dominioLeido = new URL(url).hostname.replace(/^www\./, ""); } catch { /* queda el dado */ }
     break;
   }
-  if (!texto) return [];
+  if (!texto) {
+    console.warn(`[catalogo] ${dominio}: ninguna de las rutas devolvió texto legible.`);
+    return [];
+  }
 
   try {
     // El primer tramo alcanza: los catálogos listan los productos arriba y
     // siguen con pie de página, legales y formularios.
     const d = await invocar("extract-catalog", { chunk: texto.slice(0, 12000) });
+    if (d?.error) {
+      console.warn("[catalogo] el extractor falló:", d.error);
+      return [];
+    }
     const filas = Array.isArray(d?.rows) ? d.rows : [];
+    console.info(`[catalogo] ${dominioLeido}: ${filas.length} filas extraídas`);
 
     return filas
       .filter((f: any) => typeof f?.nombre === "string" && f.nombre.trim().length > 1)
@@ -142,7 +166,8 @@ export async function catalogoDelFabricante(
           ? f.categoria.trim() : null,
       }))
       .slice(0, 30);
-  } catch (_) {
+  } catch (err) {
+    console.warn("[catalogo] no se pudo llamar al extractor:", err);
     return [];
   }
 }
@@ -193,8 +218,16 @@ export async function tiendasOficialesLocales(
     let host = "";
     try { host = new URL(x.url ?? "").hostname.replace(/^www\./, ""); } catch { continue; }
     if (!host || hosts.includes(host)) continue;
-    // El sitio de la marca se prueba aparte; acá se buscan sus representantes.
-    if (dominioMarca && host.endsWith(dominioMarca.replace(/^www\./, ""))) continue;
+    /*
+     * El sitio de la marca se prueba aparte; acá se buscan sus representantes.
+     *
+     * Y se descartan TODOS sus subdominios: para Apple, la búsqueda devuelve
+     * `apple.com/la/buy/uy` y `locate.apple.com/uy/es/sales` antes que los
+     * representantes, y esos dos se comían dos de los tres intentos sin ser
+     * nunca un catálogo.
+     */
+    const raizMarca = dominioMarca ? dominioMarca.replace(/^www\./, "") : "";
+    if (raizMarca && (host === raizMarca || host.endsWith("." + raizMarca))) continue;
     if (NO_SON_TIENDA_OFICIAL.some((d) => host.includes(d))) continue;
     // Diarios y notas: hablan de la marca, no la venden.
     if (/noticias|diario|observador|elpais|montevideo\.com/.test(host)) continue;

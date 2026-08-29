@@ -176,7 +176,10 @@ export async function buscarArticulosDeMarca(
   if (coincidencias.length > 0) return { items: coincidencias, esCatalogo: false };
 
   if (!marca.trim()) return { items: [], esCatalogo: false };
-  return { items: filtrar(await catalogoDeMarca(marca, dominio)), esCatalogo: true };
+  // SIN `filtrar`: lo leído del catálogo no tiene URL —viene del texto de la
+  // página— y `puntajeDeProducto` descarta todo lo que no tiene camino. Con el
+  // filtro puesto, el catálogo llegaba vacío siempre.
+  return { items: await catalogoDeMarca(marca, dominio), esCatalogo: true };
 }
 
 /**
@@ -227,7 +230,9 @@ export async function catalogoDeMarca(
    * No es un marketplace: ahí el catálogo es de quien publica, mezclado con
    * reventa, usados y accesorios de terceros. Es el representante de la marca.
    */
-  for (const oficial of await tiendasOficialesLocales(_marca, null)) {
+  const oficiales = await tiendasOficialesLocales(_marca, dominio);
+  console.info("[catalogo] representantes a probar:", oficiales.length ? oficiales : "(ninguno)");
+  for (const oficial of oficiales) {
     const paginaOficial = await ubicarPaginaDeProductos(oficial);
     const delOficial = await catalogoDelFabricante(oficial, paginaOficial);
     if (delOficial.length > 0) return delOficial;
