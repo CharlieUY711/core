@@ -11,6 +11,7 @@ import { buscarArticulosDeMarca } from "../utils/articulosDeMarca";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
+import { useImagenesQueCargan } from "../ui/imagenesQueCargan";
 import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
@@ -734,6 +735,8 @@ export default function AdminArticulos(
   const [logoModalOpen,  setLogoModalOpen]  = useState(false);
   const [logoQuery,      setLogoQuery]      = useState("");
   const [logoResultados, setLogoResultados] = useState<ResultadoBusqueda[]>([]);
+  /** Las que no cargan no se ofrecen: una URL rota no es una imagen. */
+  const imgs = useImagenesQueCargan();
   const [buscandoLogoWeb,setBuscandoLogoWeb]= useState(false);
 
   const buscarLogoWeb = async (q: string) => {
@@ -2223,13 +2226,17 @@ export default function AdminArticulos(
                       <div style={{ textAlign:"center", padding:"2rem", color:"var(--gray-400)", fontSize:"0.85rem" }}>
                         Buscando en la web…
                       </div>
-                    ) : logoResultados.length > 0 ? (
+                    ) : imgs.filtrar(logoResultados, r => r.imagen).length > 0 ? (
                       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:`${RITMO}px 0.75rem` }}>
-                        {logoResultados.filter(r => r.imagen).map((r, i) => (
+                        {imgs.filtrar(logoResultados, r => r.imagen).map((r, i) => (
                           <button key={i} onClick={() => elegirLogoBuscado(r)} title={r.nombre}
                             style={{ aspectRatio:"1", borderRadius:10, overflow:"hidden", padding:6,
                               border:"1.5px solid var(--border)", background:"#fff", cursor:"pointer" }}>
-                            <img src={r.imagen!} alt={r.nombre}
+                            {/* Sin `alt`: si la imagen no carga la baldosa
+                                desaparece entera, y un texto alternativo la
+                                dejaria como una frase suelta en la grilla. */}
+                            <img src={r.imagen!} alt=""
+                              onError={() => imgs.falló(r.imagen)}
                               style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                           </button>
                         ))}
