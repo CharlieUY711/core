@@ -92,25 +92,11 @@ MercadoPago/PayPal/Resend anything, META, RLS policies, `package.json`,
 `tsconfig.json`, any file under the design-token thread (DEC-007/008).
 
 ## Tests
-- lint (lint): FAIL
+- lint (lint): PASS
 - build (build): PASS
 
 ## Errors
-### lint (lint)
-```
-
-Los valores numéricos van alineados a la derecha.
-Estos <input type="number"> no usan NUMERICO de src/app/admin/ui/numeros.ts:
-
-  src/app/admin/pages/AdminProducts.tsx:95
-
-Arreglo:  style={{ ...inp, ...NUMERICO }}
-Excepción justificada: poné `// numeros-ok: <motivo>` en la línea de arriba.
-
-
-lint — 1 de 1 reglas fallaron.
-
-```
+None
 
 ## Decisions
 DEC-011: **IMPLEMENTED (partial, by design)**. See DECISIONS.md for the

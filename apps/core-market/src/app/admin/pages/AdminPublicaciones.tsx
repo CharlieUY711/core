@@ -45,9 +45,13 @@ const NEUTRO = {color:"#64748B", tc:"#fff"};
 const etiquetaDe = (channel:string) =>
   channel.length <= 5 ? channel.toUpperCase() : channel.slice(0,4).toUpperCase();
 
-export interface CanalUI { key:string; channel:string; label:string; color:string; tc:string }
+export interface CanalUI {
+  key:string; channel:string; label:string; color:string; tc:string;
+  /** Por que el canal no esta habilitado. Sin esto, esta habilitado. */
+  motivo?:string;
+}
 
-const canalUI = (channel:string):CanalUI => {
+const canalUI = (channel:string, motivo?:string):CanalUI => {
   const e = ESTETICA_CANAL[channel];
   return {
     key:     "sync_" + channel,
@@ -55,6 +59,10 @@ const canalUI = (channel:string):CanalUI => {
     label:   e?.label ?? etiquetaDe(channel),
     color:   e?.color ?? NEUTRO.color,
     tc:      e?.tc    ?? NEUTRO.tc,
+    // Sin motivo, el canal esta habilitado. Con motivo, se muestra igual pero
+    // apagado y diciendo por que: esconderlo dejaba la pregunta "¿y Mercado
+    // Libre?" sin ninguna respuesta en pantalla.
+    motivo,
   };
 };
 
@@ -137,7 +145,9 @@ function toArt(p:Publicacion):Art {
     nombre:      p.title,
     descripcion: p.description ?? undefined,
     sku:         p.sku ?? undefined,
-    tipo:        p.tipo,
+    // Un articulo es de Market o de Second Hand; cualquier otra cosa que
+    // devuelva la base se trata como Market, que es el caso normal.
+    tipo:        p.tipo === "secondhand" ? "secondhand" : "market",
     status:      p.item_status,
     precio:      p.master_price ?? 0,
     moneda:      p.master_currency,
@@ -200,6 +210,25 @@ function Canal({c,estado,sel,ocupado,onClick}:{
   c:CanalUI; estado:EstadoCanal; sel:boolean; ocupado?:boolean; onClick:()=>void;
 }) {
   const [dn,setDn]=useState(false);
+
+  /*
+   * Canal sin habilitar: se ve y no se toca.
+   *
+   * No se pinta con su color de marca ni acepta clic — apretarlo no puede
+   * hacer nada, y un boton que no hace nada se lee como que algo se rompio.
+   * El motivo va en el tooltip, que es donde alguien lo va a buscar.
+   */
+  if (c.motivo) {
+    return (
+      <button disabled title={`${c.label} no está disponible: ${c.motivo}`}
+        style={{padding:"2px 0",width:"100%",border:"1.5px dashed var(--border)",
+          borderRadius:5,fontSize:"10px",fontWeight:800,letterSpacing:".02em",
+          background:"#F8F9FB",color:"var(--gray-400)",cursor:"not-allowed"}}>
+        {c.label}
+      </button>
+    );
+  }
+
   const borde = estado==="error" ? ROJO_SYNC : estado==="ok" ? VERDE_SYNC : c.color;
   const relleno = estado==="error" ? ROJO_SYNC : estado==="ok" ? VERDE_SYNC
                 : estado==="espera" ? c.color : "#fff";
@@ -482,8 +511,23 @@ export default function AdminPublicaciones() {
     (async()=>{
       const {disponibles,bloqueados}=await canalesDisponibles();
       if(!vivo)return;
-      setCanales(disponibles.map(d=>canalUI(d.channel)));
-      setNombreCanal(Object.fromEntries(disponibles.map(d=>[d.channel,d.nombre])));
+      /*
+       * Los canales que no estan habilitados TAMBIEN se muestran, apagados.
+       *
+       * Antes se ocultaban, y entonces una fila con Mercado Libre sin
+       * configurar era indistinguible de una fila sin Mercado Libre: en las
+       * dos no habia nada. Quien miraba no tenia forma de saber si el canal no
+       * existe, si esta caido o si falta conectarlo.
+       *
+       * Van al final y en gris, con el motivo en el tooltip. El motivo lo
+       * declara el motor del canal; la pantalla no sabe de ninguno por nombre.
+       */
+      setCanales([
+        ...disponibles.map(d=>canalUI(d.channel)),
+        ...bloqueados.map(b=>canalUI(b.channel, b.motivo)),
+      ]);
+      setNombreCanal(Object.fromEntries(
+        [...disponibles,...bloqueados].map(d=>[d.channel,d.nombre])));
       setCanalesFuera(bloqueados.map(b=>({nombre:b.nombre,motivo:b.motivo})));
     })();
     return ()=>{vivo=false;};

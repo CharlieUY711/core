@@ -57,6 +57,9 @@ export interface Publicacion {
    */
   ficha: Record<string, any> | null;
   ficha_fuente: string | null;
+  /* `tipo` -market o secondhand- lo devuelve la RPC desde siempre y faltaba
+     declararlo: la pantalla lo leia igual, con tres errores de tipo. */
+  tipo: string | null;
   ficha_at: string | null;
   /* Detalles del producto. Viven en `catalog_producto_base` y hasta ahora
      ninguna consulta los traia: el formulario los mostraba vacios aunque la
