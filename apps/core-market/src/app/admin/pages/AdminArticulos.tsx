@@ -1917,7 +1917,10 @@ export default function AdminArticulos(
                   Moneda y precio se achican para que entre el tercero: los
                   tres son el mismo dato -cuanto sale- y separarlos en
                   renglones distintos los haria parecer decisiones aparte. */}
-              <div style={{ display:"grid", gridTemplateColumns:"64px 1fr 96px", gap:`${RITMO}px 0.4rem` }}>
+              {/* El impuesto es la columna mas angosta: siempre muestra dos
+                  digitos y un signo. El precio se queda con lo que sobra, que
+                  es el campo que se escribe y el que puede crecer. */}
+              <div style={{ display:"grid", gridTemplateColumns:"64px 1fr 72px", gap:`${RITMO}px 0.4rem` }}>
                 <div>
                   <select style={{ ...inp, padding:"0.5rem 0.3rem" }} value={moneda}
                     onChange={e => cambiarMoneda(e.target.value)}>
@@ -1933,7 +1936,7 @@ export default function AdminArticulos(
                     desglose -que se ve abajo- y nada mas. Multiplicar aca
                     seria cambiar el precio de venta sin que nadie lo pida. */}
                 <div>
-                  <select style={{ ...inp, padding:"0.5rem 0.3rem" }}
+                  <select style={{ ...inp, padding:"0.5rem 0.15rem" }}
                     title="Impuesto incluido en el precio"
                     value={tasaId ?? ""}
                     onChange={e => setTasaId(e.target.value || null)}>
@@ -1946,10 +1949,15 @@ export default function AdminArticulos(
                   </select>
                 </div>
               </div>
-              <div>
-                <input style={inp} type="number" value={precioOrig}
-                  onChange={e => setPrecioOrig(e.target.value)} placeholder="Precio original, sin descuento" min="0" />
-              </div>
+              {/* El campo "Precio original, sin descuento" se saco de aca.
+                  El descuento no es parte de dar de alta un articulo: es una
+                  decision comercial posterior, y ocupaba un renglon entero en
+                  la columna del precio para algo que casi nunca se completa.
+
+                  Lo que sigue funcionando es MOSTRARLO: un articulo que ya
+                  tiene precio original guardado sigue viendose tachado en la
+                  tarjeta y con su cartel de descuento. Sacar el campo no borra
+                  el dato. */}
               {descuento && (
                 <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.65rem 0.8rem",
                   background:"#f0fdf4", border:"1px solid color-mix(in srgb, var(--color-success) 70%, white)", borderRadius:8 }}>
