@@ -105,9 +105,38 @@ export interface LecturaDeCatalogo {
   motivo: string | null;
 }
 
+/** Sin acentos, sin espacios, sin puntuación: para comparar marcas. */
+const normalizar = (t: string): string =>
+  t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+
+/** Secciones de un sitio que nunca son catálogo. */
+const NO_ES_FAMILIA = /blog|soporte|support|corporativo|contacto|nosotros|cuenta|login|carrito|checkout|envios|devoluciones|medios-de-pago|terminos|privacidad|servicio|software|ayuda/i;
+
+/**
+ * Las familias que el sitio muestra en su navegación.
+ *
+ * MundoMac tiene el catálogo repartido: `/mac`, `/iphone`, `/ipad`, `/watch`.
+ * Leyendo una sola página se sacan los productos de esa página y nada más —por
+ * eso el primer intento devolvió accesorios y ningún iPhone—. Las familias
+ * están a la vista en la navegación, así que se leen de ahí.
+ *
+ * Se toman enlaces de un solo nivel del mismo dominio: `/iphone` es una
+ * familia, `/iphone/17-pro-max-256gb` es un producto adentro de ella.
+ */
+function familiasEnLaPagina(html: string, dominio: string): string[] {
+  const rutas = new Set<string>();
+  for (const m of html.matchAll(/href="(\/[a-z0-9-]{2,30})\/?"/gi)) {
+    const ruta = m[1].toLowerCase();
+    if (NO_ES_FAMILIA.test(ruta)) continue;
+    rutas.add(`https://${dominio}${ruta}`);
+  }
+  return [...rutas].slice(0, 6);
+}
+
 export async function catalogoDelFabricante(
   dominio: string,
   paginaConocida?: string | null,
+  marcaEsperada?: string,
 ): Promise<LecturaDeCatalogo> {
   const candidatas = paginaConocida
     ? [paginaConocida, ...RUTAS_DE_CATALOGO.map((r) => `https://${dominio}${r}`)]
@@ -116,6 +145,8 @@ export async function catalogoDelFabricante(
   let texto = "";
   let dominioLeido = dominio;
   let motivo: string | null = null;
+  let htmlLeido = "";
+  let urlLeida = "";
   for (const url of candidatas) {
     const html = await traer(url);
     if (!html) continue;
@@ -130,6 +161,8 @@ export async function catalogoDelFabricante(
     }
     console.info(`[catalogo] leyendo ${url} — ${t.length} caracteres`);
     texto = t;
+    htmlLeido = html;
+    urlLeida = url;
     try { dominioLeido = new URL(url).hostname.replace(/^www\./, ""); } catch { /* queda el dado */ }
     break;
   }
@@ -138,60 +171,103 @@ export async function catalogoDelFabricante(
     return { items: [], motivo: motivo ?? `No pude abrir ninguna página de ${dominio}.` };
   }
 
-  try {
-    // El primer tramo alcanza: los catálogos listan los productos arriba y
-    // siguen con pie de página, legales y formularios.
-    const d = await invocar("extract-catalog", { chunk: texto.slice(0, 12000) });
-    if (d?.error) {
-      console.warn("[catalogo] el extractor falló:", d.error);
-      return { items: [], motivo: `Leí ${dominioLeido} pero no pude extraer los ` +
-                                  `productos: ${String(d.error).slice(0, 120)}` };
-    }
-    const filas = Array.isArray(d?.rows) ? d.rows : [];
-    console.info(`[catalogo] ${dominioLeido}: ${filas.length} filas extraídas`);
-
-    const items = filas
-      .filter((f: any) => typeof f?.nombre === "string" && f.nombre.trim().length > 1)
-      .map((f: any): ResultadoBusqueda => ({
-        nombre: String(f.nombre).trim(),
-        // Las imágenes que devuelve el modelo son relativas o inventables: se
-        // ignoran. La foto sale después de la búsqueda de imágenes, que es la
-        // que trae URLs que existen.
-        imagen: null,
-        url: null,
-        descripcion: typeof f.descripcion === "string" ? f.descripcion : null,
-        fuente: dominioLeido,
-        /*
-         * El precio del representante oficial, tal cual lo publica.
-         *
-         * No se usa para poner el precio del artículo —ese lo decide quien
-         * vende— sino para mostrarlo al lado, como referencia: "así lo vende
-         * el oficial". Es la comparación más útil que hay, mucho más que la
-         * mediana de un marketplace, porque es el mismo producto en el mismo
-         * país.
-         *
-         * El extractor tiene orden de NO inventar precios: si no está en el
-         * texto, viene null.
-         */
-        precio: Number.isFinite(Number(f.precio)) && Number(f.precio) > 0
-          ? Number(f.precio) : null,
-        moneda: typeof f.moneda === "string" && f.moneda.trim() ? f.moneda.trim() : null,
-        // La familia sale del propio catálogo -"iPhone", "Mac", "Aceites"- y es
-        // lo que permite elegir de a grupos en vez de producto por producto.
-        familia: typeof f.categoria === "string" && f.categoria.trim()
-          ? f.categoria.trim() : null,
-      }))
-      .slice(0, 30);
-
-    return {
-      items,
-      motivo: items.length ? null
-        : `Leí ${dominioLeido} pero no encontré productos en esa página.`,
-    };
-  } catch (err) {
-    console.warn("[catalogo] no se pudo llamar al extractor:", err);
-    return { items: [], motivo: "No se pudo usar el extractor de catálogos." };
+  /**
+   * Se leen la página de entrada Y sus familias.
+   *
+   * Una sola página devuelve los productos de esa página: para MundoMac eso
+   * fueron accesorios de Belkin, HOCO y Spigen, y ningún iPhone. Las familias
+   * —`/mac`, `/iphone`, `/ipad`, `/watch`— están en la navegación y ahí sí
+   * están los productos de la marca.
+   *
+   * La familia sale de la ruta, que es más confiable que lo que el modelo
+   * infiera del texto: `/iphone` es "iPhone" sin lugar a duda.
+   */
+  const paginas: Array<{ url: string; texto: string; familia: string | null }> = [
+    { url: urlLeida, texto, familia: null },
+  ];
+  for (const url of familiasEnLaPagina(htmlLeido, dominioLeido)) {
+    if (url === urlLeida) continue;
+    const h = await traer(url);
+    if (!h) continue;
+    const t = aTexto(h);
+    if (t.length < 400) continue;
+    const ruta = (() => { try { return new URL(url).pathname; } catch { return ""; } })();
+    const nombreFamilia = ruta.replace(/\//g, "").replace(/-/g, " ").trim();
+    paginas.push({ url, texto: t, familia: nombreFamilia || null });
+    if (paginas.length >= 5) break;      // cinco alcanzan; más es demora y gasto
   }
+  console.info(`[catalogo] ${dominioLeido}: ${paginas.length} páginas a extraer`);
+
+  const marcaN = normalizar(marcaEsperada ?? "");
+  const items: ResultadoBusqueda[] = [];
+  let huboError: string | null = null;
+
+  for (const pag of paginas) {
+    try {
+      const d = await invocar("extract-catalog", { chunk: pag.texto.slice(0, 12000) });
+      if (d?.error) { huboError = String(d.error); console.warn("[catalogo] extractor:", d.error); continue; }
+      const filas = Array.isArray(d?.rows) ? d.rows : [];
+
+      for (const f of filas as any[]) {
+        if (typeof f?.nombre !== "string" || f.nombre.trim().length < 2) continue;
+
+        /*
+         * SÓLO PRODUCTOS DE LA MARCA.
+         *
+         * Un representante vende varias marcas: MundoMac tiene Belkin, HOCO,
+         * Spigen y MSI junto con Apple. Pedir "el catálogo de Apple" y recibir
+         * una funda de Spigen es traer el catálogo de la tienda, no el de la
+         * marca.
+         *
+         * Se acepta si la marca que declaró el extractor coincide, o si el
+         * nombre la menciona. Sin marca declarada y sin mención, no entra.
+         */
+        if (marcaN) {
+          const declarada = normalizar(String(f.marca ?? ""));
+          const enNombre  = normalizar(String(f.nombre));
+          const esDeLaMarca = (declarada && (declarada.includes(marcaN) || marcaN.includes(declarada)))
+                           || enNombre.includes(marcaN);
+          if (!esDeLaMarca) continue;
+        }
+
+        items.push({
+          nombre: String(f.nombre).trim(),
+          imagen: null,
+          url: null,
+          descripcion: typeof f.descripcion === "string" ? f.descripcion : null,
+          fuente: dominioLeido,
+          precio: Number.isFinite(Number(f.precio)) && Number(f.precio) > 0
+            ? Number(f.precio) : null,
+          moneda: typeof f.moneda === "string" && f.moneda.trim() ? f.moneda.trim() : null,
+          // La ruta manda sobre lo que el modelo infiera: `/iphone` es iPhone.
+          familia: pag.familia
+            ?? (typeof f.categoria === "string" && f.categoria.trim() ? f.categoria.trim() : null),
+        });
+      }
+    } catch (err) {
+      console.warn("[catalogo] no se pudo llamar al extractor:", err);
+      huboError = "No se pudo usar el extractor de catálogos.";
+    }
+  }
+
+  // Un producto puede repetirse entre la portada y su familia.
+  const vistos = new Set<string>();
+  const unicos = items.filter((r) => {
+    const k = normalizar(r.nombre);
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  }).slice(0, 60);
+
+  console.info(`[catalogo] ${dominioLeido}: ${unicos.length} productos de ${marcaEsperada ?? "la marca"}`);
+
+  return {
+    items: unicos,
+    motivo: unicos.length ? null
+      : huboError
+        ? `Leí ${dominioLeido} pero no pude extraer los productos: ${huboError.slice(0, 120)}`
+        : `Leí ${dominioLeido} pero no encontré productos de ${marcaEsperada ?? "esa marca"} ahí.`,
+  };
 }
 
 /**

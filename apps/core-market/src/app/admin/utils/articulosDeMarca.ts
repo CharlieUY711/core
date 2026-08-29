@@ -21,6 +21,7 @@
  * es peor que mostrar uno dudoso al final.
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
+import { supabase } from "../../../utils/supabase/client";
 import { catalogoDelFabricante, tiendasOficialesLocales,
          type LecturaDeCatalogo } from "./catalogoDelFabricante";
 
@@ -235,6 +236,23 @@ export async function catalogoDeMarca(
    * No es un marketplace: ahí el catálogo es de quien publica, mezclado con
    * reventa, usados y accesorios de terceros. Es el representante de la marca.
    */
+  /*
+   * PRIMERO EL CATÁLOGO DE MARKET.
+   *
+   * Leer un catálogo son cuatro llamadas encadenadas —buscar representantes,
+   * ubicar la página, traerla por el proxy, extraer con un modelo—: tarda,
+   * cuesta, y hasta ahora el resultado se tiraba al cerrar el formulario. La
+   * tienda siguiente que cargara un producto de la misma marca repetía todo.
+   *
+   * Guardado, la lectura se hace UNA vez y sirve para todas. Y mejora sola:
+   * cada marca que alguien lee queda disponible para el resto.
+   */
+  const guardado = await catalogoGuardadoDeMarket(_marca);
+  if (guardado.length > 0) {
+    console.info(`[catalogo] ${_marca}: ${guardado.length} productos del catálogo de Market`);
+    return { items: guardado, motivo: null };
+  }
+
   const oficiales = await tiendasOficialesLocales(_marca, dominio);
   console.info("[catalogo] representantes a probar:", oficiales.length ? oficiales : "(ninguno)");
 
@@ -244,8 +262,11 @@ export async function catalogoDeMarca(
 
   for (const oficial of oficiales) {
     const paginaOficial = await ubicarPaginaDeProductos(oficial);
-    const delOficial = await catalogoDelFabricante(oficial, paginaOficial);
-    if (delOficial.items.length > 0) return delOficial;
+    const delOficial = await catalogoDelFabricante(oficial, paginaOficial, _marca);
+    if (delOficial.items.length > 0) {
+      await guardarEnMarket(_marca, oficial, delOficial.items);
+      return delOficial;
+    }
     ultimoMotivo = delOficial.motivo ?? ultimoMotivo;
   }
 
@@ -254,12 +275,63 @@ export async function catalogoDeMarca(
   // tiene el catálogo.
   if (dominio) {
     const paginaProductos = await ubicarPaginaDeProductos(dominio);
-    const delFabricante = await catalogoDelFabricante(dominio, paginaProductos);
-    if (delFabricante.items.length > 0) return delFabricante;
+    const delFabricante = await catalogoDelFabricante(dominio, paginaProductos, _marca);
+    if (delFabricante.items.length > 0) {
+      await guardarEnMarket(_marca, dominio, delFabricante.items);
+      return delFabricante;
+    }
     ultimoMotivo = delFabricante.motivo ?? ultimoMotivo;
   }
 
   return { items: [], motivo: ultimoMotivo };
+}
+
+/** Lo que Market ya sabe de esta marca. Vacío = hay que salir a leerlo. */
+async function catalogoGuardadoDeMarket(marca: string): Promise<ResultadoBusqueda[]> {
+  try {
+    const { data, error } = await supabase.rpc("catalogo_market_de_marca", {
+      p_marca: marca, p_dias_frescura: 7,
+    });
+    if (error || !Array.isArray(data)) return [];
+    return (data as any[]).map((r) => ({
+      nombre: String(r.nombre),
+      imagen: null,
+      url: null,
+      descripcion: r.descripcion ?? null,
+      fuente: r.fuente ?? "",
+      precio: r.precio_ref != null ? Number(r.precio_ref) : null,
+      moneda: r.moneda ?? null,
+      familia: r.familia ?? null,
+    }));
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * Guarda lo leído para las tiendas que vengan.
+ *
+ * Que falle no invalida nada: quien lo pidió ya tiene su catálogo en pantalla.
+ * Se pierde el beneficio para el siguiente, no para este.
+ */
+async function guardarEnMarket(
+  marca: string, fuente: string, items: ResultadoBusqueda[],
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc("guardar_catalogo_market", {
+      p_marca: marca,
+      p_fuente: fuente,
+      p_items: items.map((r) => ({
+        nombre: r.nombre, familia: r.familia ?? null,
+        descripcion: r.descripcion ?? null,
+        precio: r.precio ?? null, moneda: r.moneda ?? null,
+      })),
+    });
+    if (error) console.warn("[catalogo] no se pudo guardar en Market:", error.message);
+    else console.info(`[catalogo] guardados ${items.length} productos de ${marca} en Market`);
+  } catch (err) {
+    console.warn("[catalogo] no se pudo guardar en Market:", err);
+  }
 }
 
 /**
