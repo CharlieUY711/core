@@ -49,7 +49,8 @@ export function useMediaLibrary(filter: MediaFilter = {}) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       if (!user) throw new Error("No autenticado");
 
       let q = supabase

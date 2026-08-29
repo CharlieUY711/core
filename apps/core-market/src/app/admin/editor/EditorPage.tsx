@@ -61,7 +61,8 @@ export default function EditorPage() {
     }
     setSaving(true); setSaveMsg("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
       const folder   = user?.id || "public";
       const vNum     = store.versionCount + 1;
       const baseName = (store.originalName || "imagen").replace(/\.[^.]+$/, "");

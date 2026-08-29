@@ -366,7 +366,8 @@ export default function AdminImport() {
     if (!approved.length) return;
     setIngesting(true);
     try {
-      const { data:{user} } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       if (!user) throw new Error("No autenticado");
       let ok = 0; const errors: string[] = [];
 

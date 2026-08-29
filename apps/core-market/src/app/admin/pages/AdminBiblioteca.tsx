@@ -120,7 +120,8 @@ export default function AdminBiblioteca({
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) { notify("Sesión expirada", false); return; }
 
     const arr = Array.from(files);

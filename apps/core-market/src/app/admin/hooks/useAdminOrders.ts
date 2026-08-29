@@ -14,7 +14,8 @@ export function useAdminOrders(limit = 50, isAdmin = false) {
       .limit(limit);
 
     if (!isAdmin) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
       if (user) query = query.eq("user_id", user.id);
     }
 

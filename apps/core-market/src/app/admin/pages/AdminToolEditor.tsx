@@ -67,7 +67,8 @@ export default function AdminToolEditor() {
   const handleExport = useCallback(async (blob: Blob, format: string) => {
     setUploadStatus({ state: "uploading", message: "Subiendo imagen editada…" });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       if (!user) throw new Error("No autenticado");
 
       const ext      = format === "jpeg" ? "jpg" : format;

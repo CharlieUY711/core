@@ -66,8 +66,10 @@ export async function createVaultEntry(
   // mandaba, asi que toda alta era rechazada por RLS. Se toma de la sesion, no
   // del formulario: que el cliente pueda elegir de quien es una credencial
   // seria justamente lo que la politica trata de impedir.
-  const { data: sesion } = await supabase.auth.getUser()
-  const userId = sesion?.user?.id
+  // `getSession` devuelve { session }, no { user }: leer `sesion.user` daba
+  // siempre undefined y toda alta volvia a fallar por RLS, ahora en silencio.
+  const { data: sesion } = await supabase.auth.getSession()
+  const userId = sesion?.session?.user?.id
   if (!userId) {
     return { ok: false, error: 'No hay sesión activa. Volvé a iniciar sesión para guardar credenciales.' }
   }

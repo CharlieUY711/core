@@ -8,7 +8,8 @@ export default function DashboardLayout() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null;
       if (!user) { navigate("/?login=true&redirect=/dashboard"); return; }
       setUser(user);
     });
