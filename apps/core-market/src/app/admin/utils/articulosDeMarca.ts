@@ -22,7 +22,7 @@
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
 import { supabase } from "../../../utils/supabase/client";
-import { catalogoDelFabricante, tiendasOficialesLocales,
+import { catalogoDelFabricante, tiendasOficialesLocales, pareceDelPais,
          type LecturaDeCatalogo } from "./catalogoDelFabricante";
 
 /** Caminos donde los sitios publican sus productos. */
@@ -264,6 +264,14 @@ export async function catalogoDeMarca(
     const paginaOficial = await ubicarPaginaDeProductos(oficial);
     const delOficial = await catalogoDelFabricante(oficial, paginaOficial, _marca);
     if (delOficial.items.length > 0) {
+      // Un catálogo en pesos argentinos no es de una tienda uruguaya, por más
+      // que Google lo haya devuelto buscando "Uruguay". Se sigue con el
+      // siguiente representante en vez de ofrecer precios de otro país.
+      if (!pareceDelPais(delOficial.items)) {
+        console.warn(`[catalogo] ${oficial}: los precios no son del país, sigo con otro.`);
+        ultimoMotivo = `${oficial} publica precios de otro país.`;
+        continue;
+      }
       await guardarEnMarket(_marca, oficial, delOficial.items);
       return delOficial;
     }

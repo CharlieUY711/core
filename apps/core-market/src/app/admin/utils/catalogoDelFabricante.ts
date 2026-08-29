@@ -330,7 +330,42 @@ export async function tiendasOficialesLocales(
     // Diarios y notas: hablan de la marca, no la venden.
     if (/noticias|diario|observador|elpais|montevideo\.com/.test(host)) continue;
     hosts.push(host);
-    if (hosts.length >= 3) break;      // tres intentos alcanzan; más es demora
+    if (hosts.length >= 5) break;
   }
-  return hosts;
+
+  /*
+   * Los del país primero.
+   *
+   * Buscando "Apple distribuidor oficial Uruguay" Google devolvió
+   * `maximstore.com` —una tienda ARGENTINA— antes que las uruguayas, y su
+   * catálogo vino en pesos argentinos. El `gl: uy` de la búsqueda inclina los
+   * resultados pero no los garantiza.
+   *
+   * El dominio `.uy` es la señal más barata y más confiable de que una tienda
+   * es de acá. No alcanza —MundoMac es uruguaya y usa `.com`— así que ordena
+   * en vez de filtrar: primero las `.uy`, después el resto.
+   */
+  const esLocal = (h: string) => h.endsWith(".uy");
+  return [...hosts.filter(esLocal), ...hosts.filter((h) => !esLocal(h))].slice(0, 3);
+}
+
+/**
+ * Las monedas con las que se vende en el país.
+ *
+ * Un catálogo en pesos argentinos no es de una tienda uruguaya, por más que el
+ * dominio no lo diga y por más que Google lo haya devuelto buscando "Uruguay".
+ * La moneda es el dato que no miente: se factura en la del lugar donde se
+ * vende.
+ */
+const MONEDAS_DEL_PAIS = new Set(["UYU", "USD", "U$S", "$U"]);
+
+/** ¿Este catálogo es de acá? Sin precios no se puede saber, y se acepta. */
+export function pareceDelPais(items: ResultadoBusqueda[]): boolean {
+  const monedas = items
+    .map((r) => (r.moneda ?? "").trim().toUpperCase())
+    .filter(Boolean);
+  if (!monedas.length) return true;
+  const ajenas = monedas.filter((m) => !MONEDAS_DEL_PAIS.has(m)).length;
+  // Si más de la mitad de los precios vienen en otra moneda, es de otro país.
+  return ajenas <= monedas.length / 2;
 }
