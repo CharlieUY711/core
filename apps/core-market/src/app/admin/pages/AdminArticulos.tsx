@@ -72,8 +72,8 @@ const DESTINOS_PRECIO = [
   { id:"otro", label:"Otro", nombre:"Otro",       color:"#7A1FBF" },
 ] as const;
 
-/** Todas las pastillas miden lo mismo: la mas larga es "Otro". */
-const ANCHO_DESTINO = 46;
+/** Ancho del "+", que va al final de la fila de destinos. */
+const ANCHO_MAS = 22;
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
   { id:"bajo_pedido",  label:"Bajo pedido",   desc:"Se consigue en 3-5 días" },
@@ -480,6 +480,20 @@ function CampoConCheck({
  * asi la leyenda sigue siendo del color del destino, que es lo que se reconoce
  * sin leer, en vez de volverse blanca y perderlo.
  */
+/**
+ * La fila de destinos: seis columnas iguales y el "+" al final.
+ *
+ * Misma caja y mismo gap que el renglon de moneda/precio/impuesto, asi los dos
+ * miden EXACTAMENTE lo mismo. Antes las pastillas tenian un ancho fijo y la
+ * fila terminaba antes o despues que la de arriba segun la pantalla, que es
+ * justo lo que se nota.
+ */
+const filaDestinos: React.CSSProperties = {
+  display:"grid",
+  gridTemplateColumns:`repeat(${DESTINOS_PRECIO.length}, 1fr) ${ANCHO_MAS}px`,
+  gap:"0.4rem", alignItems:"center", width:"100%",
+};
+
 function PastillasDestino({ elegidos, onToggle, ocupados }: {
   elegidos: string[];
   onToggle: (id: string) => void;
@@ -487,7 +501,7 @@ function PastillasDestino({ elegidos, onToggle, ocupados }: {
   ocupados?: string[];
 }) {
   return (
-    <div style={{ display:"flex", gap:5, alignItems:"center", flexWrap:"wrap" }}>
+    <>
       {DESTINOS_PRECIO.map(d => {
         const on = elegidos.includes(d.id);
         const tomado = !on && (ocupados ?? []).includes(d.id);
@@ -496,7 +510,7 @@ function PastillasDestino({ elegidos, onToggle, ocupados }: {
             onClick={() => onToggle(d.id)}
             title={tomado ? `${d.nombre} ya tiene otro precio` : d.nombre}
             style={{
-              width:ANCHO_DESTINO, height:20, padding:0,
+              width:"100%", height:20, padding:0,
               borderRadius:999,
               border:`1.5px solid ${tomado ? "var(--border)" : d.color}`,
               background: on ? `${d.color}26` : "#fff",
@@ -509,7 +523,7 @@ function PastillasDestino({ elegidos, onToggle, ocupados }: {
             }}>{d.label}</button>
         );
       })}
-    </div>
+    </>
   );
 }
 
@@ -2055,7 +2069,7 @@ export default function AdminArticulos(
                   quien cotiza distinto para Instagram casi siempre parte del
                   mismo numero y le cambia algo, y arrancar de cero obliga a
                   escribir de nuevo lo que ya estaba. */}
-              <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+              <div style={filaDestinos}>
                 <PastillasDestino
                   elegidos={destinosBase}
                   ocupados={lineasPrecio.flatMap(l => l.destinos)}
@@ -2067,7 +2081,7 @@ export default function AdminArticulos(
                     id: (ls[ls.length-1]?.id ?? 0) + 1,
                     precio, moneda, tasaId, destinos: [],
                   }])}
-                  style={{ width:22, height:20, padding:0, borderRadius:999,
+                  style={{ width:"100%", height:20, padding:0, borderRadius:999,
                     border:"1.5px dashed var(--gray-400)", background:"#fff",
                     color:"var(--gray-400)", cursor:"pointer", fontSize:"12px",
                     fontWeight:800, fontFamily:"inherit" }}>+</button>
@@ -2099,7 +2113,7 @@ export default function AdminArticulos(
                         {tasas.map(t => <option key={t.id} value={t.id}>{t.rate}%</option>)}
                       </select>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                    <div style={filaDestinos}>
                       <PastillasDestino
                         elegidos={l.destinos}
                         ocupados={ocupados}
@@ -2107,12 +2121,14 @@ export default function AdminArticulos(
                           l.destinos.includes(id)
                             ? l.destinos.filter(x => x !== id)
                             : [...l.destinos, id])}/>
+                      {/* Ocupa el lugar del "+" de la linea de arriba, para
+                          que las dos filas terminen en la misma columna. */}
                       <button type="button" title="Quitar este precio"
                         onClick={() => setLineasPrecio(ls => ls.filter((_, j) => j !== i))}
-                        style={{ border:"none", background:"none", padding:0, cursor:"pointer",
-                          color:"var(--gray-400)", fontSize:"0.78rem", textDecoration:"underline" }}>
-                        Quitar
-                      </button>
+                        style={{ width:"100%", height:20, padding:0, borderRadius:999,
+                          border:"1.5px dashed var(--border)", background:"#fff",
+                          color:"var(--gray-400)", cursor:"pointer", fontSize:"12px",
+                          fontWeight:800, fontFamily:"inherit" }}>×</button>
                     </div>
                   </div>
                 );
