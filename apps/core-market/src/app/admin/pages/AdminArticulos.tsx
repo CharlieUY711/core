@@ -396,7 +396,7 @@ const ANCHO_MINIMO_FILA =
 function CampoConCheck({
   valor, onChange, placeholder, marcado, onMarcar, etiqueta,
   soloLectura = false, estiloInput, confirmado = false, onCambiar,
-  bloqueado = false,
+  bloqueado = false, onEnter,
 }: {
   valor: string;
   onChange: (v: string) => void;
@@ -419,6 +419,14 @@ function CampoConCheck({
    * decision explicita, y los dos se comportan igual.
    */
   bloqueado?: boolean;
+  /**
+   * Que hacer con Enter en este campo.
+   *
+   * En un campo con lista de sugerencias, Enter significa "esta" — no "pasar
+   * al siguiente". La regla general de la app -Enter como Tab- se apaga aca
+   * con `data-enter-nativo`, que existe justo para este caso.
+   */
+  onEnter?: () => void;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
   const alternar = () => {
@@ -428,11 +436,15 @@ function CampoConCheck({
     requestAnimationFrame(() => ref.current?.focus());
   };
   return (
-    <div style={{ position:"relative", flex:1, minWidth:0 }}>
+    <div style={{ position:"relative", flex:1, minWidth:0 }}
+      {...(onEnter ? { "data-enter-nativo": "" } : null)}>
       <input ref={ref}
         style={{ ...estiloInput, width:"100%", paddingRight: etiqueta.length * 6.4 + 34,
           ...(bloqueado ? { background:"#F8F9FB", cursor:"text" } : null) }}
         value={valor} readOnly={soloLectura || bloqueado}
+        onKeyDown={onEnter ? (e) => {
+          if (e.key === "Enter") { e.preventDefault(); onEnter(); }
+        } : undefined}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} />
       {(confirmado || bloqueado) ? (
@@ -701,6 +713,14 @@ export default function AdminArticulos(
   const [marcaConfirmada, setMarcaConfirmada] = useState(false);
   const [candidatosMarca, setCandidatosMarca] = useState<MarcaSugerida[]>([]);
   const [buscandoMarca,  setBuscandoMarca]    = useState(false);
+  /**
+   * Dominio del fabricante de la marca elegida.
+   *
+   * Es lo que permite buscar el articulo EN SU SITIO y no en cualquier lado.
+   * Sin esto, con la marca "Apple" confirmada, "iPhone 17" traia igual paginas
+   * de reviews, de tiendas y de foros — cualquier lugar donde se mencione.
+   */
+  const [marcaDominio,   setMarcaDominio]   = useState<string|null>(null);
   const [logoUrl,        setLogoUrl]        = useState<string|null>(null); // logo encontrado
   const [logoPersonalizado, setLogoPersonalizado] = useState<string|null>(null); // subido a mano
   const [logoError,      setLogoError]      = useState(false); // el logo encontrado no cargó
@@ -781,11 +801,14 @@ export default function AdminArticulos(
     setMarca(m.nombre);
     setMarcaModo("sugerida");
     setMarcaConfirmada(true);
+    setMarcaDominio(m.dominio);
     setLogoUrl(m.imagen ?? logoDeDominio(m.dominio));
     setLogoError(false);
     setLogoPersonalizado(null);
   };
+  const olvidarDominioDeMarca = () => setMarcaDominio(null);
   const elegirMarcaPersonalizada = () => {
+    olvidarDominioDeMarca();
     setMarcaModo("personalizada");
     setMarcaConfirmada(true);
     setLogoUrl(null);
@@ -991,19 +1014,41 @@ export default function AdminArticulos(
        * `incluirCanales: false` es lo que lo garantiza, igual que en la
        * búsqueda de marca.
        */
-      const web = await buscar(conMarca, { incluirCanales: false });
+      /*
+       * Primero en el sitio del fabricante, despues afuera.
+       *
+       * Con la marca confirmada tenemos su dominio, y `site:` restringe la
+       * busqueda a el. Es la diferencia entre "las versiones del iPhone 17 que
+       * Apple publica" y "todo lo que Google conoce donde aparezca iPhone 17"
+       * — reviews, foros, tiendas de terceros.
+       *
+       * Si el sitio oficial no devuelve nada -no todas las marcas tienen
+       * catalogo en linea, ni todos los productos estan- se abre a la web. Es
+       * mejor que quedarse sin sugerencias, y la lista dice de donde salio
+       * cada una.
+       */
+      const oficial = marcaDominio
+        ? await buscar(`site:${marcaDominio} ${q}`, { incluirCanales: false })
+        : [];
+      const web = oficial.length > 0
+        ? oficial
+        : await buscar(conMarca, { incluirCanales: false });
       if (!vivo) return;
       setCandidatos(web.map(r => ({
         id: r.url ?? r.nombre,
+        // `canal` vacio marca que viene de la web y no de un canal: adoptarlo
+        // no es pedirle la ficha a nadie, es quedarse con lo que ya trajo.
+        canal: "",
         nombre: r.nombre,
         imagen: r.imagen,
         rasgos: r.descripcion ? [r.descripcion] : [],
         canalNombre: r.fuente,
+        descripcion: r.descripcion,
       })) as any);
       setBuscandoProd(false);
     }, 600);
     return () => { vivo = false; clearTimeout(t); };
-  }, [nombre, idElegido, articuloPersonalizado, marca, marcaConfirmada, marcaModo, abiertos]);
+  }, [nombre, idElegido, articuloPersonalizado, marca, marcaConfirmada, marcaModo, marcaDominio, abiertos]);
 
   // Imágenes y videos encontrados en la web para marca + artículo. Sólo
   // tiene sentido buscar una vez que hay algo de las dos cosas escrito: son
@@ -1048,21 +1093,60 @@ export default function AdminArticulos(
    * redacto su descripcion o cargo sus fotos, son suyas y valen mas que las
    * del catalogo.
    */
-  const adoptarProducto = async (id: string, canal: string) => {
+  /**
+   * Elegir uno de los candidatos.
+   *
+   * LA DIVISION DE FUENTES
+   * Lo que define AL ARTICULO —titulo, foto, descripcion— sale de donde se
+   * encontro: la web del fabricante. De Mercado Libre se pide otra cosa y
+   * despues: en que departamento y categoria lo clasifica, y a cuanto lo vende
+   * la competencia.
+   *
+   * Antes esto le pedia la ficha entera al canal, asi que el articulo quedaba
+   * escrito con los titulos, las fotos y la forma de nombrar de ML. Y desde que
+   * la busqueda pasa por la web, ese pedido ni siquiera encontraba nada: un
+   * resultado web no tiene canal al que preguntarle.
+   */
+  const adoptarProducto = async (id: string, canal: string, c?: any) => {
+    setCandidatos([]);
+    setIdElegido(id);
+
+    // 1) El articulo, de donde se encontro.
+    const titulo = (c?.nombre ?? nombre).trim();
+    if (titulo) setNombre(titulo);
+    if (!descripcion.trim() && c?.descripcion)
+      setDescripcion(String(c.descripcion).slice(0, MAX_DESCRIPCION));
+
+    /*
+     * Las fotos se ELIGEN, no solo se ofrecen.
+     *
+     * La busqueda de imagenes ya corria y dejaba resultados en la lista de
+     * candidatas, esperando que alguien las tildara una por una. Elegir un
+     * articulo es decir "es este": las primeras fotos del fabricante entran
+     * solas, y sacar la que no sirve cuesta menos que buscar cuatro.
+     *
+     * Solo si no habia ninguna: nunca se pisa lo que ya se cargo a mano.
+     */
+    if (!imagenes.length) {
+      const q = `${marca.trim()} ${titulo}`.trim();
+      const fotos = q.length >= 4 ? await buscarImagenes(q) : [];
+      const urls = fotos.map(f => f.imagen).filter((u): u is string => !!u).slice(0, 4);
+      if (urls.length) setImagenes(urls);
+      else if (c?.imagen) setImagenes([c.imagen]);
+    }
+
+    // 2) La clasificacion y la competencia, de Mercado Libre. Que falle no
+    //    invalida nada: el articulo ya quedo definido con lo de arriba.
     setBuscandoProd(true);
-    // Se le pide la ficha al canal que lo conoce, no siempre al mismo.
-    const f = await fichaPorTitulo("", canal, id);
+    const f = canal
+      ? await fichaPorTitulo("", canal, id)
+      : await fichaPorTitulo(titulo);
     setBuscandoProd(false);
     if (!f) return;
+
     setElegido(f);
-    setIdElegido(id);
-    setCandidatos([]);
-    if (f.nombre) setNombre(f.nombre);
-    // La sugerida del catalogo puede pasarse: se recorta al mismo tope que
-    // acepta el campo, para no dejar un texto que despues no se puede guardar.
-    if (!descripcion.trim() && f.descripcionSugerida)
-      setDescripcion(f.descripcionSugerida.slice(0, MAX_DESCRIPCION));
-    if (!imagenes.length && f.imagenes.length) setImagenes(f.imagenes.slice(0, 8));
+    // Solo el precio de mercado: la descripcion y las fotos ya vinieron del
+    // fabricante y no se pisan con las del canal.
     if (!precio && f.mercado?.mediana) setPrecio(String(Math.round(f.mercado.mediana)));
   };
 
@@ -2019,6 +2103,10 @@ export default function AdminArticulos(
                   confirmado={marcaConfirmada && marcaModo === "sugerida"}
                   onCambiar={() => { abrir("marca"); cambiarMarca(); }}
                   bloqueado={bloqueaCampos && !abiertos.has("marca")}
+                  onEnter={() => {
+                    const m = candidatosMarca[0];
+                    if (m) elegirMarcaSugerida(m);
+                  }}
                   estiloInput={inp} />
 
                 {/* Logo de la marca: mismo patrón que los tiles de fotos del
@@ -2192,6 +2280,12 @@ export default function AdminArticulos(
                   confirmado={!!idElegido}
                   onCambiar={() => { abrir("nombre"); setIdElegido(null); setElegido(null); setCandidatos([]); }}
                   bloqueado={bloqueaCampos && !abiertos.has("nombre")}
+                  // Enter elige el primer candidato: la lista ya muestra
+                  // arriba el que se estaba buscando.
+                  onEnter={() => {
+                    const c: any = candidatos[0];
+                    if (c) adoptarProducto(c.id, c.canal, c);
+                  }}
                   estiloInput={inp} />
               </div>
 
@@ -2212,7 +2306,7 @@ export default function AdminArticulos(
                     ¿Cuál de estos es? Elegir uno completa el resto solo.
                   </div>
                   {candidatos.map(c => (
-                    <button key={c.canal + c.id} onClick={() => adoptarProducto(c.id, c.canal)}
+                    <button key={c.canal + c.id} onClick={() => adoptarProducto(c.id, c.canal, c)}
                       style={{ display:"flex", alignItems:"center", gap:9, width:"100%",
                         textAlign:"left", padding:"7px 10px", border:"none", background:"transparent",
                         cursor:"pointer", borderBottom:"1px solid var(--gray-50)" }}>
