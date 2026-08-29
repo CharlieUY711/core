@@ -21,6 +21,7 @@
  * es peor que mostrar uno dudoso al final.
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
+import { catalogoDelFabricante } from "./catalogoDelFabricante";
 
 /** Caminos donde los sitios publican sus productos. */
 const CAMINOS_DE_PRODUCTO = [
@@ -189,11 +190,46 @@ export async function buscarArticulosDeMarca(
 export async function catalogoDeMarca(
   marca: string, dominio: string | null,
 ): Promise<ResultadoBusqueda[]> {
+  /*
+   * Primero se LEE el sitio, no se lo busca.
+   *
+   * Una búsqueda devuelve las páginas que Google decidió mostrar, no el
+   * catálogo: para Olivares de Santa Laura traía cuatro productos, una nota de
+   * prensa y "Premios y reconocimientos", mientras que su sección Productos
+   * tiene cuatro categorías con dos o más presentaciones cada una. Ni completo
+   * ni limpio.
+   *
+   * Leer la página de productos del fabricante da las dos cosas: todo lo que
+   * publica, y sólo eso.
+   */
+  if (dominio) {
+    const paginaProductos = await ubicarPaginaDeProductos(dominio);
+    const delFabricante = await catalogoDelFabricante(dominio, paginaProductos);
+    if (delFabricante.length > 0) return delFabricante;
+  }
+
+  // Si no se pudo leer —sitio en JavaScript, proxy bloqueado, sin catálogo en
+  // línea— queda la búsqueda, que es peor pero es algo.
   const delSitio = dominio
     ? await buscar(`site:${dominio} productos`, { incluirCanales: false })
     : [];
   if (delSitio.length > 0) return delSitio;
   return buscar(`${marca.trim()} productos`, { incluirCanales: false });
+}
+
+/**
+ * La URL de la sección de productos, si la búsqueda la conoce.
+ *
+ * Es justo la página que el filtro descarta por no ser un producto —"Productos"
+ * es un índice— pero es donde están todos. Se la busca a propósito.
+ */
+async function ubicarPaginaDeProductos(dominio: string): Promise<string | null> {
+  const r = await buscar(`site:${dominio} productos`, { incluirCanales: false });
+  const candidata = r.find((x) => {
+    const c = caminoDe(x.url).toLowerCase();
+    return /product|catalog|tienda|shop/.test(c);
+  });
+  return candidata?.url ?? null;
 }
 
 /** Deja sólo lo que parece un producto DE esta marca. */

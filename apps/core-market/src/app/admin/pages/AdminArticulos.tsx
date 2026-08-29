@@ -899,6 +899,12 @@ export default function AdminArticulos(
   const [masivoItems, setMasivoItems]       = useState<ResultadoBusqueda[]>([]);
   const [masivoElegidos, setMasivoElegidos] = useState<Set<string>>(new Set());
   const [masivoCargando, setMasivoCargando] = useState(false);
+  /**
+   * Si el cuadro se abrio DESPUES de guardar, "el punto anterior" es la lista:
+   * el alta ya termino. Si se abrio desde el enlace, es el formulario. Volver
+   * tiene que llevar a donde estaba cada uno, no siempre al mismo lado.
+   */
+  const [masivoTrasGuardar, setMasivoTrasGuardar] = useState(false);
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
@@ -1608,12 +1614,20 @@ export default function AdminArticulos(
     setMasivoCargando(false);
     setMasivoItems(otros);
     setMasivoElegidos(new Set());
+    setMasivoTrasGuardar(false);
     setMasivoAbierto(true);
+  };
+
+  /** Cerrar el cuadro y volver a donde estaba: el formulario, o la lista. */
+  const volverDelCuadro = () => {
+    setMasivoAbierto(false);
+    if (masivoTrasGuardar) salir(true);
   };
 
   const crearElegidosDeMarca = async () => {
     const elegidos = masivoItems.filter(r => masivoElegidos.has(r.nombre));
-    if (!elegidos.length) { setMasivoAbierto(false); salir(true); return; }
+    // Sin nada tildado, "Crear selección" no crea nada: equivale a volver.
+    if (!elegidos.length) { volverDelCuadro(); return; }
 
     setMasivoCargando(true);
     let creados = 0;
@@ -1638,7 +1652,7 @@ export default function AdminArticulos(
       ? "No se pudo crear ninguno"
       : `${creados} borrador${creados === 1 ? "" : "es"} más de ${marca.trim()}. Les falta el precio.`,
       creados > 0);
-    setTimeout(() => salir(true), 900);
+    setTimeout(() => salir(true), 900);   // creados: se va a verlos a la lista
   };
 
   const deshacer = async () => {
@@ -2090,6 +2104,7 @@ export default function AdminArticulos(
         if (otros.length > 0) {
           setMasivoItems(otros);
           setMasivoElegidos(new Set());
+          setMasivoTrasGuardar(true);
           setMasivoAbierto(true);
           return;                       // se sale al cerrar el cuadro, no antes
         }
@@ -3223,11 +3238,11 @@ export default function AdminArticulos(
 
             <div style={{ padding:"0.85rem 1.25rem", borderTop:"1px solid var(--border)",
               display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <button onClick={() => { setMasivoAbierto(false); salir(true); }}
+              <button onClick={volverDelCuadro}
                 style={{ border:"none", background:"none", padding:0, cursor:"pointer",
                   color:"var(--mute)", fontSize:"0.82rem", textDecoration:"underline",
                   fontFamily:"inherit" }}>
-                No, terminar
+                ← Volver
               </button>
               <button onClick={crearElegidosDeMarca} disabled={masivoCargando}
                 style={{ padding:"0.55rem 1.2rem", borderRadius:9, border:"none",
@@ -3237,8 +3252,8 @@ export default function AdminArticulos(
                   cursor: masivoCargando ? "wait" : "pointer" }}>
                 {masivoCargando ? "Creando…"
                   : masivoElegidos.size
-                    ? `Crear ${masivoElegidos.size}`
-                    : "Crear seleccionados"}
+                    ? `Crear selección (${masivoElegidos.size})`
+                    : "Crear selección"}
               </button>
             </div>
           </div>
