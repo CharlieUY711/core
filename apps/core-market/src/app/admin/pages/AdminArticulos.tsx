@@ -86,6 +86,19 @@ const DESTINOS_PRECIO = [
 
 /** Ancho del "+", que va al final de la fila de destinos. */
 const ANCHO_MAS = 22;
+
+/**
+ * Los dias, en el orden en que se leen y con el numero que usa la base.
+ *
+ * 0 = domingo … 6 = sabado, igual que `extract(dow)` en Postgres y que
+ * `getDay()` en JavaScript. Se arranca en lunes porque una promo de fin de
+ * semana se piensa como "viernes, sabado y domingo", no como "domingo y
+ * despues viernes y sabado".
+ */
+const DIAS_SEMANA = [
+  { n:1, l:"L" }, { n:2, l:"M" }, { n:3, l:"M" }, { n:4, l:"J" },
+  { n:5, l:"V" }, { n:6, l:"S" }, { n:0, l:"D" },
+] as const;
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
   { id:"bajo_pedido",  label:"Bajo pedido",   desc:"Se consigue en 3-5 días" },
@@ -492,6 +505,31 @@ function CampoConCheck({
  * asi la leyenda sigue siendo del color del destino, que es lo que se reconoce
  * sin leer, en vez de volverse blanca y perderlo.
  */
+/**
+ * Cómo se lee la vigencia de una línea, en una sola frase.
+ *
+ * El panel está plegado casi siempre, así que este texto es lo único que
+ * distingue "sin nada puesto" de "hay una campaña configurada acá abajo".
+ * Plegado no puede significar oculto.
+ */
+function resumenVigencia(l: {
+  etiqueta: string; desde: string; hasta: string;
+  horaDesde: string; horaHasta: string; dias: number[];
+}): string {
+  const partes: string[] = [];
+  if (l.desde && l.hasta)   partes.push(`${l.desde} → ${l.hasta}`);
+  else if (l.desde)         partes.push(`desde ${l.desde}`);
+  else if (l.hasta)         partes.push(`hasta ${l.hasta}`);
+
+  if (l.dias.length && l.dias.length < 7) {
+    partes.push(DIAS_SEMANA.filter(d => l.dias.includes(d.n)).map(d => d.l).join(""));
+  }
+  if (l.horaDesde && l.horaHasta) partes.push(`${l.horaDesde}–${l.horaHasta}`);
+
+  const cuando = partes.length ? partes.join(" · ") : "siempre";
+  return l.etiqueta ? `${l.etiqueta} · ${cuando}` : `Rige ${cuando}`;
+}
+
 /**
  * La fila de destinos: seis columnas iguales y el "+" al final.
  *
@@ -1083,8 +1121,13 @@ export default function AdminArticulos(
    * es una ambiguedad.
    */
   const [lineasPrecio, setLineasPrecio] = useState<
-    { id: number; precio: string; moneda: string; tasaId: string | null; destinos: string[] }[]
+    { id: number; precio: string; moneda: string; tasaId: string | null; destinos: string[];
+      etiqueta: string; desde: string; hasta: string;
+      horaDesde: string; horaHasta: string; dias: number[] }[]
   >([]);
+
+  /** Que linea tiene abierto el panel de vigencia. */
+  const [vigenciaAbierta, setVigenciaAbierta] = useState<number | null>(null);
   const [destinosBase, setDestinosBase] = useState<string[]>([]);
 
   /**
@@ -1179,6 +1222,36 @@ export default function AdminArticulos(
     supabase.rpc("hay_deshacer", { p_variant_id: articulo.id }).then(({ data }) => {
       if (vivo) setDeshacerDesde((data as string) ?? null);
     });
+    /*
+     * Las lineas guardadas.
+     *
+     * La de prioridad 0 es la base -la que rige donde ninguna otra dice lo
+     * contrario- y es la que se muestra arriba, junto al precio del articulo.
+     * Las demas son las que agrego el "+", y ganan sobre ella: por eso tienen
+     * prioridad mayor. La prioridad no es un numero decorativo, es lo que hace
+     * que una promo conviva con el precio de lista sin apagarlo.
+     */
+    supabase.rpc("lineas_de_precio", { p_variante_id: articulo.id }).then(({ data }) => {
+      if (!vivo || !Array.isArray(data)) return;
+      const filas = data as any[];
+      const base   = filas.find(f => Number(f.prioridad) === 0);
+      const extras = filas.filter(f => Number(f.prioridad) !== 0);
+      if (base) setDestinosBase(base.destinos ?? []);
+      setLineasPrecio(extras.map((f, i) => ({
+        id: i + 1,
+        precio: String(f.precio ?? ""),
+        moneda: f.moneda ?? "UYU",
+        tasaId: f.tax_rate_id ?? null,
+        destinos: f.destinos ?? [],
+        etiqueta: f.etiqueta ?? "",
+        // Los timestamptz vienen completos y el input date quiere solo la fecha.
+        desde: f.desde ? String(f.desde).slice(0, 10) : "",
+        hasta: f.hasta ? String(f.hasta).slice(0, 10) : "",
+        horaDesde: f.hora_desde ? String(f.hora_desde).slice(0, 5) : "",
+        horaHasta: f.hora_hasta ? String(f.hora_hasta).slice(0, 5) : "",
+        dias: Array.isArray(f.dias) ? f.dias.map(Number) : [],
+      })));
+    });
     return () => { vivo = false; };
   }, [articulo?.id]);
 
@@ -1188,6 +1261,46 @@ export default function AdminArticulos(
    * Que falle no invalida el alta: el articulo ya existe y esto se puede
    * completar despues. Se avisa por consola y sigue, igual que la ficha.
    */
+  /**
+   * Guarda TODAS las lineas de precio, incluida la base.
+   *
+   * La base va con prioridad 0 y las extra con 1, 2, 3…: mayor gana, asi que
+   * una linea agregada con el "+" pisa a la base en los destinos que declara,
+   * y la base sigue rigiendo en el resto.
+   *
+   * `catalog_variante.precio` se sigue guardando aparte -lo hacen las RPC de
+   * alta y edicion- porque es el precio del que cuelga todo lo que no tiene
+   * linea, y es el que se publica en los canales.
+   */
+  const guardarLineasDePrecio = async (variantId: string) => {
+    const lineas = [
+      ...(destinosBase.length && parseFloat(precio) > 0
+        ? [{ destinos: destinosBase, precio: parseFloat(precio), moneda,
+             tax_rate_id: tasaId, prioridad: 0 }]
+        : []),
+      ...lineasPrecio
+        .filter(l => l.destinos.length && parseFloat(l.precio) > 0)
+        .map((l, i) => ({
+          destinos: l.destinos, precio: parseFloat(l.precio),
+          moneda: l.moneda, tax_rate_id: l.tasaId, prioridad: i + 1,
+          etiqueta: l.etiqueta || null,
+          // Vacio es "siempre", no "desde el principio de los tiempos".
+          desde: l.desde ? `${l.desde}T00:00:00` : null,
+          hasta: l.hasta ? `${l.hasta}T23:59:59` : null,
+          hora_desde: l.horaDesde || null,
+          hora_hasta: l.horaHasta || null,
+          dias: l.dias.length ? l.dias : null,
+        })),
+    ];
+
+    const { error } = await supabase.rpc("guardar_lineas_de_precio", {
+      p_variante_id: variantId,
+      p_lineas: lineas,
+    });
+    // Que falle no invalida el alta: el articulo existe y tiene su precio base.
+    if (error) console.warn("[precios]", error.message);
+  };
+
   const guardarDetalles = async (variantId: string) => {
     const hay = Object.values(detalles).some(v => (v ?? "").trim() !== "");
     if (!hay) return;
@@ -1563,6 +1676,7 @@ export default function AdminArticulos(
           p_variant_id: articulo.id, p_tax_rate_id: tasaId,
         });
         await guardarDetalles(articulo.id);
+        await guardarLineasDePrecio(articulo.id);
         // Recien guardado: a partir de ahora hay un estado anterior al que
         // volver. Se marca aca y no se vuelve a consultar porque acabamos de
         // crearlo nosotros.
@@ -1587,7 +1701,10 @@ export default function AdminArticulos(
       });
       if (error) throw error;
 
-      if (nuevaVariante) await guardarDetalles(nuevaVariante as string);
+      if (nuevaVariante) {
+        await guardarDetalles(nuevaVariante as string);
+        await guardarLineasDePrecio(nuevaVariante as string);
+      }
 
       // La excepcion de tasa, solo si se eligio una. Sin esto el articulo
       // hereda, que es lo correcto y lo que pasa el 95% de las veces.
@@ -2198,6 +2315,7 @@ export default function AdminArticulos(
                   onClick={() => setLineasPrecio(ls => [...ls, {
                     id: (ls[ls.length-1]?.id ?? 0) + 1,
                     precio, moneda, tasaId, destinos: [],
+                    etiqueta:"", desde:"", hasta:"", horaDesde:"", horaHasta:"", dias:[],
                   }])}
                   style={{ width:"100%", height:20, padding:0, borderRadius:999,
                     border:"1.5px dashed var(--gray-400)", background:"#fff",
@@ -2249,6 +2367,71 @@ export default function AdminArticulos(
                           color:"var(--gray-400)", cursor:"pointer", fontSize:"12px",
                           fontWeight:800, fontFamily:"inherit" }}>×</button>
                     </div>
+
+                    {/* Cuando rige.
+                        Plegado por defecto: la mayoria de las lineas son "este
+                        precio, en estos destinos, siempre", y abrir seis campos
+                        para no completar ninguno es ruido. El resumen dice si
+                        hay algo puesto, para que plegado no signifique oculto. */}
+                    <button type="button"
+                      onClick={() => setVigenciaAbierta(v => v === l.id ? null : l.id)}
+                      style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                        textAlign:"left", color:"var(--gray-400)", fontSize:"0.72rem",
+                        fontFamily:"inherit", textDecoration:"underline" }}>
+                      {resumenVigencia(l)}
+                    </button>
+
+                    {vigenciaAbierta === l.id && (
+                      <div style={{ display:"flex", flexDirection:"column", gap:RITMO_JUNTO,
+                        padding:"0.6rem", background:"var(--gray-50)", borderRadius:8,
+                        border:"1px solid var(--border)" }}>
+                        <input style={{ ...inp, padding:"0.35rem 0.5rem", fontSize:"0.78rem" }}
+                          value={l.etiqueta} placeholder="Nombre: Black Friday, Mayorista…"
+                          onChange={e => set("etiqueta", e.target.value)} />
+
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.4rem" }}>
+                          <input type="date" style={{ ...inp, padding:"0.35rem 0.5rem", fontSize:"0.78rem" }}
+                            value={l.desde} title="Desde"
+                            onChange={e => set("desde", e.target.value)} />
+                          <input type="date" style={{ ...inp, padding:"0.35rem 0.5rem", fontSize:"0.78rem" }}
+                            value={l.hasta} title="Hasta"
+                            onChange={e => set("hasta", e.target.value)} />
+                        </div>
+
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.4rem" }}>
+                          <input type="time" style={{ ...inp, padding:"0.35rem 0.5rem", fontSize:"0.78rem" }}
+                            value={l.horaDesde} title="Desde qué hora"
+                            onChange={e => set("horaDesde", e.target.value)} />
+                          <input type="time" style={{ ...inp, padding:"0.35rem 0.5rem", fontSize:"0.78rem" }}
+                            value={l.horaHasta} title="Hasta qué hora"
+                            onChange={e => set("horaHasta", e.target.value)} />
+                        </div>
+
+                        {/* Ningún día marcado significa todos: marcar los siete
+                            y no marcar ninguno querrían decir lo mismo, así que
+                            vacío es el estado natural. */}
+                        <div style={{ display:"flex", gap:4 }}>
+                          {DIAS_SEMANA.map(d => {
+                            const on = l.dias.includes(d.n);
+                            return (
+                              <button key={d.n} type="button"
+                                onClick={() => set("dias",
+                                  on ? l.dias.filter(x => x !== d.n) : [...l.dias, d.n])}
+                                style={{ flex:1, height:22, padding:0, borderRadius:6,
+                                  border:`1.5px solid ${on ? ACCENT : "var(--border)"}`,
+                                  background: on ? `${ACCENT}18` : "#fff",
+                                  color: on ? ACCENT : "var(--gray-400)",
+                                  fontSize:"10px", fontWeight:800, fontFamily:"inherit",
+                                  cursor:"pointer" }}>{d.l}</button>
+                            );
+                          })}
+                        </div>
+
+                        <div style={{ fontSize:"0.7rem", color:"var(--gray-400)" }}>
+                          Vacío es siempre. Los horarios son hora de Montevideo.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
