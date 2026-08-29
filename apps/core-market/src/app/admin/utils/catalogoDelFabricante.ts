@@ -30,10 +30,18 @@
 import { invocar } from "./canalesSync";
 import { buscar, type ResultadoBusqueda } from "./busqueda";
 
-/** Dónde suelen vivir los catálogos. Se prueban en este orden. */
+/**
+ * Dónde suelen vivir los catálogos. Se prueban en este orden.
+ *
+ * La portada va incluida, y no al final: muchas tiendas listan sus familias y
+ * modelos ahí mismo. mundomac.com es el caso —`/productos` da 404 y la home
+ * trae "Mac · MacBook · iPhone 17 Pro · iPad Air · Apple Watch"— así que
+ * saltearla dejaba afuera un catálogo perfectamente legible.
+ */
 const RUTAS_DE_CATALOGO = [
   "/productos", "/products", "/catalogo", "/catalogue",
   "/tienda", "/shop", "/nuestros-productos", "/es/productos",
+  "/",
 ];
 
 /**
@@ -162,22 +170,36 @@ const NO_SON_TIENDA_OFICIAL = [
   "wikipedia.org", "linkedin.com", "tiktok.com",
 ];
 
-export async function tiendaOficialLocal(
+/**
+ * Devuelve VARIAS, no una.
+ *
+ * Con una sola, si esa no se puede leer no hay catálogo — y da la casualidad de
+ * que el primer resultado para Apple es iplace.com.uy, que está hecho en
+ * JavaScript: 780 KB de HTML con UN solo enlace interno, nada que extraer. El
+ * segundo, mundomac.com, se lee sin problema.
+ *
+ * Quedarse en el primero es perder el catálogo por un detalle de cómo está
+ * construido un sitio, que no tiene nada que ver con si la marca tiene
+ * representante.
+ */
+export async function tiendasOficialesLocales(
   marca: string, dominioMarca: string | null,
-): Promise<string | null> {
+): Promise<string[]> {
   const q = `${marca.trim()} distribuidor oficial Uruguay`;
   const r = await buscar(q, { incluirCanales: false });
 
+  const hosts: string[] = [];
   for (const x of r) {
     let host = "";
     try { host = new URL(x.url ?? "").hostname.replace(/^www\./, ""); } catch { continue; }
-    if (!host) continue;
-    // El sitio de la marca ya se intentó antes; si estamos acá, no sirvió.
+    if (!host || hosts.includes(host)) continue;
+    // El sitio de la marca se prueba aparte; acá se buscan sus representantes.
     if (dominioMarca && host.endsWith(dominioMarca.replace(/^www\./, ""))) continue;
     if (NO_SON_TIENDA_OFICIAL.some((d) => host.includes(d))) continue;
     // Diarios y notas: hablan de la marca, no la venden.
     if (/noticias|diario|observador|elpais|montevideo\.com/.test(host)) continue;
-    return host;
+    hosts.push(host);
+    if (hosts.length >= 3) break;      // tres intentos alcanzan; más es demora
   }
-  return null;
+  return hosts;
 }

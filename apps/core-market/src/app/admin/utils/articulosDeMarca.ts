@@ -21,7 +21,7 @@
  * es peor que mostrar uno dudoso al final.
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
-import { catalogoDelFabricante, tiendaOficialLocal } from "./catalogoDelFabricante";
+import { catalogoDelFabricante, tiendasOficialesLocales } from "./catalogoDelFabricante";
 
 /** Caminos donde los sitios publican sus productos. */
 const CAMINOS_DE_PRODUCTO = [
@@ -227,8 +227,7 @@ export async function catalogoDeMarca(
    * No es un marketplace: ahí el catálogo es de quien publica, mezclado con
    * reventa, usados y accesorios de terceros. Es el representante de la marca.
    */
-  const oficial = await tiendaOficialLocal(_marca, null);
-  if (oficial) {
+  for (const oficial of await tiendasOficialesLocales(_marca, null)) {
     const paginaOficial = await ubicarPaginaDeProductos(oficial);
     const delOficial = await catalogoDelFabricante(oficial, paginaOficial);
     if (delOficial.length > 0) return delOficial;
