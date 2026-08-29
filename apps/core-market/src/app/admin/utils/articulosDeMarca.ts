@@ -153,7 +153,7 @@ export async function buscarArticulosDeMarca(
  * consulta que sí trae catálogo es el nombre de la marca más "productos", que
  * saca las páginas de producto de su sitio y de las tiendas que la venden.
  */
-async function catalogoDeMarca(
+export async function catalogoDeMarca(
   marca: string, dominio: string | null,
 ): Promise<ResultadoBusqueda[]> {
   const delSitio = dominio

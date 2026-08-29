@@ -8,7 +8,7 @@ import { canalesDisponibles } from "../utils/canalesSync";
 import { clasificarProducto } from "@core/tax";
 import { decidir, hayDatosSuficientes, type Decision } from "../tax/decidir";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
-import { buscarArticulosDeMarca } from "../utils/articulosDeMarca";
+import { buscarArticulosDeMarca, catalogoDeMarca } from "../utils/articulosDeMarca";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
@@ -873,6 +873,22 @@ export default function AdminArticulos(
   const [buscandoProd, setBuscandoProd] = useState(false);
   /** Lo que se muestra es el catalogo de la marca y no coincidencias. */
   const [mostrandoCatalogo, setMostrandoCatalogo] = useState(false);
+
+  /**
+   * Cargar varios de la misma marca, despues de guardar uno.
+   *
+   * Quien carga un producto de una marca casi siempre carga varios: ya tiene el
+   * catalogo abierto, ya identifico el fabricante, ya sabe donde clasificarlo.
+   * Preguntarselo ahi -y no obligarlo a repetir todo el alta por cada uno- es
+   * lo que evita que "cargar el catalogo" sea una tarde de trabajo.
+   *
+   * No reemplaza a la carga masiva de verdad, que sera su propio modulo con
+   * archivos y mapeo de columnas. Resuelve el caso comun con lo que ya esta.
+   */
+  const [masivoAbierto, setMasivoAbierto]   = useState(false);
+  const [masivoItems, setMasivoItems]       = useState<ResultadoBusqueda[]>([]);
+  const [masivoElegidos, setMasivoElegidos] = useState<Set<string>>(new Set());
+  const [masivoCargando, setMasivoCargando] = useState(false);
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
@@ -1551,6 +1567,45 @@ export default function AdminArticulos(
       : "Excepción aplicada a este artículo");
   };
 
+  /**
+   * Crea los seleccionados, como BORRADORES.
+   *
+   * Sin precio no se puede publicar, y el precio de cada uno no lo sabe nadie
+   * mas que quien vende: inventarlo seria peor que dejarlos incompletos. Se
+   * crean con lo que si se sabe -titulo, marca, foto, clasificacion- y quedan
+   * esperando el precio, que es una linea por producto en vez de un alta
+   * entera.
+   */
+  const crearElegidosDeMarca = async () => {
+    const elegidos = masivoItems.filter(r => masivoElegidos.has(r.nombre));
+    if (!elegidos.length) { setMasivoAbierto(false); salir(true); return; }
+
+    setMasivoCargando(true);
+    let creados = 0;
+    for (const r of elegidos) {
+      const { error } = await supabase.rpc("crear_publicacion", {
+        p_title:       r.nombre.slice(0, 200),
+        p_price:       0,
+        p_tipo:        tipo === "secondhand" ? "secondhand" : "market",
+        p_currency:    moneda,
+        p_description: r.descripcion?.slice(0, MAX_DESCRIPCION) ?? null,
+        p_stock:       0,
+        p_status:      "draft",
+        p_images:      r.imagen ? [r.imagen] : null,
+        p_attributes:  { marca: marca.trim(), ...(deptoId ? { departamento: { id: deptoId } } : {}) },
+      });
+      if (error) console.warn("[masivo]", r.nombre, error.message);
+      else creados++;
+    }
+    setMasivoCargando(false);
+    setMasivoAbierto(false);
+    notify(creados === 0
+      ? "No se pudo crear ninguno"
+      : `${creados} borrador${creados === 1 ? "" : "es"} más de ${marca.trim()}. Les falta el precio.`,
+      creados > 0);
+    setTimeout(() => salir(true), 900);
+  };
+
   const deshacer = async () => {
     if (!articulo?.id) return;
     setLoading(true);
@@ -1967,6 +2022,26 @@ export default function AdminArticulos(
       }
 
       notify(publicarComo === "draft" ? "Guardado como borrador — podés publicarlo cuando quieras" : "¡Listo! Tu artículo ya está publicado en Charlie Market");
+
+      /*
+       * Antes de irse: ¿hay mas de esta marca?
+       *
+       * Es el momento en que preguntarlo cuesta menos —el catalogo ya se
+       * consulto, la marca ya esta identificada— y en que mas sirve. Si no hay
+       * marca confirmada o el catalogo no trae nada, se sale como siempre y
+       * nadie se entera de que se pregunto.
+       */
+      if (marcaConfirmada && marca.trim()) {
+        const catalogo = await catalogoDeMarca(marca, marcaDominio);
+        const yaCargado = nombre.trim().toLowerCase();
+        const otros = catalogo.filter(r => r.nombre.trim().toLowerCase() !== yaCargado);
+        if (otros.length > 0) {
+          setMasivoItems(otros);
+          setMasivoElegidos(new Set());
+          setMasivoAbierto(true);
+          return;                       // se sale al cerrar el cuadro, no antes
+        }
+      }
       setTimeout(() => salir(true), 1500);
     } catch (e: any) {
       notify(e.message || "Algo salió mal. Intentá de nuevo en un momento", false);
@@ -3030,6 +3105,78 @@ export default function AdminArticulos(
           </div>
         )}
       </div>
+
+      {/* ¿Más de esta marca?
+          Aparece al guardar, con el catálogo ya consultado. No es la carga
+          masiva —esa será su propio módulo, con archivos y mapeo— es el caso
+          común resuelto con lo que ya está en pantalla. */}
+      {masivoAbierto && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.35)",
+          display:"flex", alignItems:"center", justifyContent:"center", zIndex:400 }}>
+          <div style={{ background:"#fff", borderRadius:14, width:"min(560px,92vw)",
+            maxHeight:"82vh", display:"flex", flexDirection:"column",
+            boxShadow:"0 20px 60px rgba(0,0,0,.25)" }}>
+
+            <div style={{ padding:"1rem 1.25rem", borderBottom:"1px solid var(--border)" }}>
+              <div style={{ fontWeight:800, color:"#111" }}>
+                ¿Cargás más productos de {marca.trim()}?
+              </div>
+              <div style={{ fontSize:"0.78rem", color:"var(--gray-400)", marginTop:3 }}>
+                Se crean como borradores, con su nombre y su foto. Les vas a tener
+                que poner el precio.
+              </div>
+            </div>
+
+            <div style={{ overflowY:"auto", padding:"0.5rem 0" }}>
+              {masivoItems.map((r, i) => {
+                const on = masivoElegidos.has(r.nombre);
+                return (
+                  <label key={i} style={{ display:"flex", alignItems:"center", gap:10,
+                    padding:"8px 1.25rem", cursor:"pointer" }}>
+                    <input type="checkbox" checked={on} style={{ accentColor:ACCENT }}
+                      onChange={() => setMasivoElegidos(prev => {
+                        const n = new Set(prev);
+                        n.has(r.nombre) ? n.delete(r.nombre) : n.add(r.nombre);
+                        return n;
+                      })} />
+                    {imgs.sirve(r.imagen)
+                      ? <img src={r.imagen!} alt="" onError={() => imgs.falló(r.imagen)}
+                          style={{ width:34, height:34, objectFit:"cover", borderRadius:5,
+                            border:"1px solid var(--border)", flexShrink:0 }} />
+                      : <div style={{ width:34, height:34, flexShrink:0, borderRadius:5,
+                          background:"var(--gray-50)" }} />}
+                    <span style={{ fontSize:"0.82rem", color:"#111", minWidth:0,
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {r.nombre}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div style={{ padding:"0.85rem 1.25rem", borderTop:"1px solid var(--border)",
+              display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <button onClick={() => { setMasivoAbierto(false); salir(true); }}
+                style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                  color:"var(--mute)", fontSize:"0.82rem", textDecoration:"underline",
+                  fontFamily:"inherit" }}>
+                No, terminar
+              </button>
+              <button onClick={crearElegidosDeMarca} disabled={masivoCargando}
+                style={{ padding:"0.55rem 1.2rem", borderRadius:9, border:"none",
+                  background: masivoElegidos.size ? ACCENT : "var(--border)",
+                  color: masivoElegidos.size ? "#fff" : "var(--gray-400)",
+                  fontWeight:800, fontSize:"0.82rem", fontFamily:"inherit",
+                  cursor: masivoCargando ? "wait" : "pointer" }}>
+                {masivoCargando ? "Creando…"
+                  : masivoElegidos.size
+                    ? `Crear ${masivoElegidos.size}`
+                    : "Crear seleccionados"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Una sola accion: no hay pasos que recorrer. */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
