@@ -51,6 +51,26 @@ const CONDICIONES_ARTICULO = [
  * formulario y contesta la consulta: un selector vacio se ve roto.
  */
 const MONEDAS_FALLBACK = [{ code:"UYU", decimals:2 }, { code:"USD", decimals:2 }];
+
+/**
+ * A donde va cada precio.
+ *
+ * NO son los canales de sincronizacion. Esos los declara el registro de
+ * motores y hoy solo Mercado Libre tiene uno. Estos son los lugares donde se
+ * COTIZA: la web propia, un mensaje de WhatsApp, una historia de Instagram.
+ * Un precio puede vivir ahi sin que exista ningun motor que sincronice nada.
+ *
+ * Por eso la lista es fija y corta: son los seis lugares donde hoy se vende.
+ * "Otro" existe para lo que aparezca sin tener que agregar una constante.
+ */
+const DESTINOS_PRECIO = [
+  { id:"web",   label:"Web",       color:"#FF5B14" },
+  { id:"ml",    label:"ML",        color:"#FFDD00" },
+  { id:"wa",    label:"WhatsApp",  color:"#00CC44" },
+  { id:"ig",    label:"Instagram", color:"#FF0090" },
+  { id:"fb",    label:"Facebook",  color:"#35C1F1" },
+  { id:"otro",  label:"Otro",      color:"#8B22CC" },
+] as const;
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
   { id:"bajo_pedido",  label:"Bajo pedido",   desc:"Se consigue en 3-5 días" },
@@ -441,6 +461,47 @@ function CampoConCheck({
  * Se vuelve tocando la condicion elegida. No hay un boton aparte para eso: el
  * mismo lugar que la eligio la suelta.
  */
+/**
+ * Los seis destinos, como bullets.
+ *
+ * Chicos y de color, no un selector: son seis y no cambian, asi que verlos
+ * todos a la vez cuesta menos que abrir una lista. El color es el del destino
+ * -el amarillo de Mercado Libre, el verde de WhatsApp- porque es lo que se
+ * reconoce sin leer.
+ *
+ * Apagado no significa "no disponible" sino "este precio no rige ahi". Por eso
+ * el bullet apagado sigue mostrando su color en el borde: es una eleccion, no
+ * un impedimento.
+ */
+function BulletsDestino({ elegidos, onToggle, ocupados }: {
+  elegidos: string[];
+  onToggle: (id: string) => void;
+  /** Destinos que ya tomo otra linea: no se pueden elegir en dos lados. */
+  ocupados?: string[];
+}) {
+  return (
+    <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+      {DESTINOS_PRECIO.map(d => {
+        const on = elegidos.includes(d.id);
+        const tomado = !on && (ocupados ?? []).includes(d.id);
+        return (
+          <button key={d.id} type="button" disabled={tomado}
+            onClick={() => onToggle(d.id)}
+            title={tomado ? `${d.label} ya tiene otro precio` : d.label}
+            style={{
+              width:18, height:18, borderRadius:"50%", padding:0,
+              border:`2px solid ${tomado ? "var(--border)" : d.color}`,
+              background: on ? d.color : "#fff",
+              cursor: tomado ? "not-allowed" : "pointer",
+              opacity: tomado ? .4 : 1,
+              transition:"background .12s",
+            }}/>
+        );
+      })}
+    </div>
+  );
+}
+
 function LineaCondicion({ opciones, valor, onChange, subValor, onSubValor }: {
   opciones: readonly { readonly id: string; readonly label: string;
                        readonly niveles?: readonly string[]; readonly detalle?: string }[];
@@ -955,6 +1016,22 @@ export default function AdminArticulos(
    * habría mostrado campos que no persisten, porque ninguna RPC los escribía.
    * Ahora los escribe `guardar_detalles_articulo`.
    */
+  /**
+   * Lineas de precio adicionales.
+   *
+   * La primera linea -moneda, precio e impuesto- es la del articulo y no vive
+   * aca: es `precio`, `moneda` y `tasaId`. Estas son las que agrega el "+",
+   * para cotizar distinto en otros destinos.
+   *
+   * `destinos` dice a cuales aplica cada linea. Un destino no puede estar en
+   * dos lineas a la vez: dos precios para el mismo lugar no es una eleccion,
+   * es una ambiguedad.
+   */
+  const [lineasPrecio, setLineasPrecio] = useState<
+    { id: number; precio: string; moneda: string; tasaId: string | null; destinos: string[] }[]
+  >([]);
+  const [destinosBase, setDestinosBase] = useState<string[]>([]);
+
   const [detalles, setDetalles] = useState<Record<string, string>>({});
 
   const [deshacerDesde, setDeshacerDesde] = useState<string | null>(null);
@@ -1957,6 +2034,79 @@ export default function AdminArticulos(
                   </select>
                 </div>
               </div>
+              {/* A donde va este precio, y el "+" para cotizar distinto.
+
+                  Los bullets van debajo del renglon y no adentro porque son de
+                  la linea entera -moneda, precio e impuesto juntos-, no de
+                  ninguno de los tres campos.
+
+                  El "+" agrega una linea identica a esta. Identica y no vacia:
+                  quien cotiza distinto para Instagram casi siempre parte del
+                  mismo numero y le cambia algo, y arrancar de cero obliga a
+                  escribir de nuevo lo que ya estaba. */}
+              <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                <BulletsDestino
+                  elegidos={destinosBase}
+                  ocupados={lineasPrecio.flatMap(l => l.destinos)}
+                  onToggle={id => setDestinosBase(d =>
+                    d.includes(id) ? d.filter(x => x !== id) : [...d, id])}/>
+                <button type="button"
+                  title="Agregar otro precio, para otros destinos"
+                  onClick={() => setLineasPrecio(ls => [...ls, {
+                    id: (ls[ls.length-1]?.id ?? 0) + 1,
+                    precio, moneda, tasaId, destinos: [],
+                  }])}
+                  style={{ width:18, height:18, borderRadius:"50%", padding:0,
+                    border:"1.5px dashed var(--gray-400)", background:"#fff",
+                    color:"var(--gray-400)", cursor:"pointer", fontSize:"12px",
+                    fontWeight:800, lineHeight:"14px" }}>+</button>
+              </div>
+
+              {/* Las lineas extra. Cada una es la misma fila: moneda, precio,
+                  impuesto y a donde va. */}
+              {lineasPrecio.map((l, i) => {
+                const set = (campo: string, valor: unknown) =>
+                  setLineasPrecio(ls => ls.map((x, j) => j === i ? { ...x, [campo]: valor } : x));
+                const ocupados = [
+                  ...destinosBase,
+                  ...lineasPrecio.filter((_, j) => j !== i).flatMap(x => x.destinos),
+                ];
+                return (
+                  <div key={l.id} style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"64px 1fr 72px", gap:"0.4rem" }}>
+                      <select style={{ ...inp, padding:"0.5rem 0.3rem" }} value={l.moneda}
+                        onChange={e => set("moneda", e.target.value)}>
+                        {monedas.map(m => <option key={m.code} value={m.code}>{m.code}</option>)}
+                      </select>
+                      <input style={{ ...inp, ...NUMERICO }} type="number" min="0"
+                        value={l.precio} placeholder="Precio"
+                        onChange={e => set("precio", e.target.value)}/>
+                      <select style={{ ...inp, padding:"0.5rem 0.15rem", ...NUMERICO_SELECT }}
+                        value={l.tasaId ?? ""}
+                        onChange={e => set("tasaId", e.target.value || null)}>
+                        <option value="">{tasaHeredada ? `${tasaHeredada.rate}%` : "IVA"}</option>
+                        {tasas.map(t => <option key={t.id} value={t.id}>{t.rate}%</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                      <BulletsDestino
+                        elegidos={l.destinos}
+                        ocupados={ocupados}
+                        onToggle={id => set("destinos",
+                          l.destinos.includes(id)
+                            ? l.destinos.filter(x => x !== id)
+                            : [...l.destinos, id])}/>
+                      <button type="button" title="Quitar este precio"
+                        onClick={() => setLineasPrecio(ls => ls.filter((_, j) => j !== i))}
+                        style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                          color:"var(--gray-400)", fontSize:"0.78rem", textDecoration:"underline" }}>
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
               {/* El campo "Precio original, sin descuento" se saco de aca.
                   El descuento no es parte de dar de alta un articulo: es una
                   decision comercial posterior, y ocupaba un renglon entero en
