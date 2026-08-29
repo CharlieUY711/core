@@ -308,7 +308,7 @@ function Topbar({ location, vista }: { location: any; vista: string }) {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, loading } = useUserRole();
+  const { user, isAdmin, loading, error } = useUserRole();
   const [isSH, setIsSH] = useState(false);
   const [topStats, setTopStats] = useState<{ label: string; value: number | string; color: string }[]>([]);
   const [vista, setVista] = useState("");
@@ -317,6 +317,32 @@ export default function AdminLayout() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: "center", background: BRAND.secondary }}>
       <div style={{ color: BRAND.primary, fontSize: "1rem" }}>Cargando...</div>
+    </div>
+  );
+
+  /*
+   * La sesión falló: se dice, y se ofrece la salida.
+   *
+   * Antes esto caía en el `navigate("/")` de abajo, así que el panel te sacaba
+   * a la tienda sin explicar nada — o, si la promesa nunca resolvía, te dejaba
+   * mirando "Cargando…" hasta que recargaras. Las dos cosas se ven como que la
+   * aplicación se rompió, cuando lo único que pasó es que hay que volver a
+   * entrar.
+   */
+  if (error) return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: "0.9rem",
+      background: BRAND.secondary, padding: "2rem", textAlign: "center" }}>
+      <div style={{ color: BRAND.primary, fontSize: "1rem", fontWeight: 700 }}>
+        Tu sesión no está disponible
+      </div>
+      <div style={{ color: "rgba(255,255,255,.65)", fontSize: "0.85rem", maxWidth: 420 }}>
+        {error}
+      </div>
+      <Link to="/" style={{
+        color: BRAND.secondary, background: BRAND.primary, textDecoration: "none",
+        fontSize: "0.85rem", fontWeight: 700, padding: "0.55rem 1.2rem", borderRadius: 8,
+      }}>Volver a la tienda e iniciar sesión</Link>
     </div>
   );
 
