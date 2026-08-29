@@ -160,7 +160,7 @@ export async function buscarArticulosDeMarca(
   const filtrar = (crudos: ResultadoBusqueda[]) => filtrarProductos(crudos, marca, dominio);
 
   if (marca.trim() && q.length < 3) {
-    return { items: filtrar(await catalogoDeMarca(marca, dominio)), esCatalogo: true };
+    return { items: await catalogoDeMarca(marca, dominio), esCatalogo: true };
   }
   if (q.length < 3) return { items: [], esCatalogo: false };
 
@@ -188,33 +188,33 @@ export async function buscarArticulosDeMarca(
  * saca las páginas de producto de su sitio y de las tiendas que la venden.
  */
 export async function catalogoDeMarca(
-  marca: string, dominio: string | null,
+  _marca: string, dominio: string | null,
 ): Promise<ResultadoBusqueda[]> {
   /*
-   * Primero se LEE el sitio, no se lo busca.
+   * EL CATÁLOGO SE LEE DEL SITIO, O NO HAY CATÁLOGO.
    *
-   * Una búsqueda devuelve las páginas que Google decidió mostrar, no el
-   * catálogo: para Olivares de Santa Laura traía cuatro productos, una nota de
-   * prensa y "Premios y reconocimientos", mientras que su sección Productos
-   * tiene cuatro categorías con dos o más presentaciones cada una. Ni completo
-   * ni limpio.
+   * Antes, si no se podía leer el sitio, se caía a buscar "<marca> productos"
+   * en Google. Para una marca chica daba algo pasable; para Apple daba esto:
    *
-   * Leer la página de productos del fabricante da las dos cosas: todo lo que
-   * publica, y sólo eso.
+   *     Productos del Campo Delivery - App Store - Apple
+   *     Cómo crear productos que la gente quiera comprar
+   *     Marketing de productos - Trabaja en Apple (ES)
+   *     CANCIÓN PROMOCIONAL PARA TODO TIPO DE …
+   *     Navegar en la tienda
+   *
+   * Todas son páginas de apple.com con profundidad suficiente, así que ningún
+   * filtro por URL las puede distinguir de un producto. El problema no es el
+   * filtro: es que una búsqueda no devuelve un catálogo.
+   *
+   * Y acá el costo del error es alto: cada fila mal ofrecida se convierte en un
+   * artículo creado. Decir "no pude leer el catálogo" es mejor que proponer dar
+   * de alta "CANCIÓN PROMOCIONAL".
+   *
+   * Lista vacía es una respuesta válida, y quien llama tiene que decirlo.
    */
-  if (dominio) {
-    const paginaProductos = await ubicarPaginaDeProductos(dominio);
-    const delFabricante = await catalogoDelFabricante(dominio, paginaProductos);
-    if (delFabricante.length > 0) return delFabricante;
-  }
-
-  // Si no se pudo leer —sitio en JavaScript, proxy bloqueado, sin catálogo en
-  // línea— queda la búsqueda, que es peor pero es algo.
-  const delSitio = dominio
-    ? await buscar(`site:${dominio} productos`, { incluirCanales: false })
-    : [];
-  if (delSitio.length > 0) return delSitio;
-  return buscar(`${marca.trim()} productos`, { incluirCanales: false });
+  if (!dominio) return [];
+  const paginaProductos = await ubicarPaginaDeProductos(dominio);
+  return catalogoDelFabricante(dominio, paginaProductos);
 }
 
 /**

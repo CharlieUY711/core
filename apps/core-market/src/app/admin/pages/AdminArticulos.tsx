@@ -1612,6 +1612,12 @@ export default function AdminArticulos(
     setMasivoCargando(true);
     const otros = await otrosDeLaMarca();
     setMasivoCargando(false);
+    // Sin catalogo legible no se abre un cuadro vacio: se dice por que.
+    if (!otros.length) {
+      notify(`No pude leer el catálogo de ${marca.trim()} desde su sitio. ` +
+             `Cargalos de a uno.`, false);
+      return;
+    }
     setMasivoItems(otros);
     setMasivoElegidos(new Set());
     setMasivoTrasGuardar(false);
