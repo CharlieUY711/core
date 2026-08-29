@@ -74,6 +74,17 @@ export function puntajeDeProducto(url: string | null): number {
 const normalizar = (s: string): string =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
 
+export interface ArticulosEncontrados {
+  items: ResultadoBusqueda[];
+  /**
+   * `true` cuando lo que se muestra es el catálogo de la marca y no
+   * coincidencias con lo escrito. La pantalla tiene que decirlo: ver una lista
+   * que no responde a lo que se tipeó, sin aviso, se lee como que el buscador
+   * anda mal.
+   */
+  esCatalogo: boolean;
+}
+
 export interface BusquedaDeArticulo {
   /** Marca ya confirmada. Acota todo lo demás. */
   marca: string;
@@ -95,19 +106,67 @@ export interface BusquedaDeArticulo {
  */
 export async function buscarArticulosDeMarca(
   { marca, dominio, texto }: BusquedaDeArticulo,
-): Promise<ResultadoBusqueda[]> {
+): Promise<ArticulosEncontrados> {
   const q = texto.trim();
-  if (q.length < 3) return [];
   const conMarca = marca.trim() ? `${marca.trim()} ${q}` : q;
+
+  /*
+   * Con la marca identificada, siempre hay algo que mostrar.
+   *
+   * Una marca no llama a sus productos como los busca quien los vende:
+   * Olivares de Santa Laura tiene "Selección Limitada", "Reserva Familiar" y
+   * "Bag in box de 3L" — ninguno dice "Aceite". Buscar "Aceite" y no encontrar
+   * nada no significa que la marca no venda aceite: significa que no lo llama
+   * así.
+   *
+   * Entonces, si lo escrito no coincide con nada, se muestra el CATÁLOGO de la
+   * marca. Elegir de una lista de diez es más rápido que adivinar cómo le puso
+   * el fabricante.
+   */
+  const filtrar = (crudos: ResultadoBusqueda[]) => filtrarProductos(crudos, marca, dominio);
+
+  if (marca.trim() && q.length < 3) {
+    return { items: filtrar(await catalogoDeMarca(marca, dominio)), esCatalogo: true };
+  }
+  if (q.length < 3) return { items: [], esCatalogo: false };
 
   const delSitio = dominio
     ? await buscar(`site:${dominio} ${q}`, { incluirCanales: false })
     : [];
 
-  const crudos = delSitio.length > 0
-    ? delSitio
-    : await buscar(conMarca, { incluirCanales: false });
+  const coincidencias = filtrar(
+    delSitio.length > 0
+      ? delSitio
+      : await buscar(conMarca, { incluirCanales: false }),
+  );
+  if (coincidencias.length > 0) return { items: coincidencias, esCatalogo: false };
 
+  if (!marca.trim()) return { items: [], esCatalogo: false };
+  return { items: filtrar(await catalogoDeMarca(marca, dominio)), esCatalogo: true };
+}
+
+/**
+ * Lo que la marca vende, sin filtrar por lo que se escribió.
+ *
+ * `site:` no sirve acá: Serper devuelve cero para dominios chicos —probado con
+ * santalaura.uy y con colinasdegarzon.com— aunque funcione con apple.com. La
+ * consulta que sí trae catálogo es el nombre de la marca más "productos", que
+ * saca las páginas de producto de su sitio y de las tiendas que la venden.
+ */
+async function catalogoDeMarca(
+  marca: string, dominio: string | null,
+): Promise<ResultadoBusqueda[]> {
+  const delSitio = dominio
+    ? await buscar(`site:${dominio} productos`, { incluirCanales: false })
+    : [];
+  if (delSitio.length > 0) return delSitio;
+  return buscar(`${marca.trim()} productos`, { incluirCanales: false });
+}
+
+/** Deja sólo lo que parece un producto DE esta marca. */
+function filtrarProductos(
+  crudos: ResultadoBusqueda[], marca: string, dominioMarca: string | null,
+): ResultadoBusqueda[] {
   const marcaN = normalizar(marca);
   const vistos = new Set<string>();
   const conPuntaje: Array<{ r: ResultadoBusqueda; puntos: number }> = [];
@@ -116,11 +175,21 @@ export async function buscarArticulosDeMarca(
     const dom = dominioDe(r.url);
     if (NO_SON_CATALOGO.some((d) => dom.endsWith(d))) continue;
 
-    // El nombre tiene que mencionar la marca. Buscando "Colinas de Garzón
-    // aceite" Google trae también aceites de otras marcas: son competencia,
-    // no son este artículo.
+    /*
+     * El nombre tiene que mencionar la marca — salvo que el resultado venga
+     * del sitio DE la marca, donde no hace falta que se nombre a sí misma.
+     *
+     * Olivares de Santa Laura llama a sus productos "Selección Limitada" y
+     * "Bag in box de 3L". Exigirles que digan "Olivares de Santa Laura" los
+     * descartaría a todos, y son justamente los que más valen: son del
+     * fabricante.
+     *
+     * Afuera del sitio sí se exige: buscando "Colinas de Garzón aceite" Google
+     * trae también aceites de otras marcas, y eso es competencia.
+     */
+    const esDelFabricante = !!dominioMarca && dom.endsWith(dominioMarca.replace(/^www\./, ""));
     const nombreN = normalizar(r.nombre);
-    if (marcaN && !nombreN.includes(marcaN)) continue;
+    if (!esDelFabricante && marcaN && !nombreN.includes(marcaN)) continue;
 
     // El mismo producto aparece en cinco tiendas. Interesa una vez.
     const clave = nombreN.slice(0, 60);

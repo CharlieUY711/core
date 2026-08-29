@@ -871,6 +871,8 @@ export default function AdminArticulos(
   // informacion publica del producto y no hay por que hacersela cargar.
   const [candidatos, setCandidatos] = useState<ProductoEncontrado[]>([]);
   const [buscandoProd, setBuscandoProd] = useState(false);
+  /** Lo que se muestra es el catalogo de la marca y no coincidencias. */
+  const [mostrandoCatalogo, setMostrandoCatalogo] = useState(false);
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
@@ -1023,7 +1025,12 @@ export default function AdminArticulos(
     if (idElegido) return;              // ya eligio: no se le cambia debajo
     if (articuloPersonalizado) return;  // se tipea a mano, no se buscan coincidencias
     const q = nombre.trim();
-    if (q.length < 4) { setCandidatos([]); return; }
+    /*
+     * Con la marca confirmada se busca aunque no haya texto: lo que se muestra
+     * entonces es su catalogo. Sin marca hacen falta cuatro letras, porque
+     * buscar "ace" en toda la web no devuelve nada util.
+     */
+    if (q.length < 4 && !marcaConfirmada) { setCandidatos([]); return; }
     // Dentro de la marca, siempre. Sin esto "Golf" o "Serie 3" traen cualquier
     // cosa que se llame igual, de cualquier marca.
     const conMarca = marcaConfirmada && marca.trim()
@@ -1059,11 +1066,13 @@ export default function AdminArticulos(
        * la marca, porque buscando "Colinas de Garzon aceite" Google trae
        * tambien aceites de otras marcas: eso es competencia, no este articulo.
        */
-      const web = await buscarArticulosDeMarca({
+      const { items: web, esCatalogo } = await buscarArticulosDeMarca({
         marca: marcaConfirmada ? marca : "",
         dominio: marcaDominio,
         texto: q,
       });
+      if (!vivo) return;
+      setMostrandoCatalogo(esCatalogo);
       if (!vivo) return;
       setCandidatos(web.map(r => ({
         id: r.url ?? r.nombre,
@@ -2338,7 +2347,9 @@ export default function AdminArticulos(
                   maxHeight:230, overflowY:"auto" }}>
                   <div style={{ padding:"6px 10px", fontSize:"0.72rem", color:"var(--gray-400)",
                     borderBottom:"1px solid var(--gray-50)" }}>
-                    ¿Cuál de estos es? Elegir uno completa el resto solo.
+                    {mostrandoCatalogo
+                      ? `No hay coincidencias con lo que escribiste. Estos son los productos de ${marca.trim()}.`
+                      : "¿Cuál de estos es? Elegir uno completa el resto solo."}
                   </div>
                   {candidatos.map(c => (
                     <button key={c.canal + c.id} onClick={() => adoptarProducto(c.id, c.canal, c)}
