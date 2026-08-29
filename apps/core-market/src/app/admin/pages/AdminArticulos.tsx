@@ -875,6 +875,12 @@ export default function AdminArticulos(
     setPrecio(articulo.precio != null ? String(articulo.precio) : "");
     setPrecioOrig(articulo.precio_original != null ? String(articulo.precio_original) : "");
     setMoneda(articulo.moneda ?? "UYU");
+    // Lo guardado es el ancla: es el precio que alguien decidio, en su moneda.
+    setAncla({
+      monto:  articulo.precio != null ? Number(articulo.precio) : 0,
+      moneda: articulo.moneda ?? "UYU",
+      orig:   articulo.precio_original != null ? Number(articulo.precio_original) : 0,
+    });
     setStock(articulo.stock != null ? String(articulo.stock) : "1");
     setImagenes(Array.isArray(articulo.imagenes)
       ? articulo.imagenes.map((x: any) => (typeof x === "string" ? x : x?.url)).filter(Boolean)
@@ -1116,9 +1122,33 @@ export default function AdminArticulos(
   const [tasaId, setTasaId] = useState<string | null>(null);
   const [tasaHeredada, setTasaHeredada] = useState<{ name: string; rate: number; origen: string } | null>(null);
 
+  /**
+   * El precio como lo escribio el usuario, en la moneda en que lo escribio.
+   *
+   * TODA conversion se calcula desde aca, nunca desde lo que hay en pantalla.
+   *
+   * Antes se convertia encadenado -de lo mostrado a lo nuevo- y eso esta mal
+   * por dos motivos. El chico: cada salto redondea sobre el redondeo anterior,
+   * asi que UYU → USD → EUR no da lo mismo que UYU → EUR. El grave: la
+   * cotizacion cambia todos los dias, asi que convertir un numero que ya venia
+   * convertido lo hace pasar por la cotizacion de hoy cuando en realidad se
+   * fijo con la de otro dia. El precio termina siendo el resultado de por
+   * cuantas monedas se paseo y en que orden, que no es un precio.
+   *
+   * Con ancla, un articulo que vale 15.000 pesos vale 15.000 pesos: pasarlo a
+   * dolares y despues a euros siempre da el equivalente de esos 15.000 a la
+   * cotizacion del momento en que se mira.
+   *
+   * Se mueve solo cuando el usuario escribe un precio: ahi la decision es
+   * suya, y el nuevo numero pasa a ser el ancla en la moneda que este puesta.
+   */
+  const [ancla, setAncla] = useState<{ monto: number; moneda: string; orig: number } | null>(null);
+
   const [cotizaciones, setCotizaciones] = useState<Record<string, { tasa: number; fecha: string }>>({});
   const [conversion, setConversion] = useState<
-    { de: string; a: string; tasaUsada: number; fecha: string; antes: { precio: string; precioOrig: string } } | null
+    { de: string; a: string; tasaUsada: number; fecha: string;
+      antes: { precio: string; precioOrig: string };
+      ancla: { monto: number; moneda: string; orig: number } } | null
   >(null);
   const [sinCotizacion, setSinCotizacion] = useState<string | null>(null);
 
@@ -1211,16 +1241,22 @@ export default function AdminArticulos(
     setConversion(null);
     setSinCotizacion(null);
 
-    const hay = parseFloat(precio) > 0 || parseFloat(precioOrig) > 0;
-    if (!hay) return;   // sin precio no hay nada que convertir
+    // El ancla manda. Si todavia no hay -nadie escribio nada- se toma lo que
+    // haya en pantalla, que en ese caso es lo mismo.
+    const base = ancla ?? {
+      monto: parseFloat(precio) || 0,
+      orig:  parseFloat(precioOrig) || 0,
+      moneda: anterior,
+    };
+    if (base.monto <= 0 && base.orig <= 0) return;
 
-    const desde = cotizaciones[anterior];
+    const desde = cotizaciones[base.moneda];
     const hasta = cotizaciones[nueva];
     if (!desde || !hasta) {
       // Se cambia la moneda igual -es lo que el usuario pidio- pero el numero
       // queda como estaba y se dice, en vez de convertir con una tasa que no
       // tenemos o dejarlo pasar como si estuviera bien.
-      setSinCotizacion(!desde ? anterior : nueva);
+      setSinCotizacion(!desde ? base.moneda : nueva);
       return;
     }
 
@@ -1228,21 +1264,35 @@ export default function AdminArticulos(
     // el dato. Antes esto era una regla escrita a mano -"pesos al entero, el
     // resto dos decimales"- que decia lo mismo pero podia dejar de coincidir.
     const dec = monedas.find(m => m.code === nueva)?.decimals ?? 2;
-    const convertir = (v: string) => {
-      const n = parseFloat(v);
-      if (!Number.isFinite(n) || n <= 0) return v;
-      const r = (n * desde.tasa) / hasta.tasa;
-      return r.toFixed(dec);
-    };
+    // Siempre desde el ancla, con una sola division: dos conversiones
+    // encadenadas redondean dos veces.
+    const desdeAncla = (n: number) =>
+      n > 0 ? ((n * desde.tasa) / hasta.tasa).toFixed(dec) : "";
 
     setConversion({
-      de: anterior, a: nueva,
+      de: base.moneda, a: nueva,
       tasaUsada: desde.tasa / hasta.tasa,
       fecha: (hasta.fecha || desde.fecha),
       antes: { precio, precioOrig },
+      // El ancla NO cambia al convertir: cambiar de moneda es mirar el mismo
+      // precio de otra forma, no ponerle uno nuevo.
+      ancla: base,
     });
-    setPrecio(convertir(precio));
-    setPrecioOrig(convertir(precioOrig));
+    setAncla(base);
+    setPrecio(desdeAncla(base.monto));
+    setPrecioOrig(desdeAncla(base.orig));
+  };
+
+  /**
+   * Escribir un precio fija un ancla nueva.
+   *
+   * Es el unico momento en que el ancla se mueve: el usuario decidio cuanto
+   * vale, en la moneda que esta viendo.
+   */
+  const escribirPrecio = (v: string) => {
+    setPrecio(v);
+    setConversion(null);
+    setAncla({ monto: parseFloat(v) || 0, moneda, orig: parseFloat(precioOrig) || 0 });
   };
 
   const deshacerConversion = () => {
@@ -1250,6 +1300,7 @@ export default function AdminArticulos(
     setPrecio(conversion.antes.precio);
     setPrecioOrig(conversion.antes.precioOrig);
     setMoneda(conversion.de);
+    setAncla(conversion.ancla);
     setConversion(null);
   };
   const descuento = precio && precioOrig && parseFloat(precioOrig) > parseFloat(precio)
@@ -2105,7 +2156,7 @@ export default function AdminArticulos(
                       se escribe. */}
                   <input style={{ ...inp, ...NUMERICO }}
                     type="number" value={precio}
-                    onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
+                    onChange={e => escribirPrecio(e.target.value)} placeholder="Precio" min="0" />
                 </div>
                 {/* El impuesto NO cambia el precio: los precios se publican con
                     impuestos incluidos, asi que elegir la tasa cambia el

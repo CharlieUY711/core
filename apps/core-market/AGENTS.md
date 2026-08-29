@@ -218,3 +218,36 @@ rota.
 El chequeo cubre inputs, no textos: un número dentro de un `<td>` o un `<div>`
 no se distingue de una palabra sin entender el código. Esos siguen siendo
 responsabilidad de quien los escribe.
+
+## Teclado — regla inamovible
+
+**Enter se comporta como Tab: cierra el campo y pasa al siguiente.** En todo el
+sistema.
+
+Quien carga datos escribe y aprieta Enter, porque es lo que hacen todas las
+planillas. Que no pase nada se siente como que el campo no tomó el valor.
+
+No hay nada que hacer al escribir un campo nuevo: la regla se instala una vez
+en `src/app/ui/enterComoTab.ts`, sobre el documento, y vale para todo lo que
+exista y para todo lo que se agregue. Un `onKeyDown` por input sería una
+convención, y alcanza con que alguien se olvide una vez para que deje de valer
+justo ahí.
+
+Excepciones, ya contempladas: `textarea` (Enter es salto de línea), botones y
+enlaces (Enter los activa), y cualquier cosa dentro de un elemento marcado
+`data-enter-nativo` — la salida para cuando Enter tiene que significar otra
+cosa, como un buscador que dispara la búsqueda.
+
+## Precios — el ancla
+
+**Toda conversión de moneda se calcula desde el precio que el usuario escribió,
+en la moneda en que lo escribió.** Nunca desde lo que hay en pantalla.
+
+Convertir encadenado —de lo mostrado a lo nuevo— redondea sobre el redondeo
+anterior, y peor: hace pasar por la cotización de hoy un número que se fijó con
+la de otro día. El precio termina dependiendo de por cuántas monedas se paseó y
+en qué orden, que no es un precio.
+
+Con ancla, un artículo que vale 15.000 pesos vale 15.000 pesos: pasarlo a
+dólares y después a euros da siempre el equivalente de esos 15.000 a la
+cotización del momento. El ancla se mueve sólo cuando alguien escribe un precio.
