@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { buscarProductos, fichaPorTitulo,
          type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
-import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
+import { buscarMarcas, logoDeDominio, marcaElegida, dominioDeUrl,
+         type MarcaSugerida } from "../utils/marcasSync";
 import { canalesDisponibles } from "../utils/canalesSync";
 import { clasificarProducto } from "@core/tax";
 import { decidir, hayDatosSuficientes, type Decision } from "../tax/decidir";
@@ -753,12 +754,41 @@ export default function AdminArticulos(
     setLogoModalOpen(true);
     buscarLogoWeb(q);
   };
+  /**
+   * Elegir el logo DEFINE la marca.
+   *
+   * Hay nombres que comparten varias marcas distintas: "Santa Laura" son
+   * Olivares de Santa Laura, Ganadera Santa Laura, Cerealista Santa Laura y
+   * Agrícola Santa Laura, cada una con su sitio y su catálogo. Mostrar todos
+   * los logos está bien —quien carga sabe cuál es el suyo apenas lo ve— pero
+   * elegir uno tiene que cerrar la ambigüedad, no dejarla abierta.
+   *
+   * Al elegirlo se toman el nombre completo y el dominio de ESE resultado. A
+   * partir de ahí el artículo se busca en el sitio de esa marca y no en el de
+   * su homónima, que es lo que estaba pasando.
+   *
+   * Si el resultado no trae de dónde salió —a veces la imagen viene sin
+   * página— se queda el logo y la marca sigue como estaba: es mejor que
+   * inventarle un dominio.
+   */
   const elegirLogoBuscado = (r: ResultadoBusqueda) => {
     if (!r.imagen) return;
     setLogoUrl(r.imagen);
     setLogoError(false);
     setLogoPersonalizado(null);
     setLogoModalOpen(false);
+
+    const dominio = dominioDeUrl(r.url);
+    if (!dominio) return;
+    setMarcaDominio(dominio);
+    setMarca(marcaElegida(dominio, r.nombre));
+    setMarcaModo("sugerida");
+    setMarcaConfirmada(true);
+    // El artículo que hubiera se suelta: era de la marca anterior, que puede
+    // ser otra empresa con el mismo nombre.
+    setIdElegido(null);
+    setElegido(null);
+    setCandidatos([]);
   };
   const quitarLogo = () => { setLogoUrl(null); setLogoPersonalizado(null); setLogoError(false); };
 

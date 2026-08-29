@@ -134,12 +134,34 @@ const normalizar = (s: string): string =>
    .normalize("NFD").replace(/[̀-ͯ]/g, "")
    .replace(/[^a-z0-9]/g, "");
 
-/** La parte del dominio que nombra a la marca. `apple.com` → `apple`. */
+/**
+ * Sufijos que no nombran a nadie: se van, y lo que queda es la marca.
+ * Los códigos de país de dos letras se detectan por largo, no por lista.
+ */
+const SUFIJOS = new Set([
+  "com", "net", "org", "co", "io", "shop", "store", "app", "dev",
+  "ind", "gov", "gob", "edu", "info", "biz", "online", "site", "web",
+]);
+
+/**
+ * La parte del dominio que nombra a la marca.
+ *   `apple.com`            → `apple`
+ *   `www.tiendainglesa.com.uy` → `tiendainglesa`
+ *   `santalaura.ind.br`    → `santalaura`
+ *
+ * Se van los sufijos DE ATRÁS PARA ADELANTE, uno por uno. Cortar con una sola
+ * expresión y quedarse con el último segmento daba `ind` para
+ * `santalaura.ind.br`: el `.br` se iba y `ind` quedaba como si fuera el
+ * nombre.
+ */
 function raizDeDominio(dominio: string): string {
-  return dominio
-    .replace(/^www\./, "")
-    .replace(/\.(com|net|org|co|io|shop|store|uy|ar|br|es|mx)(\.[a-z]{2})?$/, "")
-    .split(".").pop() ?? dominio;
+  const partes = dominio.replace(/^www\./, "").split(".");
+  while (partes.length > 1) {
+    const ultima = partes[partes.length - 1];
+    if (SUFIJOS.has(ultima) || ultima.length === 2) partes.pop();
+    else break;
+  }
+  return partes[partes.length - 1] ?? dominio;
 }
 
 /**
@@ -154,7 +176,7 @@ function raizDeDominio(dominio: string): string {
  * títulos siguen con la descripción de la página —"Colinas de Garzón – El
  * aceite de oliva extra virgen…"— y eso no es el nombre de la marca.
  */
-function nombreDeMarca(dominio: string, titulo: string | null): string {
+export function nombreDeMarca(dominio: string, titulo: string | null): string {
   const raiz = raizDeDominio(dominio);
   const porDominio = raiz.charAt(0).toUpperCase() + raiz.slice(1);
   if (!titulo) return porDominio;
@@ -162,9 +184,19 @@ function nombreDeMarca(dominio: string, titulo: string | null): string {
   const tramo = titulo.split(/[|–—·:]|\s-\s/)[0]?.trim() ?? "";
   if (!tramo) return porDominio;
 
-  // Sólo si el título nombra a este dominio. "App Store" en apple.com no es la
-  // marca; "Colinas de Garzón" en colinasdegarzon.com sí.
-  return normalizar(tramo) === normalizar(raiz) ? tramo : porDominio;
+  /*
+   * Alcanza con que el título CONTENGA el dominio, no que sea igual.
+   *
+   * Exigir igualdad perdía justo lo que distingue a las marcas homónimas:
+   * `santalaura.uy` titula "Olivares de Santa Laura" y `santalaura.ind.br`
+   * titula "Cerealista Santa Laura". Con igualdad, las dos quedaban en
+   * "Santalaura" — que es el nombre que comparten y el que no sirve para
+   * saber cuál es.
+   *
+   * "App Store" en apple.com sigue cayendo: no contiene "apple".
+   */
+  const t = normalizar(tramo), r = normalizar(raiz);
+  return t.includes(r) || r.includes(t) ? tramo : porDominio;
 }
 
 export async function buscarMarcas(texto: string): Promise<MarcaSugerida[]> {
@@ -202,7 +234,28 @@ export async function buscarMarcas(texto: string): Promise<MarcaSugerida[]> {
   return [...locales, ...web2].slice(0, 8);
 }
 
-function dominioDeUrl(url: string | null): string | null {
+/**
+ * El nombre de la marca cuando el usuario ELIGIÓ ese resultado.
+ *
+ * Distinto de `nombreDeMarca`, que es para la lista de sugerencias: ahí hay
+ * que desconfiar del título, porque son páginas cualesquiera y "App Store" no
+ * es una marca. Acá alguien miró el logo y dijo "esta es". Esa elección lleva
+ * más información que cualquier heurística sobre el dominio.
+ *
+ * Por eso el título gana, aunque no se parezca al dominio: `slaura.com` es de
+ * "Agrícola Santa Laura", y quedarse con "Slaura" —porque la abreviatura no
+ * coincide con el nombre— pierde justo lo que distingue a esa marca de las
+ * otras tres que se llaman Santa Laura.
+ */
+export function marcaElegida(dominio: string, titulo: string | null): string {
+  const tramo = (titulo ?? "").split(/[|–—·:]|\s-\s/)[0]?.trim() ?? "";
+  // Un título vacío, de una palabra sin sentido, o larguísimo no es un nombre
+  // de marca: ahí sí conviene el dominio.
+  if (tramo.length >= 2 && tramo.length <= 60) return tramo;
+  return nombreDeMarca(dominio, titulo);
+}
+
+export function dominioDeUrl(url: string | null): string | null {
   if (!url) return null;
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; }
 }
