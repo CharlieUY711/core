@@ -6,7 +6,7 @@ import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcas
 import { canalesDisponibles } from "../utils/canalesSync";
 import { clasificarProducto } from "@core/tax";
 import { decidir, hayDatosSuficientes, type Decision } from "../tax/decidir";
-import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
+import { buscar, buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
@@ -967,18 +967,39 @@ export default function AdminArticulos(
     if (articuloPersonalizado) return;  // se tipea a mano, no se buscan coincidencias
     const q = nombre.trim();
     if (q.length < 4) { setCandidatos([]); return; }
-    // Con la marca ya confirmada, la búsqueda va acotada a ella: sin esto
-    // "Golf" o "Serie 3" traen cualquier cosa que se llame igual, de
-    // cualquier marca.
+    // Dentro de la marca, siempre. Sin esto "Golf" o "Serie 3" traen cualquier
+    // cosa que se llame igual, de cualquier marca.
     const conMarca = marcaConfirmada && marca.trim()
       ? `${marca.trim()} ${q}`
       : q;
     let vivo = true;
     setBuscandoProd(true);
     const t = setTimeout(async () => {
-      const r = await buscarProductos(conMarca);
+      /*
+       * En la web abierta, NO en Mercado Libre.
+       *
+       * Esto llamaba a `buscarProductos`, que consulta a los canales
+       * conectados — o sea que el artículo se definía con el catálogo de ML y
+       * quedaba escrito con sus títulos, sus fotos y su forma de nombrar las
+       * cosas.
+       *
+       * El artículo es del fabricante, no del canal donde después se vende.
+       * De ML queremos otra cosa: en qué departamento y categoría lo clasifica,
+       * y a cuánto lo vende la competencia. Eso se pregunta aparte, cuando el
+       * artículo ya está definido.
+       *
+       * `incluirCanales: false` es lo que lo garantiza, igual que en la
+       * búsqueda de marca.
+       */
+      const web = await buscar(conMarca, { incluirCanales: false });
       if (!vivo) return;
-      setCandidatos(r);
+      setCandidatos(web.map(r => ({
+        id: r.url ?? r.nombre,
+        nombre: r.nombre,
+        imagen: r.imagen,
+        rasgos: r.descripcion ? [r.descripcion] : [],
+        canalNombre: r.fuente,
+      })) as any);
       setBuscandoProd(false);
     }, 600);
     return () => { vivo = false; clearTimeout(t); };
