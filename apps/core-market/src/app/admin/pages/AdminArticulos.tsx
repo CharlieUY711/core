@@ -2053,7 +2053,23 @@ export default function AdminArticulos(
               Misma fracción de grilla que la columna de Información (col 1)
               para que ambas queden siempre del mismo ancho entre sí. */}
           <div style={{ minWidth:0 }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
+            {/*
+              La columna del precio tiene el alto de la fila y no crece.
+
+              Cada "+" agrega un renglon, y sin tope la columna empujaba la
+              pagina hacia abajo: con seis precios la tarjeta quedaba a media
+              pantalla y las cuatro columnas dejaban de estar una al lado de la
+              otra, que es lo unico que justifica esta disposicion.
+
+              El alto es el de la tarjeta -la misma aritmetica que define toda
+              la fila- y lo que no entra scrollea acá adentro. Un scroll local
+              es mas barato que mover el resto de la pagina.
+            */}
+            <div style={{ display:"flex", flexDirection:"column", gap:RITMO,
+              maxHeight:ALTO_TARJETA, overflowY:"auto", overflowX:"hidden",
+              // Aire a la derecha para que la barra de scroll no se coma el
+              // borde de los campos cuando aparece.
+              paddingRight:4 }}>
               {/* Moneda · precio · impuesto, en un renglon.
                   Moneda y precio se achican para que entre el tercero: los
                   tres son el mismo dato -cuanto sale- y separarlos en

@@ -760,6 +760,19 @@ export default function AdminPublicaciones() {
   }
 
   // Estilos tabla
+  /*
+   * Alto del encabezado, en pixeles.
+   *
+   * Sale de `thB`, no de medirlo: padding 0.45rem arriba y abajo (7.2 × 2),
+   * texto de 10px con interlineado 1.2 (12), y el borde inferior de 2. Da 28,6
+   * y se usa 29.
+   *
+   * Se necesita para pegar el renglon del articulo justo debajo del
+   * encabezado. Medirlo en vivo fue peor: observar un elemento cuyo alto
+   * depende de lo que se mide hace temblar la pantalla.
+   */
+  const ALTO_ENCABEZADO = 29;
+
   const thB:React.CSSProperties={padding:"0.45rem 0.65rem",textAlign:"left",fontSize:"10px",
     fontWeight:700,color:"var(--mute)",textTransform:"uppercase",letterSpacing:".05em",
     borderBottom:"2px solid #F3F4F6",background:"#FAFAFA",whiteSpace:"nowrap",userSelect:"none"};
@@ -767,6 +780,12 @@ export default function AdminPublicaciones() {
   const td:React.CSSProperties={padding:"0.5rem 0.65rem",fontSize:"0.81rem",color:"#374151",
     borderBottom:"1px solid var(--gray-50)",verticalAlign:"middle"};
   const si=(k:SK)=>sk===k?(sd==="asc"?" ↑":" ↓"):" ↕";
+
+  /** Celda que queda pegada justo debajo del encabezado al scrollear. */
+  const pegado:React.CSSProperties={
+    position:"sticky", top:ALTO_ENCABEZADO, zIndex:9, background:"#fff",
+    borderBottom:"1px solid var(--border)",
+  };
 
   const inp:React.CSSProperties={width:"100%",padding:"0.42rem 0.6rem",border:"1.5px solid var(--border)",
     borderRadius:7,fontSize:"0.81rem",outline:"none",fontFamily:"DM Sans,sans-serif",boxSizing:"border-box"};
@@ -1207,6 +1226,15 @@ export default function AdminPublicaciones() {
                         Lo que todavia no se escribio se muestra con una raya
                         gris, no en blanco: un hueco no dice si falta o si no
                         aplica. */}
+                    {/*
+                      Queda pegado abajo del encabezado mientras se scrollea el
+                      formulario. Es la fila del articulo que se esta cargando:
+                      perderla de vista al bajar deja el formulario sin decir
+                      sobre que se esta trabajando.
+
+                      El sticky va en cada celda y no en el <tr>: un tr no
+                      acepta position sticky en la mayoria de los navegadores.
+                    */}
                     <tr style={{
                       background:"#fff",
                       borderLeft:`3px solid ${color}`,
@@ -1214,8 +1242,8 @@ export default function AdminPublicaciones() {
                       // todavia no esta guardada, y tiene que verse asi.
                       outline:`1px dashed ${color}55`, outlineOffset:-1,
                     }}>
-                      <td style={td}/>
-                      <td style={td}>
+                      <td style={{...td,...pegado}}/>
+                      <td style={{...td,...pegado}}>
                         <div style={{width:38,height:38,borderRadius:6,overflow:"hidden",background:"#F3F4F6"}}>
                           {resumen?.imagen
                             ?<img src={resumen.imagen} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -1225,26 +1253,26 @@ export default function AdminPublicaciones() {
                             </div>}
                         </div>
                       </td>
-                      <td style={{...td,maxWidth:200}}>
+                      <td style={{...td,...pegado,maxWidth:200}}>
                         <div style={{fontWeight:600,color:resumen?.nombre?"#111":"var(--gray-400)",
                           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {resumen?.nombre||"Sin título todavía"}
                         </div>
                       </td>
-                      <td style={{...td,fontWeight:700,...NUMERICO,
+                      <td style={{...td,...pegado,fontWeight:700,...NUMERICO,
                         color:resumen?.precio?color:"var(--gray-400)"}}>
                         {resumen?.precio?fmtP(resumen.precio,resumen.moneda):"—"}
                       </td>
-                      <td style={{...td,...NUMERICO,color:"var(--gray-400)"}}>
+                      <td style={{...td,...pegado,...NUMERICO,color:"var(--gray-400)"}}>
                         {resumen?.stock??"—"}
                       </td>
-                      <td style={td}>
+                      <td style={{...td,...pegado}}>
                         <span style={{fontSize:"11px",padding:"2px 8px",borderRadius:20,
                           background:"var(--gray-100,#F3F4F6)",color:"var(--gray-400)",fontWeight:700}}>
                           Sin guardar
                         </span>
                       </td>
-                      <td colSpan={99} style={{...td,color:"var(--gray-400)",fontSize:"0.78rem"}}>
+                      <td colSpan={99} style={{...td,...pegado,color:"var(--gray-400)",fontSize:"0.78rem"}}>
                         Se completa mientras escribís. Al guardar ocupa su lugar en la lista.
                       </td>
                     </tr>
@@ -1292,6 +1320,10 @@ export default function AdminPublicaciones() {
                     : aOrig;
                   const cfg=S[a.status]||S.draft;
                   const isS=sel.has(aOrig.id);
+                  // Con el articulo abierto su fila queda pegada al
+                  // encabezado: al bajar por el formulario hay que seguir
+                  // viendo cual se esta editando.
+                  const cel:React.CSSProperties = isE ? {...td,...pegado} : td;
                   const ctr=a.impresiones?Math.round((a.clicks||0)/a.impresiones*100):0;
                   return(
                     <>
@@ -1300,9 +1332,9 @@ export default function AdminPublicaciones() {
                         borderLeft:isE?`3px solid ${color}`:"3px solid transparent",
                         transition:"all .1s",
                       }}>
-                        <td style={td}><input type="checkbox" checked={isS}
+                        <td style={cel}><input type="checkbox" checked={isS}
                           onChange={()=>togSel(aOrig.id)} style={{accentColor:color}}/></td>
-                        <td style={td}>
+                        <td style={cel}>
                           <div style={{width:38,height:38,borderRadius:6,overflow:"hidden",background:"#F3F4F6"}}>
                             {a.imagen_principal
                               ?<img src={a.imagen_principal} alt={a.nombre} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -1312,19 +1344,19 @@ export default function AdminPublicaciones() {
                             }
                           </div>
                         </td>
-                        <td style={{...td,maxWidth:200}}>
+                        <td style={{...cel,maxWidth:200}}>
                           <div style={{fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.nombre}</div>
                           {a.condicion&&<div style={{fontSize:"10px",color:"var(--gray-400)"}}>{a.condicion}</div>}
                         </td>
-                        <td style={{...td,fontWeight:700,color,...NUMERICO}}>{fmtP(a.precio,a.moneda)}</td>
-                        <td style={{...td,...NUMERICO}}>
+                        <td style={{...cel,fontWeight:700,color,...NUMERICO}}>{fmtP(a.precio,a.moneda)}</td>
+                        <td style={{...cel,...NUMERICO}}>
                           <span style={{color:a.stock===0?"#EF4444":a.stock<5?"#F59E0B":"#374151",fontWeight:a.stock<5?700:400}}>{a.stock}</span>
                         </td>
-                        <td style={td}>
+                        <td style={cel}>
                           <span style={{fontSize:"11px",padding:"2px 8px",borderRadius:20,
                             background:cfg.bg,color:cfg.color,fontWeight:700}}>{cfg.label}</span>
                         </td>
-                        <td style={{...td,padding:"0.4rem 0.5rem"}}>
+                        <td style={{...cel,padding:"0.4rem 0.5rem"}}>
                           <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.max(1,Math.min(canales.length,4))},1fr)`,gap:"3px"}}>
                             {canales.map(c=>{
                               const est=estadoDeCanal(a.canales?{channels:a.canales} as any:undefined,c.channel);
@@ -1345,16 +1377,16 @@ export default function AdminPublicaciones() {
                             })}
                           </div>
                         </td>
-                        <td style={td}>{a.departamento_nombre||"—"}</td>
-                        <td style={td}>{fmt(a.published_at||a.created_at)}</td>
-                        {vcols.has("categoria")&&<td style={td}>{a.categoria_nombre||"—"}</td>}
-                        {vcols.has("marca")    &&<td style={td}>{a.atributos?.marca||"—"}</td>}
-                        {vcols.has("ranking")  &&<td style={{...td,...NUMERICO}}>{a.ranking_score?Number(a.ranking_score).toFixed(2):"—"}</td>}
-                        {vcols.has("ctr")      &&<td style={{...td,...NUMERICO}}>{ctr}%</td>}
-                        {vcols.has("baja")     &&<td style={td}>{fmt(a.baja_prevista||a.deleted_at)}</td>}
-                        {vcols.has("mkt1")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
-                        {vcols.has("mkt2")     &&<td style={{...td,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
-                        <td style={td}>
+                        <td style={cel}>{a.departamento_nombre||"—"}</td>
+                        <td style={cel}>{fmt(a.published_at||a.created_at)}</td>
+                        {vcols.has("categoria")&&<td style={cel}>{a.categoria_nombre||"—"}</td>}
+                        {vcols.has("marca")    &&<td style={cel}>{a.atributos?.marca||"—"}</td>}
+                        {vcols.has("ranking")  &&<td style={{...cel,...NUMERICO}}>{a.ranking_score?Number(a.ranking_score).toFixed(2):"—"}</td>}
+                        {vcols.has("ctr")      &&<td style={{...cel,...NUMERICO}}>{ctr}%</td>}
+                        {vcols.has("baja")     &&<td style={cel}>{fmt(a.baja_prevista||a.deleted_at)}</td>}
+                        {vcols.has("mkt1")     &&<td style={{...cel,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
+                        {vcols.has("mkt2")     &&<td style={{...cel,textAlign:"center"}}><input type="checkbox" checked={false} style={{accentColor:color}} onChange={()=>{}}/></td>}
+                        <td style={cel}>
                           <button onClick={()=>{togExp(aOrig.id);setResumen(null);}} style={{
                             background:"none",border:"none",cursor:"pointer",
                             color:isE?color:"#CBD5E1",fontSize:"12px",padding:"2px 4px",
