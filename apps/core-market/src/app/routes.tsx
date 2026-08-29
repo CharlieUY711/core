@@ -26,7 +26,6 @@ import AdminApiVault from "./admin/pages/AdminApiVault";
 // 👉 NUEVA PÁGINA
 // 👉 EDITOR PRO
 import AdminToolEditor from "./admin/pages/AdminToolEditor";
-import AdminCargaMasiva from "./admin/pages/AdminCargaMasiva";
 
 export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
   { id: "storefront",          path: "/",           Component: MarketPage },
@@ -52,7 +51,6 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
       { id: "admin-import",         path: "import",        Component: AdminImport },
 
       // 👉 NUEVA RUTA DE CARGA MASIVA
-      { id: "admin-carga-masiva",   path: "carga-masiva",  Component: AdminCargaMasiva },
 
       { id: "admin-profile",        path: "profile",       Component: AdminProfile },
       { id: "admin-publicacion-nueva", path: "publicaciones/nueva", Component: AdminArticulos },

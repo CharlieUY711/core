@@ -2,6 +2,9 @@ import { useState, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import { useMediaLibrary, MediaTipo, MediaItem } from "../../hooks/useMediaLibrary";
+import AdminImport from "./AdminImport";
+import AdminExport from "./AdminExport";
+import AdminCatalog from "./AdminCatalog";
 
 const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
@@ -51,7 +54,15 @@ export default function AdminBiblioteca({
 }: Props) {
   useOutletContext<any>();
 
-  const [tab,        setTab]        = useState<"biblioteca" | "subir">("biblioteca");
+  /*
+   * Importar y Exportar viven acá, no en la barra lateral.
+   *
+   * Son operaciones SOBRE la Biblioteca, no lugares a los que se va. Sueltas en
+   * el menú obligaban a saber de antemano que existían y sobre qué actuaban;
+   * acá están donde está lo que importan y exportan.
+   */
+  const [tab,        setTab]        = useState<
+    "biblioteca" | "subir" | "taxonomia" | "importar" | "exportar">("biblioteca");
   const [search,     setSearch]     = useState("");
   const [filterTipo, setFilterTipo] = useState<MediaTipo | "all">("all");
   const [filterCat,  setFilterCat]  = useState<string>("all");
@@ -241,7 +252,7 @@ export default function AdminBiblioteca({
 
       {/* Tabs */}
       <div style={{ display:"flex", gap:0, borderBottom:"1.5px solid var(--border)", alignItems:"center" }}>
-        {(["biblioteca","subir"] as const).map(t => (
+        {(["biblioteca","subir","taxonomia","importar","exportar"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding:"0.6rem 1.25rem", background:"none", border:"none",
             borderBottom: tab===t ? `2.5px solid ${ACCENT}` : "2.5px solid transparent",
@@ -249,7 +260,11 @@ export default function AdminBiblioteca({
             fontWeight: tab===t ? 700 : 400,
             fontSize:"0.875rem", cursor:"pointer", marginBottom:"-1.5px",
           }}>
-            {t === "biblioteca" ? `🗂 Biblioteca (${stats.total})` : "⬆ Subir"}
+            {t === "biblioteca" ? `🗂 Biblioteca (${stats.total})`
+             : t === "subir"     ? "⬆ Subir"
+             : t === "taxonomia" ? "🏷 Deptos y Categorías"
+             : t === "importar"  ? "📥 Importar"
+             :                     "📤 Exportar"}
           </button>
         ))}
         {mode === "modal" && selected.size > 0 && (
@@ -260,6 +275,23 @@ export default function AdminBiblioteca({
           </button>
         )}
       </div>
+
+      {/* Importar y Exportar: las pantallas que ya existían, ahora acá adentro.
+          No se reescriben — funcionan y son las mismas; lo que cambia es dónde
+          se llega a ellas. */}
+      {/* Departamentos y categorías: es la estructura con la que se clasifica
+          lo que hay en la Biblioteca. Suelta en el menú era una pantalla que
+          nadie sabía para qué servía; acá está al lado de lo que ordena. */}
+      {tab === "taxonomia" && (
+        <div style={{ marginTop:"0.5rem" }}><AdminCatalog /></div>
+      )}
+
+      {tab === "importar" && (
+        <div style={{ marginTop:"0.5rem" }}><AdminImport /></div>
+      )}
+      {tab === "exportar" && (
+        <div style={{ marginTop:"0.5rem" }}><AdminExport /></div>
+      )}
 
       {/* TAB BIBLIOTECA */}
       {tab === "biblioteca" && (

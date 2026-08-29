@@ -36,9 +36,16 @@ const commonMenu = [
   { path: "/admin/biblioteca",    label: "Biblioteca"                     },
   { path: "/admin/editor",      label: "Editor"                         },
   { path: "/admin/tool-editor", label: "Editor Pro"                     },
-  { path: "/admin/import",        label: "Importar"                       },
-  { path: "/admin/carga-masiva",  label: "Carga Masiva"                   },
-  { path: "/admin/export",        label: "Exportar"                       },
+  /*
+   * Importar y Exportar salieron de acá: son operaciones SOBRE la Biblioteca,
+   * no lugares a los que se va. Tenerlas sueltas obligaba a saber de antemano
+   * que existían y sobre qué actuaban; adentro de la Biblioteca están donde
+   * está lo que importan y exportan.
+   *
+   * Carga Masiva desaparece. Lo que hacía —dar de alta muchos productos de una
+   * vez— lo resuelve el catálogo por marca, que además sabe de dónde salen los
+   * productos en vez de pedir un archivo armado a mano.
+   */
   { path: "/admin/profile",       label: "Mi perfil"                      },
 ];
 
@@ -47,7 +54,10 @@ const adminSections = [
     key: "gestion",
     section: "Gestión",
     items: [
-      { path: "/admin/catalog",   label: "Catálogo" },
+      /* Catálogo salió de acá: departamentos y categorías son la estructura
+         con la que se clasifica lo que hay en la Biblioteca, así que viven
+         adentro de ella. Suelto en el menú era una pantalla que nadie sabía
+         para qué servía. */
       { path: "/admin/analytics", label: "Analytics" },
     ],
   },
