@@ -36,3 +36,20 @@ describe("la URL dice si es un producto", () => {
       .toBeGreaterThan(puntajeDeProducto("https://x.com/algo/aceite"));
   });
 });
+
+describe("las secciones del fabricante no son productos", () => {
+  it("el indice del catalogo no es un producto", () => {
+    expect(puntajeDeProducto("https://www.santalaura.uy/productos", "Productos")).toBe(-1);
+    expect(puntajeDeProducto("https://www.lamolienda.uy/alimentos", "Santa Laura")).toBe(-1);
+  });
+
+  it("las paginas institucionales tampoco", () => {
+    expect(puntajeDeProducto("https://www.santalaura.uy/donde-estamos", "Donde estamos - Olivares de Santa Laura")).toBe(-1);
+    expect(puntajeDeProducto("https://www.santalaura.uy/cultura-y-salud", "Cultura y Salud")).toBe(-1);
+  });
+
+  it("pero los productos reales siguen pasando", () => {
+    expect(puntajeDeProducto("https://iber.uy/shop/product/724-aceite-olivares", "ACEITE OLIVARES DE SANTA LAURA")).toBe(2);
+    expect(puntajeDeProducto("https://www.bigbox.com.uy/regalos/mix/blend-uy/olivares", "Seleccion de aceites")).toBeGreaterThan(0);
+  });
+});

@@ -29,6 +29,21 @@ const CAMINOS_DE_PRODUCTO = [
   /\/catalogo\//i, /\/supermercado\//i, /\/comprar\//i,
 ];
 
+/**
+ * Títulos que son el nombre de una sección, no de un producto.
+ *
+ * "Productos" es el índice del catálogo; "Cultura y Salud" y "Dónde estamos"
+ * son páginas institucionales. Todas viven en el sitio del fabricante y ninguna
+ * es algo que se pueda vender.
+ */
+const TITULOS_DE_SECCION = [
+  /^productos?$/i, /^catálogo$/i, /^catalogo$/i, /^tienda$/i, /^shop$/i,
+  /^inicio$/i, /^home$/i, /^nosotros$/i, /^empresa$/i, /^la empresa$/i,
+  /^d[óo]nde estamos/i, /^contacto$/i, /^noticias$/i, /^novedades$/i,
+  /^cultura/i, /^blog$/i, /^prensa$/i, /^historia$/i, /^calidad$/i,
+  /^c[óo]mo lo hacemos/i, /^turismo$/i, /^visitas$/i, /^comercio$/i,
+];
+
 /** Caminos que nunca son un producto, por más que estén en el sitio correcto. */
 const CAMINOS_DE_SECCION = [
   /\/(nosotros|about|empresa|historia|quienes)/i,
@@ -58,16 +73,34 @@ const caminoDe = (url: string | null): string => {
 
 /**
  * Qué tan probable es que este resultado sea un producto.
- *   2 = la URL dice producto
- *   1 = no dice nada en contra
- *  -1 = es una sección del sitio, o la portada
+ *   2 = la URL dice producto: `/shop/product/…`, `/productos/aceites/…`
+ *   1 = no lo dice, pero tiene forma de página de producto
+ *  -1 = es una sección, un índice o la portada
+ *
+ * RECHAZA POR DEFECTO, Y ESE ES EL CAMBIO
+ * Antes lo que no coincidía con nada puntuaba 1 y pasaba. Con eso, el catálogo
+ * de una marca traía "Dónde estamos", "Cultura y Salud" y "Productos" —el
+ * índice, no un producto—. Que la lista tenga menos entradas es mejor que
+ * ofrecer dar de alta un artículo llamado "Dónde estamos".
+ *
+ * LA PROFUNDIDAD ES LA SEÑAL QUE FALTABA
+ * Mirando URLs reales, los productos viven a dos o más niveles
+ * —`/shop/product/724-aceite-…`, `/productos/aceites/aceite-de-oliva-…`— y las
+ * secciones a uno solo: `/productos`, `/alimentos`, `/contacto`. Un nivel es un
+ * índice; dos o más es algo concreto adentro de él.
  */
-export function puntajeDeProducto(url: string | null): number {
+export function puntajeDeProducto(url: string | null, titulo?: string | null): number {
   const camino = caminoDe(url);
   if (!camino || camino === "/") return -1;              // la portada nunca es un producto
   if (CAMINOS_DE_SECCION.some((p) => p.test(camino))) return -1;
+
+  const t = (titulo ?? "").trim();
+  if (t && TITULOS_DE_SECCION.some((p) => p.test(t))) return -1;
+
   if (CAMINOS_DE_PRODUCTO.some((p) => p.test(camino))) return 2;
-  return 1;
+
+  const niveles = camino.split("/").filter(Boolean).length;
+  return niveles >= 2 ? 1 : -1;
 }
 
 /** Normaliza para comparar títulos: sin acentos, sin puntuación, sin espacios. */
@@ -196,7 +229,7 @@ function filtrarProductos(
     if (vistos.has(clave)) continue;
     vistos.add(clave);
 
-    const puntos = puntajeDeProducto(r.url);
+    const puntos = puntajeDeProducto(r.url, r.nombre);
     if (puntos < 0) continue;                            // secciones y portadas, fuera
     conPuntaje.push({ r, puntos });
   }
