@@ -122,33 +122,67 @@ const NO_SON_MARCAS = new Set([
 ]);
 
 /**
- * El nombre de marca que corresponde a un dominio.
- * `apple.com` → "Apple". `underarmour.com` → "Underarmour".
+ * Compara sin acentos, sin espacios y sin puntuación.
+ *
+ * Un dominio no tiene espacios y una marca sí: `colinasdegarzon.com` es
+ * "Colinas de Garzón". Comparando literal, escribir "Colinas de Gar" no
+ * coincide con "colinasdegarzon" y la marca desaparecía de las sugerencias
+ * justo cuando se la estaba escribiendo.
  */
-function marcaDeDominio(dominio: string): string {
-  const raiz = dominio
+const normalizar = (s: string): string =>
+  s.toLowerCase()
+   .normalize("NFD").replace(/[̀-ͯ]/g, "")
+   .replace(/[^a-z0-9]/g, "");
+
+/** La parte del dominio que nombra a la marca. `apple.com` → `apple`. */
+function raizDeDominio(dominio: string): string {
+  return dominio
     .replace(/^www\./, "")
-    .replace(/\.(com|net|org|co|io|shop|store)(\.[a-z]{2})?$/, "")
+    .replace(/\.(com|net|org|co|io|shop|store|uy|ar|br|es|mx)(\.[a-z]{2})?$/, "")
     .split(".").pop() ?? dominio;
-  return raiz.charAt(0).toUpperCase() + raiz.slice(1);
+}
+
+/**
+ * Cómo se llama la marca de este dominio.
+ *
+ * El título de la página suele traer el nombre BIEN ESCRITO —con sus espacios
+ * y sus acentos— y el dominio no puede: "Colinas de Garzón" contra
+ * "colinasdegarzon". Así que se usa el título cuando nombra al mismo dominio, y
+ * el dominio cuando no.
+ *
+ * Se toma sólo el primer tramo del título, hasta el primer separador: los
+ * títulos siguen con la descripción de la página —"Colinas de Garzón – El
+ * aceite de oliva extra virgen…"— y eso no es el nombre de la marca.
+ */
+function nombreDeMarca(dominio: string, titulo: string | null): string {
+  const raiz = raizDeDominio(dominio);
+  const porDominio = raiz.charAt(0).toUpperCase() + raiz.slice(1);
+  if (!titulo) return porDominio;
+
+  const tramo = titulo.split(/[|–—·:]|\s-\s/)[0]?.trim() ?? "";
+  if (!tramo) return porDominio;
+
+  // Sólo si el título nombra a este dominio. "App Store" en apple.com no es la
+  // marca; "Colinas de Garzón" en colinasdegarzon.com sí.
+  return normalizar(tramo) === normalizar(raiz) ? tramo : porDominio;
 }
 
 export async function buscarMarcas(texto: string): Promise<MarcaSugerida[]> {
   const q = texto.trim();
   if (q.length < 2) return [];
-  const ql = q.toLowerCase();
-
   const web = await buscar(q, { incluirCanales: false });
+  const qn = normalizar(q);
 
   const porDominio = new Map<string, MarcaSugerida>();
   for (const r of web) {
     const dominio = dominioDeUrl(r.url);
-    if (!dominio || NO_SON_MARCAS.has(dominio)) continue;
+    if (!dominio || NO_SON_MARCAS.has(dominio.replace(/^www\./, ""))) continue;
 
-    const nombre = marcaDeDominio(dominio);
-    // Lo tipeado tiene que estar en el nombre. Sin esto, buscar "Apple" trae
-    // cualquier pagina donde aparezca la palabra.
-    if (!nombre.toLowerCase().includes(ql) && !ql.includes(nombre.toLowerCase())) continue;
+    const nombre = nombreDeMarca(dominio, r.nombre);
+    // Lo tipeado tiene que estar en el nombre, comparado sin espacios ni
+    // acentos: "Colinas de Gar" tiene que encontrar "colinasdegarzon.com".
+    const nn = normalizar(nombre);
+    if (!nn.includes(qn) && !qn.includes(nn)) continue;
 
     // Un dominio, una marca: el mismo fabricante aparece en varias paginas.
     if (porDominio.has(dominio)) continue;
