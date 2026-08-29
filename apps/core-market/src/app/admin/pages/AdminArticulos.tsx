@@ -518,7 +518,9 @@ function PastillasDestino({ elegidos, onToggle, ocupados, motores }: {
     <>
       {DESTINOS_PRECIO.map(d => {
         const on = elegidos.includes(d.id);
-        // Sin herramienta no hay destino: la pastilla se ve y no se toca.
+        // Sin herramienta INSTALADA no hay destino: la pastilla se ve y no se
+        // toca. Que este instalada y sin conectar no bloquea nada — el precio
+        // se decide igual, y cuando se conecte ya esta puesto.
         const sinMotor = !("nativo" in d) && !motores.has((d as any).canal);
         const tomado   = !on && (ocupados ?? []).includes(d.id);
         const off      = sinMotor || tomado;
@@ -527,7 +529,7 @@ function PastillasDestino({ elegidos, onToggle, ocupados, motores }: {
           <button key={d.id} type="button" disabled={off}
             onClick={() => onToggle(d.id)}
             title={
-              sinMotor ? `${d.nombre}: falta la herramienta de sincronización`
+              sinMotor ? `${d.nombre}: no hay herramienta de sincronización instalada`
               : tomado  ? `${d.nombre} ya tiene otro precio`
               : d.nombre
             }
@@ -1080,7 +1082,17 @@ export default function AdminArticulos(
   const [destinosBase, setDestinosBase] = useState<string[]>([]);
 
   /**
-   * Motores de sincronizacion instalados y en orden.
+   * Motores de sincronizacion INSTALADOS.
+   *
+   * Instalado, no conectado. Son dos cosas distintas y confundirlas fue un
+   * error: que Mercado Libre no tenga credenciales hoy no impide decidir a que
+   * precio se va a vender ahi. El precio es una decision comercial; la conexion
+   * es un tramite que puede resolverse despues, y cuando se resuelva el precio
+   * ya tiene que estar puesto.
+   *
+   * Por eso se toman las dos listas. `disponibles` son los que ademas estan en
+   * orden, y eso importa para sincronizar -la barra de acciones lo dice- pero
+   * no para cotizar.
    *
    * Lo contesta el registro de canales, no una lista escrita aca: la pantalla
    * no sabe de ningun canal por nombre, y el dia que se instale WhatsApp su
@@ -1089,8 +1101,8 @@ export default function AdminArticulos(
   const [motores, setMotores] = useState<Set<string>>(new Set());
   useEffect(() => {
     let vivo = true;
-    canalesDisponibles().then(({ disponibles }) => {
-      if (vivo) setMotores(new Set(disponibles.map(d => d.channel)));
+    canalesDisponibles().then(({ disponibles, bloqueados }) => {
+      if (vivo) setMotores(new Set([...disponibles, ...bloqueados].map(d => d.channel)));
     });
     return () => { vivo = false; };
   }, []);
