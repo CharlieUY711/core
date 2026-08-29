@@ -7,6 +7,7 @@ import { NUMERICO } from "../ui/numeros";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          type ProblemaPublicacion } from "../utils/canalesSync";
 import AdminArticulos from "./AdminArticulos";
+import { BarraDeAcciones, BarraDeAccionesSuelta } from "../components/BarraDeAcciones";
 
 const ACCENT = "var(--brand-madre)";
 const GREEN  = "var(--color-success)";
@@ -261,24 +262,12 @@ function Canal({c,estado,sel,ocupado,onClick}:{
  * todas. Un menu que hay que abrir para elegir entre tres cosas cuesta dos
  * clics en lugar de uno y esconde lo que se puede hacer.
  */
-function Accion({label,onClick,dis,color,destacado}:{
-  label:string; onClick:()=>void; dis?:boolean; color?:string; destacado?:boolean;
-}) {
-  return (
-    <button onClick={()=>!dis&&onClick()} disabled={dis} title={dis?"Elegí al menos una publicación":undefined}
-      style={{
-        padding:"0.42rem 0.7rem", borderRadius:7, whiteSpace:"nowrap",
-        fontSize:"0.76rem", fontWeight:700, fontFamily:"DM Sans,sans-serif",
-        cursor:dis?"not-allowed":"pointer", transition:"all .12s",
-        border: destacado?"none":`1.5px solid ${dis?"#E5E7EB":(color??"var(--border)")}`,
-        background: destacado?(dis?"#CBD5E1":(color??"#111")):"#fff",
-        color: destacado?"#fff":(dis?"#CBD5E1":(color??"#374151")),
-        opacity: dis?.75:1,
-      }}>{label}</button>
-  );
-}
-
-
+/*
+ * Acá vivía `Accion`, el botón de la barra. Se fue al shell
+ * -components/BarraDeAcciones- porque cómo se ve una acción es una decisión del
+ * panel, no de esta pantalla: teniéndolo acá, la pantalla siguiente lo copiaba
+ * —o no— y el panel dejaba de parecer un solo producto.
+ */
 
 function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>void;color:string;lbl:any;inp:any}) {
   const GREEN = "var(--color-success)";
@@ -922,9 +911,14 @@ export default function AdminPublicaciones() {
                       </details>
                     )}
 
+                    {/* Es una acción, y se ve como cualquier otra del panel:
+                        la dibuja el mismo componente del shell. */}
                     <div style={{display:"flex",gap:8,marginTop:"0.7rem"}}>
-                      <Accion label={corrigiendo?"Publicando…":"Guardar y sincronizar"} destacado color={BLUE}
-                        dis={corrigiendo} onClick={()=>guardarCorrecciones(a)}/>
+                      <BarraDeAccionesSuelta acciones={[{
+                        label: corrigiendo ? "Publicando…" : "Guardar y sincronizar",
+                        destacado: true, color: BLUE, desactivada: corrigiendo,
+                        onClick: () => guardarCorrecciones(a),
+                      }]}/>
                     </div>
                   </>
                 )}
@@ -1037,123 +1031,114 @@ export default function AdminPublicaciones() {
         display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden",
         boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
 
-        {/* MENU BAR — world class */}
-        <div style={{
-          display:"flex", alignItems:"center", flexShrink:0,
-          background:"#fff", borderBottom:"1px solid #EAECF0",
-          padding:"0 1rem", gap:"2px",
-          boxShadow:"0 1px 3px rgba(0,0,0,.04)",
-        }}>
+        {/* La barra la dibuja el shell; acá sólo se declara qué hace esta
+            pantalla. Antes el estilo vivía acá, así que cada pantalla nueva lo
+            copiaba —o no— y el panel dejaba de parecer un solo producto. */}
+        <BarraDeAcciones
+          acciones={[
+            /* Market + / Second + reemplazan a "Nuevo": llevan directo al alta
+               de un artículo en el canal correspondiente. Sin `desactivada`:
+               deben funcionar siempre, sin depender de que haya filas
+               elegidas. */
+            { label:"Market +", destacado:true, color:BLUE,
+              onClick:()=>{setWizardTipo("market");setShowWizard(true);setExp(null);setResumen(null);} },
+            { label:"Second +", destacado:true, color:GREEN,
+              onClick:()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);setResumen(null);} },
+            "separador",
+            { label:"Publicar", color:GREEN, desactivada:!has,
+              motivo:"Elegí al menos una publicación",
+              onClick:()=>chSt(activeIds,"active") },
+            { label:"Ocultar", color:"#F59E0B", desactivada:!has,
+              motivo:"Elegí al menos una publicación",
+              onClick:()=>chSt(activeIds,"draft") },
+            { label:"Archivar", color:"var(--mute)", desactivada:!has,
+              motivo:"Elegí al menos una publicación",
+              onClick:()=>archivar(activeIds) },
+            { label:"Duplicar", color:BLUE, desactivada:!has||sel.size>1,
+              motivo: sel.size>1 ? "Se duplica de a una" : "Elegí una publicación",
+              onClick:()=>activeArt&&clonar(activeArt) },
+            { label:"Eliminar", color:"#EF4444", desactivada:!has,
+              motivo:"Elegí al menos una publicación",
+              onClick:()=>eliminar(activeIds) },
+            "separador",
+            /* Sin chips elegidos el botón NO se apaga: se aprieta y dice que
+               falta elegir. Un botón apagado que no explica por qué es la misma
+               pregunta —"¿pasó algo?"— sin respuesta. */
+            { label: sincro ? "Sincronizando…" : "Sincronizar"+(chips.size?" ("+chips.size+")":""),
+              destacado:true, color:BLUE, desactivada:sincro,
+              onClick:sincronizar },
+            /* Volver: sólo con la ficha abierta. Va en la barra y no dentro del
+               formulario porque es una acción sobre la pantalla, no sobre el
+               artículo. */
+            ...((showWizard||exp) ? [
+              "separador" as const,
+              { label:"← Volver", color:"var(--mute)",
+                onClick:()=>{setShowWizard(false);setExp(null);setResumen(null);} },
+            ] : []),
+          ]}
+          derecha={<>
+            {/* Canales que no se ofrecen y por qué: no aparecen en la tabla,
+                así que sin esto la ausencia no se distingue de un olvido. */}
+            {canalesFuera.length>0&&(
+              <span title={canalesFuera.map(c=>c.nombre+": "+c.motivo).join(" · ")}
+                style={{fontSize:"0.72rem",color:"#B45309",fontWeight:600,
+                  background:"rgba(245,158,11,.12)",padding:"3px 9px",borderRadius:999,
+                  cursor:"help",whiteSpace:"nowrap"}}>
+                {canalesFuera.length===1
+                  ? canalesFuera[0].nombre+" no está disponible"
+                  : canalesFuera.length+" canales no están disponibles"}
+              </span>
+            )}
 
+            {sel.size>0&&(
+              <span style={{fontSize:"0.72rem",color:BLUE,fontWeight:700,
+                padding:"0.22rem 0.6rem",borderRadius:6,
+                background:"color-mix(in srgb, var(--brand-navy) 8%, transparent)"}}>
+                {sel.size} sel.
+              </span>
+            )}
 
-          {/* ACCIONES — directas, sin desplegables */}
-          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",padding:"6px 0"}}>
-            {/* Market + / Second + reemplazan a "Nuevo": llevan directo al alta
-                de un artículo en el canal correspondiente. Sin `dis`: deben
-                funcionar siempre, sin depender de que haya filas elegidas. */}
-            <Accion label="Market +" destacado color={BLUE}
-              onClick={()=>{setWizardTipo("market");setShowWizard(true);setExp(null);setResumen(null);}}/>
-            <Accion label="Second +" destacado color={GREEN}
-              onClick={()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);setResumen(null);}}/>
-            <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
-            <Accion label="Publicar"  dis={!has} color={GREEN}
-              onClick={()=>chSt(activeIds,"active")}/>
-            <Accion label="Ocultar"   dis={!has} color="#F59E0B"
-              onClick={()=>chSt(activeIds,"draft")}/>
-            <Accion label="Archivar"  dis={!has} color="var(--mute)"
-              onClick={()=>archivar(activeIds)}/>
-            <Accion label="Duplicar"  dis={!has||sel.size>1} color={BLUE}
-              onClick={()=>activeArt&&clonar(activeArt)}/>
-            <Accion label="Eliminar"  dis={!has} color="#EF4444"
-              onClick={()=>eliminar(activeIds)}/>
-            <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
-            {/* Sin chips elegidos el boton no se apaga: se aprieta y dice que
-                falta elegir. Un boton apagado que no explica por que es la
-                misma pregunta -"paso algo?"- sin respuesta. */}
-            <Accion label={sincro?"Sincronizando…":"Sincronizar"+(chips.size?" ("+chips.size+")":"")}
-              destacado color={BLUE} dis={sincro}
-              onClick={sincronizar}/>
-          </div>
-
-          <div style={{flex:1}}/>
-
-          {/* Canales que no se ofrecen y por que: no aparecen en la tabla, asi
-              que sin esto la ausencia no se distingue de un olvido. */}
-          {canalesFuera.length>0&&(
-            <span title={canalesFuera.map(c=>c.nombre+": "+c.motivo).join(" · ")}
-              style={{fontSize:"0.72rem",color:"#B45309",fontWeight:600,
-                background:"rgba(245,158,11,.12)",padding:"3px 9px",borderRadius:999,
-                marginRight:8,cursor:"help",whiteSpace:"nowrap"}}>
-              {canalesFuera.length===1
-                ? canalesFuera[0].nombre+" no está disponible"
-                : canalesFuera.length+" canales no están disponibles"}
-            </span>
-          )}
-
-          {/* Selección */}
-          {sel.size>0&&(
-            <span style={{fontSize:"0.72rem",color:BLUE,fontWeight:700,
-              padding:"0.22rem 0.6rem",background:"color-mix(in srgb, var(--brand-navy) 8%, transparent)",borderRadius:6,marginRight:"0.5rem"}}>
-              {sel.size} sel.
-            </span>
-          )}
-
-          {/* Guardar / Cancelar — solo cuando hay cambios */}
-          {dirty&&(
-            <div style={{display:"flex",gap:6,padding:"0.3rem 0.5rem"}}>
-              <button onClick={()=>{setExp(null);setDirty(false);}} style={{padding:"0.35rem 0.8rem",border:"1.5px solid var(--border)",borderRadius:7,
-                background:"#fff",color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,cursor:"pointer"}}>
-                Cancelar
-              </button>
-              <button onClick={saveEdit} disabled={saving} style={{
-                padding:"0.35rem 0.8rem",border:"none",borderRadius:7,
-                background:color,color:"#fff",fontSize:"0.78rem",fontWeight:700,
-                cursor:saving?"not-allowed":"pointer",opacity:saving?.7:1,
-              }}>{saving?"Guardando...":"Guardar"}</button>
-            </div>
-          )}
-
-          {/* Volver: solo con la ficha abierta.
-              Va en la barra y no dentro del formulario porque es una accion
-              sobre la pantalla, no sobre el articulo. Antes la unica salida
-              era el pie de un formulario largo: quien se arrepiente apenas
-              entra tenia que recorrerlo entero para encontrarla. */}
-          {(showWizard||exp)&&(
-            <>
-              <div style={{width:1,height:22,background:"var(--border)",margin:"0 2px"}}/>
-              <button onClick={()=>{setShowWizard(false);setExp(null);setResumen(null);}}
-                style={{border:"none",background:"none",padding:"0 6px",cursor:"pointer",
-                  color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,
-                  fontFamily:"DM Sans,sans-serif",whiteSpace:"nowrap"}}>
-                ← Volver
-              </button>
-            </>
-          )}
-
-          {/* Columnas — al final de la barra, a la derecha del todo */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowC(p=>!p)} style={{
-              padding:"0.5rem 0.8rem",border:"none",background:"transparent",cursor:"pointer",
-              fontSize:"0.78rem",fontWeight:showC?700:500,color:showC?"#111":"#555",
-              display:"flex",alignItems:"center",gap:3,whiteSpace:"nowrap",
-            }}>Columnas <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
-            {showC&&(
-              <div style={{position:"absolute",right:0,top:"100%",background:"#fff",
-                border:"1.5px solid var(--border)",borderRadius:10,padding:"0.5rem",
-                zIndex:300,minWidth:155,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}
-                onMouseLeave={()=>setShowC(false)}>
-                {XCOLS.map(col=>(
-                  <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,
-                    padding:"0.28rem 0",cursor:"pointer",fontSize:"0.8rem",color:"#374151"}}>
-                    <input type="checkbox" checked={vcols.has(col.id)} style={{accentColor:color}}
-                      onChange={()=>setVcols(p=>{const n=new Set(p);n.has(col.id)?n.delete(col.id):n.add(col.id);return n;})}/>
-                    {col.label}
-                  </label>
-                ))}
+            {/* Guardar / Cancelar — sólo cuando hay cambios */}
+            {dirty&&(
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>{setExp(null);setDirty(false);}} style={{padding:"0.35rem 0.8rem",
+                  border:"1.5px solid var(--border)",borderRadius:7,background:"#fff",
+                  color:"var(--mute)",fontSize:"0.78rem",fontWeight:700,cursor:"pointer"}}>
+                  Cancelar
+                </button>
+                <button onClick={saveEdit} disabled={saving} style={{
+                  padding:"0.35rem 0.8rem",border:"none",borderRadius:7,
+                  background:color,color:"#fff",fontSize:"0.78rem",fontWeight:700,
+                  cursor:saving?"not-allowed":"pointer",opacity:saving?.7:1,
+                }}>{saving?"Guardando...":"Guardar"}</button>
               </div>
             )}
-          </div>
-        </div>
+
+            {/* Columnas — al final del todo */}
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowC(p=>!p)} style={{
+                padding:"0.5rem 0.8rem",border:"none",background:"transparent",cursor:"pointer",
+                fontSize:"0.78rem",fontWeight:showC?700:500,color:showC?"#111":"#555",
+                display:"flex",alignItems:"center",gap:3,whiteSpace:"nowrap",
+              }}>Columnas <span style={{fontSize:"8px",opacity:.6}}>▾</span></button>
+              {showC&&(
+                <div style={{position:"absolute",right:0,top:"100%",background:"#fff",
+                  border:"1.5px solid var(--border)",borderRadius:10,padding:"0.5rem",
+                  zIndex:300,minWidth:155,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}
+                  onMouseLeave={()=>setShowC(false)}>
+                  {XCOLS.map(col=>(
+                    <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,
+                      padding:"0.28rem 0",cursor:"pointer",fontSize:"0.8rem",color:"#374151"}}>
+                      <input type="checkbox" checked={vcols.has(col.id)} style={{accentColor:color}}
+                        onChange={()=>setVcols(p=>{const n=new Set(p);n.has(col.id)?n.delete(col.id):n.add(col.id);return n;})}/>
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>}
+        />
 
         {/* Aviso en linea, en el flujo de la pagina y pegado a la barra.
             El cartel flotante abajo a la derecha se elimino: aparecia lejos de

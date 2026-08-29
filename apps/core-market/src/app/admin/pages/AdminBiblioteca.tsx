@@ -5,6 +5,7 @@ import { useMediaLibrary, MediaTipo, MediaItem } from "../../hooks/useMediaLibra
 import AdminImport from "./AdminImport";
 import AdminExport from "./AdminExport";
 import AdminCatalog from "./AdminCatalog";
+import { BarraDeAcciones } from "../components/BarraDeAcciones";
 
 const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
@@ -251,31 +252,31 @@ export default function AdminBiblioteca({
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display:"flex", gap:0, borderBottom:"1.5px solid var(--border)", alignItems:"center" }}>
-        {(["biblioteca","subir","taxonomia","importar","exportar"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding:"0.6rem 1.25rem", background:"none", border:"none",
-            borderBottom: tab===t ? `2.5px solid ${ACCENT}` : "2.5px solid transparent",
-            color: tab===t ? ACCENT : "var(--mute)",
-            fontWeight: tab===t ? 700 : 400,
-            fontSize:"0.875rem", cursor:"pointer", marginBottom:"-1.5px",
-          }}>
-            {t === "biblioteca" ? `🗂 Biblioteca (${stats.total})`
-             : t === "subir"     ? "⬆ Subir"
-             : t === "taxonomia" ? "🏷 Deptos y Categorías"
-             : t === "importar"  ? "📥 Importar"
-             :                     "📤 Exportar"}
-          </button>
-        ))}
-        {mode === "modal" && selected.size > 0 && (
+      {/* La misma barra que el resto del panel: la dibuja el shell y acá sólo
+          se declara qué hay. Antes eran pestañas con su propio estilo, así que
+          Biblioteca y Publicaciones no se parecían aunque hicieran lo mismo. */}
+      <BarraDeAcciones
+        acciones={([
+          ["biblioteca", `Biblioteca (${stats.total})`],
+          ["subir",      "Subir"],
+          ["taxonomia",  "Deptos y Categorías"],
+          ["importar",   "Importar"],
+          ["exportar",   "Exportar"],
+        ] as const).map(([id, label]) => ({
+          label,
+          activa: tab === id,
+          color: ACCENT,
+          onClick: () => setTab(id as typeof tab),
+        }))}
+        derecha={mode === "modal" && selected.size > 0 ? (
           <button onClick={() => onSelect?.(items.filter(i => selected.has(i.id)))}
-            style={{ marginLeft:"auto", padding:"0.45rem 1.1rem", background:ACCENT, color:"#fff",
-              border:"none", borderRadius:8, fontWeight:700, fontSize:"0.82rem", cursor:"pointer" }}>
+            style={{ padding:"0.42rem 1.1rem", background:ACCENT, color:"#fff",
+              border:"none", borderRadius:7, fontWeight:700, fontSize:"0.76rem",
+              cursor:"pointer", fontFamily:"DM Sans,sans-serif" }}>
             Usar ({selected.size}) →
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Importar y Exportar: las pantallas que ya existían, ahora acá adentro.
           No se reescriben — funcionan y son las mismas; lo que cambia es dónde
