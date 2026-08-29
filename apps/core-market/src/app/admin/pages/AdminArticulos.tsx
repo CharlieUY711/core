@@ -662,7 +662,7 @@ function LineaCondicion({ opciones, valor, onChange, subValor, onSubValor }: {
 }
 
 export default function AdminArticulos(
-  { onFinish, onCancel, tipoInicial, onResumen, articulo }:
+  { onFinish, onCancel, tipoInicial, onResumen, articulo, modo = "articulo" }:
   {
     onFinish?: () => void;
     onCancel?: () => void;
@@ -683,6 +683,16 @@ export default function AdminArticulos(
      * garantizaba que se separaran, y se separaron.
      */
     articulo?: any;
+    /**
+     * Qué se está cargando. El formulario es EL MISMO en los dos casos —dos
+     * formularios divergen, y ya lo vimos con el editor de pestañas— pero una
+     * ficha de Biblioteca no tiene precio, stock ni canales: eso aparece
+     * cuando se decide vender.
+     *
+     *   "articulo" — alta o edición de algo que se vende.
+     *   "ficha"    — sólo lo que el producto ES, para la Biblioteca.
+     */
+    modo?: "articulo" | "ficha";
     onResumen?: (r: {
       nombre: string; precio: number; moneda: string; stock: number;
       imagen: string | null; estado: string; canales: string[]; tipo: string;
@@ -2105,6 +2115,8 @@ export default function AdminArticulos(
   const faltaParaGuardar = (): string => {
     if (!nombre.trim())      return "Falta el nombre del artículo";
     if (!descripcion.trim()) return "Falta la descripción";
+    // Una ficha no necesita precio: todavía no se decidió venderla.
+    if (modo === "ficha") return "";
     if (!precio || parseFloat(precio) <= 0) return "Falta el precio";
     return "";
   };
@@ -2113,6 +2125,27 @@ export default function AdminArticulos(
   const handlePublicar = async () => {
     setLoading(true);
     try {
+      /*
+       * En modo ficha se guarda SOLO la ficha.
+       *
+       * Crear una publicación con precio cero para después despublicarla es
+       * exactamente lo que la Biblioteca vino a evitar: ensuciar la lista de lo
+       * que se vende con cosas que todavía no se venden.
+       */
+      if (modo === "ficha") {
+        const { error } = await supabase.rpc("guardar_ficha_biblioteca", {
+          p_marca:       marca.trim(),
+          p_nombre:      nombre.trim(),
+          p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
+          p_descripcion: descripcion.trim() || null,
+          p_imagen:      imagenes[0] ?? null,
+        });
+        if (error) throw error;
+        notify("Guardado en la Biblioteca");
+        setTimeout(() => salir(true), 900);
+        return;
+      }
+
       // Alta contra el modelo multicanal (catalog_*), igual que la pantalla de
       // Publicaciones. Antes esto insertaba en `articulos`, con lo cual el
       // producto no aparecia en ninguna de las dos vistas.
@@ -2178,6 +2211,24 @@ export default function AdminArticulos(
         await guardarDetalles(nuevaVariante as string);
         await guardarLineasDePrecio(nuevaVariante as string);
       }
+
+      /*
+       * Lo que se carga queda SIEMPRE en la Biblioteca.
+       *
+       * Ese es el punto de tenerla: si mañana se deja de publicar, no se pierde
+       * lo que se sabía del producto. Hoy la única forma de no perderlo era
+       * dejarlo archivado entre las publicaciones, estorbando.
+       *
+       * Que falle no invalida el alta: el artículo ya está creado.
+       */
+      const { error: eB } = await supabase.rpc("guardar_ficha_biblioteca", {
+        p_marca:       marca.trim(),
+        p_nombre:      nombre.trim(),
+        p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
+        p_descripcion: descripcion.trim() || null,
+        p_imagen:      imagenes[0] ?? null,
+      });
+      if (eB) console.warn("[biblioteca]", eB.message);
 
       // La excepcion de tasa, solo si se eligio una. Sin esto el articulo
       // hereda, que es lo correcto y lo que pasa el 95% de las veces.
@@ -2761,8 +2812,11 @@ export default function AdminArticulos(
 
           {/* Precio: vive acá, a la derecha de las fotos, sin un paso aparte.
               Misma fracción de grilla que la columna de Información (col 1)
-              para que ambas queden siempre del mismo ancho entre sí. */}
-          <div style={{ minWidth:0 }}>
+              para que ambas queden siempre del mismo ancho entre sí.
+
+              En modo ficha no va: una ficha dice QUÉ ES el producto, no a
+              cuánto lo vende alguien. El precio aparece al publicarlo. */}
+          <div style={{ minWidth:0, display: modo === "ficha" ? "none" : undefined }}>
             {/*
               La columna del precio tiene el alto de la fila y no crece.
 
@@ -3227,8 +3281,9 @@ export default function AdminArticulos(
           </div>
         )}
 
-        {/* Destinos */}
-        {true && (
+        {/* Destinos. Una ficha no se publica en ningún lado: eso se decide
+            cuando se la convierte en artículo. */}
+        {modo !== "ficha" && (
           <div style={{ display:"flex", flexDirection:"column", gap:RITMO }}>
             <div>
               <h2 style={{ margin:0, fontSize:"1.1rem", fontWeight:800, color:"#111" }}>
