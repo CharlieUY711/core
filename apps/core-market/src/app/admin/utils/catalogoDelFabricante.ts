@@ -28,7 +28,7 @@
  * proxy. Eso no puede dejar sin sugerencias a quien está cargando.
  */
 import { invocar } from "./canalesSync";
-import type { ResultadoBusqueda } from "./busqueda";
+import { buscar, type ResultadoBusqueda } from "./busqueda";
 
 /** Dónde suelen vivir los catálogos. Se prueban en este orden. */
 const RUTAS_DE_CATALOGO = [
@@ -82,6 +82,7 @@ export async function catalogoDelFabricante(
     : RUTAS_DE_CATALOGO.map((r) => `https://${dominio}${r}`);
 
   let texto = "";
+  let dominioLeido = dominio;
   for (const url of candidatas) {
     const html = await traer(url);
     if (!html) continue;
@@ -90,6 +91,7 @@ export async function catalogoDelFabricante(
     // la pena mandarle eso al modelo.
     if (t.length < 400) continue;
     texto = t;
+    try { dominioLeido = new URL(url).hostname.replace(/^www\./, ""); } catch { /* queda el dado */ }
     break;
   }
   if (!texto) return [];
@@ -110,10 +112,68 @@ export async function catalogoDelFabricante(
         imagen: null,
         url: null,
         descripcion: typeof f.descripcion === "string" ? f.descripcion : null,
-        fuente: "fabricante",
+        fuente: dominioLeido,
+        /*
+         * El precio del representante oficial, tal cual lo publica.
+         *
+         * No se usa para poner el precio del artículo —ese lo decide quien
+         * vende— sino para mostrarlo al lado, como referencia: "así lo vende
+         * el oficial". Es la comparación más útil que hay, mucho más que la
+         * mediana de un marketplace, porque es el mismo producto en el mismo
+         * país.
+         *
+         * El extractor tiene orden de NO inventar precios: si no está en el
+         * texto, viene null.
+         */
+        precio: Number.isFinite(Number(f.precio)) && Number(f.precio) > 0
+          ? Number(f.precio) : null,
+        moneda: typeof f.moneda === "string" && f.moneda.trim() ? f.moneda.trim() : null,
       }))
       .slice(0, 30);
   } catch (_) {
     return [];
   }
+}
+
+/**
+ * La tienda oficial de la marca en el país donde se vende.
+ *
+ * POR QUÉ HACE FALTA
+ * Hay marcas cuyo catálogo no se puede leer del sitio del fabricante: Apple no
+ * vende directo en Uruguay y su web es una red de páginas por producto, no un
+ * catálogo. Pero su representante local sí tiene una tienda con su catálogo
+ * entero, con precios locales.
+ *
+ * NO ES UN MARKETPLACE. Se descartan Mercado Libre, Amazon y las redes: ahí el
+ * catálogo es de quien publica, no de la marca, y viene mezclado con reventa,
+ * usados y accesorios de terceros. Se busca al representante oficial.
+ *
+ * QUÉ DEVUELVE
+ * El dominio, no el catálogo: leerlo es el mismo trabajo que leer el del
+ * fabricante, así que lo hace la misma función.
+ */
+const NO_SON_TIENDA_OFICIAL = [
+  "mercadolibre", "amazon", "ebay", "aliexpress", "temu", "shein",
+  "facebook.com", "instagram.com", "x.com", "twitter.com", "youtube.com",
+  "wikipedia.org", "linkedin.com", "tiktok.com",
+];
+
+export async function tiendaOficialLocal(
+  marca: string, dominioMarca: string | null,
+): Promise<string | null> {
+  const q = `${marca.trim()} distribuidor oficial Uruguay`;
+  const r = await buscar(q, { incluirCanales: false });
+
+  for (const x of r) {
+    let host = "";
+    try { host = new URL(x.url ?? "").hostname.replace(/^www\./, ""); } catch { continue; }
+    if (!host) continue;
+    // El sitio de la marca ya se intentó antes; si estamos acá, no sirvió.
+    if (dominioMarca && host.endsWith(dominioMarca.replace(/^www\./, ""))) continue;
+    if (NO_SON_TIENDA_OFICIAL.some((d) => host.includes(d))) continue;
+    // Diarios y notas: hablan de la marca, no la venden.
+    if (/noticias|diario|observador|elpais|montevideo\.com/.test(host)) continue;
+    return host;
+  }
+  return null;
 }

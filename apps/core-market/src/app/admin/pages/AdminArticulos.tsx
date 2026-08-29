@@ -885,6 +885,19 @@ export default function AdminArticulos(
   const [pathCategoriaCanal, setPathCategoriaCanal] = useState<string[] | null>(null);
 
   /**
+   * A cuanto lo vende el representante oficial.
+   *
+   * Es la comparacion mas util que hay: el mismo producto, en el mismo pais,
+   * por quien lo representa. Mucho mas que la mediana de un marketplace, que
+   * mezcla reventa, usados y accesorios.
+   *
+   * NO se usa para poner el precio: ese lo decide quien vende. Se muestra al
+   * lado, con el nombre de la tienda, para que la decision se tome sabiendo.
+   */
+  const [precioOficial, setPrecioOficial] = useState<
+    { tienda: string; precio: number; moneda: string } | null>(null);
+
+  /**
    * Cargar varios de la misma marca, despues de guardar uno.
    *
    * Quien carga un producto de una marca casi siempre carga varios: ya tiene el
@@ -1185,6 +1198,11 @@ export default function AdminArticulos(
 
     // 1) El articulo, de donde se encontro.
     const titulo = (c?.nombre ?? nombre).trim();
+    setPrecioOficial(
+      c?.precio && c?.fuente
+        ? { tienda: String(c.fuente), precio: Number(c.precio), moneda: c.moneda ?? moneda }
+        : null,
+    );
     if (titulo) setNombre(titulo);
     if (!descripcion.trim() && c?.descripcion)
       setDescripcion(String(c.descripcion).slice(0, MAX_DESCRIPCION));
@@ -1948,7 +1966,17 @@ export default function AdminArticulos(
                      </button>
                    </>
                  )
-               : !precio || parseFloat(precio) <= 0 ? "Falta el precio"
+               : !precio || parseFloat(precio) <= 0 ? (
+                   precioOficial ? (
+                     <>
+                       <div style={{ color:"#166534", fontWeight:700 }}>
+                         Oficial en {precioOficial.tienda}: {precioOficial.moneda}{" "}
+                         {precioOficial.precio.toLocaleString("es-UY", { maximumFractionDigits: 2 })}
+                       </div>
+                       <div>Falta el precio</div>
+                     </>
+                   ) : "Falta el precio"
+                 )
                : (() => {
                    // El precio ya incluye el impuesto, asi que esto lo
                    // descompone hacia atras -neto = bruto / (1 + tasa)-. Es la
@@ -1966,6 +1994,14 @@ export default function AdminArticulos(
                    const nombre = elegida?.name ?? tasaHeredada?.name ?? "";
                    return (
                      <>
+                       {/* El precio del oficial, arriba del desglose: es el
+                           dato que se mira antes de decidir el propio. */}
+                       {precioOficial && (
+                         <div style={{ color:"#166534", fontWeight:700 }}>
+                           Oficial en {precioOficial.tienda}: {precioOficial.moneda}{" "}
+                           {nro(precioOficial.precio)}
+                         </div>
+                       )}
                        <div>
                          Incluye {moneda} {nro(iva)} de {nombre} · neto {moneda} {nro(neto)}
                        </div>

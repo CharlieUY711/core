@@ -21,7 +21,7 @@
  * es peor que mostrar uno dudoso al final.
  */
 import { buscar, type ResultadoBusqueda } from "./busqueda";
-import { catalogoDelFabricante } from "./catalogoDelFabricante";
+import { catalogoDelFabricante, tiendaOficialLocal } from "./catalogoDelFabricante";
 
 /** Caminos donde los sitios publican sus productos. */
 const CAMINOS_DE_PRODUCTO = [
@@ -212,9 +212,38 @@ export async function catalogoDeMarca(
    *
    * Lista vacía es una respuesta válida, y quien llama tiene que decirlo.
    */
-  if (!dominio) return [];
-  const paginaProductos = await ubicarPaginaDeProductos(dominio);
-  return catalogoDelFabricante(dominio, paginaProductos);
+  /*
+   * PRIMERO EL REPRESENTANTE LOCAL, SIEMPRE.
+   *
+   * Es lo que importa para vender acá: tiene el catálogo que efectivamente
+   * llega al país, con sus precios y sus presentaciones. El sitio global de una
+   * marca lista productos que no se consiguen en Uruguay, en otras
+   * configuraciones y con otros nombres comerciales.
+   *
+   * Apple lo muestra claro: apple.com no es un catálogo sino una red de
+   * páginas por producto, y no vende directo acá. iPlace —su Premium
+   * Reseller— tiene el catálogo entero con precios locales.
+   *
+   * No es un marketplace: ahí el catálogo es de quien publica, mezclado con
+   * reventa, usados y accesorios de terceros. Es el representante de la marca.
+   */
+  const oficial = await tiendaOficialLocal(_marca, null);
+  if (oficial) {
+    const paginaOficial = await ubicarPaginaDeProductos(oficial);
+    const delOficial = await catalogoDelFabricante(oficial, paginaOficial);
+    if (delOficial.length > 0) return delOficial;
+  }
+
+  // El fabricante queda de respaldo: para marcas locales —Colinas de Garzón,
+  // Olivares de Santa Laura— el fabricante ES el representante, y su sitio
+  // tiene el catálogo.
+  if (dominio) {
+    const paginaProductos = await ubicarPaginaDeProductos(dominio);
+    const delFabricante = await catalogoDelFabricante(dominio, paginaProductos);
+    if (delFabricante.length > 0) return delFabricante;
+  }
+
+  return [];
 }
 
 /**

@@ -17,8 +17,16 @@ export interface ResultadoBusqueda {
   imagen: string | null;
   url: string | null;
   descripcion: string | null;
-  /** "web" (Serper/Google) o el nombre del canal que lo aportó (ej. "Mercado Libre"). */
+  /** "web" (Serper/Google), el canal que lo aportó, o el dominio que se leyó. */
   fuente: string;
+  /**
+   * Precio publicado en la fuente, si la trajo.
+   *
+   * Lo trae el catálogo del representante oficial, que publica sus precios.
+   * Una búsqueda web no: sus resultados son páginas, no precios.
+   */
+  precio?: number | null;
+  moneda?: string | null;
 }
 
 async function buscarWeb(texto: string, tipo: "web" | "images" | "videos" = "web"): Promise<ResultadoBusqueda[]> {
