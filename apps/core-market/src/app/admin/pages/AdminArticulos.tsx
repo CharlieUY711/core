@@ -64,13 +64,16 @@ const MONEDAS_FALLBACK = [{ code:"UYU", decimals:2 }, { code:"USD", decimals:2 }
  * "Otro" existe para lo que aparezca sin tener que agregar una constante.
  */
 const DESTINOS_PRECIO = [
-  { id:"web",   label:"Web",       color:"#FF5B14" },
-  { id:"ml",    label:"ML",        color:"#FFDD00" },
-  { id:"wa",    label:"WhatsApp",  color:"#00CC44" },
-  { id:"ig",    label:"Instagram", color:"#FF0090" },
-  { id:"fb",    label:"Facebook",  color:"#35C1F1" },
-  { id:"otro",  label:"Otro",      color:"#8B22CC" },
+  { id:"web",  label:"Web",  nombre:"Web propia", color:"#FF5B14" },
+  { id:"ml",   label:"ML",   nombre:"Mercado Libre", color:"#E8B400" },
+  { id:"wa",   label:"WA",   nombre:"WhatsApp",   color:"#00A63E" },
+  { id:"ig",   label:"IG",   nombre:"Instagram",  color:"#E0007B" },
+  { id:"fb",   label:"FB",   nombre:"Facebook",   color:"#1E9FD0" },
+  { id:"otro", label:"Otro", nombre:"Otro",       color:"#7A1FBF" },
 ] as const;
+
+/** Todas las pastillas miden lo mismo: la mas larga es "Otro". */
+const ANCHO_DESTINO = 46;
 const DISPONIBILIDADES = [
   { id:"inmediata",    label:"Inmediata",     desc:"Disponible para envío hoy" },
   { id:"bajo_pedido",  label:"Bajo pedido",   desc:"Se consigue en 3-5 días" },
@@ -462,40 +465,48 @@ function CampoConCheck({
  * mismo lugar que la eligio la suelta.
  */
 /**
- * Los seis destinos, como bullets.
+ * Los seis destinos, como pastillas.
  *
- * Chicos y de color, no un selector: son seis y no cambian, asi que verlos
- * todos a la vez cuesta menos que abrir una lista. El color es el del destino
- * -el amarillo de Mercado Libre, el verde de WhatsApp- porque es lo que se
- * reconoce sin leer.
+ * Forma de pista de atletismo -lados rectos, puntas redondas- y no circulos:
+ * un circulo con la etiqueta al lado obliga a leer dos cosas para entender
+ * una. Con el nombre adentro, la pastilla es la etiqueta.
  *
- * Apagado no significa "no disponible" sino "este precio no rige ahi". Por eso
- * el bullet apagado sigue mostrando su color en el borde: es una eleccion, no
- * un impedimento.
+ * TODAS DEL MISMO ANCHO, aunque "Otro" tenga cuatro letras y "ML" dos. Seis
+ * pastillas de anchos distintos se leen como seis cosas distintas; iguales, se
+ * leen como una fila de opciones — que es lo que son.
+ *
+ * El color es el del destino, y va en el texto y en el borde siempre. Elegido
+ * se pinta con una version clara del mismo color en vez de con el color pleno:
+ * asi la leyenda sigue siendo del color del destino, que es lo que se reconoce
+ * sin leer, en vez de volverse blanca y perderlo.
  */
-function BulletsDestino({ elegidos, onToggle, ocupados }: {
+function PastillasDestino({ elegidos, onToggle, ocupados }: {
   elegidos: string[];
   onToggle: (id: string) => void;
   /** Destinos que ya tomo otra linea: no se pueden elegir en dos lados. */
   ocupados?: string[];
 }) {
   return (
-    <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+    <div style={{ display:"flex", gap:5, alignItems:"center", flexWrap:"wrap" }}>
       {DESTINOS_PRECIO.map(d => {
         const on = elegidos.includes(d.id);
         const tomado = !on && (ocupados ?? []).includes(d.id);
         return (
           <button key={d.id} type="button" disabled={tomado}
             onClick={() => onToggle(d.id)}
-            title={tomado ? `${d.label} ya tiene otro precio` : d.label}
+            title={tomado ? `${d.nombre} ya tiene otro precio` : d.nombre}
             style={{
-              width:18, height:18, borderRadius:"50%", padding:0,
-              border:`2px solid ${tomado ? "var(--border)" : d.color}`,
-              background: on ? d.color : "#fff",
+              width:ANCHO_DESTINO, height:20, padding:0,
+              borderRadius:999,
+              border:`1.5px solid ${tomado ? "var(--border)" : d.color}`,
+              background: on ? `${d.color}26` : "#fff",
+              color: tomado ? "var(--gray-400)" : d.color,
+              fontSize:"10px", fontWeight:800, letterSpacing:".02em",
+              fontFamily:"inherit",
               cursor: tomado ? "not-allowed" : "pointer",
-              opacity: tomado ? .4 : 1,
+              opacity: tomado ? .5 : 1,
               transition:"background .12s",
-            }}/>
+            }}>{d.label}</button>
         );
       })}
     </div>
@@ -2045,7 +2056,7 @@ export default function AdminArticulos(
                   mismo numero y le cambia algo, y arrancar de cero obliga a
                   escribir de nuevo lo que ya estaba. */}
               <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                <BulletsDestino
+                <PastillasDestino
                   elegidos={destinosBase}
                   ocupados={lineasPrecio.flatMap(l => l.destinos)}
                   onToggle={id => setDestinosBase(d =>
@@ -2056,10 +2067,10 @@ export default function AdminArticulos(
                     id: (ls[ls.length-1]?.id ?? 0) + 1,
                     precio, moneda, tasaId, destinos: [],
                   }])}
-                  style={{ width:18, height:18, borderRadius:"50%", padding:0,
+                  style={{ width:22, height:20, padding:0, borderRadius:999,
                     border:"1.5px dashed var(--gray-400)", background:"#fff",
                     color:"var(--gray-400)", cursor:"pointer", fontSize:"12px",
-                    fontWeight:800, lineHeight:"14px" }}>+</button>
+                    fontWeight:800, fontFamily:"inherit" }}>+</button>
               </div>
 
               {/* Las lineas extra. Cada una es la misma fila: moneda, precio,
@@ -2089,7 +2100,7 @@ export default function AdminArticulos(
                       </select>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                      <BulletsDestino
+                      <PastillasDestino
                         elegidos={l.destinos}
                         ocupados={ocupados}
                         onToggle={id => set("destinos",
