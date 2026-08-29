@@ -13,6 +13,7 @@ import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
 import { NUMERICO, NUMERICO_SELECT } from "../ui/numeros";
 import { useImagenesQueCargan } from "../ui/imagenesQueCargan";
+import { puedeBuscarEnLaWeb, puedeLeerCatalogos } from "../utils/capacidades";
 import { useShop } from "../components/AdminLayout";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
@@ -816,6 +817,7 @@ export default function AdminArticulos(
   const abierto = (c: string) => !bloqueaCampos || abiertos.has(c);
 
   useEffect(() => {
+    if (!puedeBuscarEnLaWeb()) { setCandidatosMarca([]); return; }
     if (!abierto("marca")) { setCandidatosMarca([]); return; }
     if (marcaConfirmada) { setCandidatosMarca([]); return; }
     const q = marca.trim();
@@ -1078,6 +1080,7 @@ export default function AdminArticulos(
   // Se espera a que deje de escribir: buscar en cada tecla castiga la API y
   // hace parpadear la lista sin que nadie llegue a leerla.
   useEffect(() => {
+    if (!puedeBuscarEnLaWeb()) { setCandidatos([]); return; }
     if (!abierto("nombre")) { setCandidatos([]); return; }
     if (idElegido) return;              // ya eligio: no se le cambia debajo
     if (articuloPersonalizado) return;  // se tipea a mano, no se buscan coincidencias
@@ -1158,6 +1161,7 @@ export default function AdminArticulos(
 
   useEffect(() => {
     const articulo = nombre.trim();
+    if (!puedeBuscarEnLaWeb()) { setImagenesBuscadas([]); setVideosBuscados([]); return; }
     if (!abierto("nombre") && !abierto("marca")) {
       setImagenesBuscadas([]);
       setVideosBuscados([]);
@@ -2203,7 +2207,7 @@ export default function AdminArticulos(
        * marca confirmada o el catalogo no trae nada, se sale como siempre y
        * nadie se entera de que se pregunto.
        */
-      if (marcaConfirmada && marca.trim()) {
+      if (puedeLeerCatalogos() && marcaConfirmada && marca.trim()) {
         const otros = await otrosDeLaMarca();
         if (otros.length > 0) {
           abrirCuadroCon(otros, true);
@@ -2579,7 +2583,7 @@ export default function AdminArticulos(
               {/* Cargar varios de la marca, sin tener que guardar primero.
                   La misma oferta aparece sola al guardar; acá está para el
                   caso obvio: ya identifiqué la marca y quiero su catálogo. */}
-              {marcaConfirmada && marca.trim() && !masivoAbierto && (
+              {puedeLeerCatalogos() && marcaConfirmada && marca.trim() && !masivoAbierto && (
                 <button type="button" onClick={abrirCargaDeMarca} disabled={masivoCargando}
                   style={{ border:"none", background:"none", padding:0, marginTop:6,
                     cursor: masivoCargando ? "wait" : "pointer", color:ACCENT,
