@@ -128,6 +128,10 @@ export async function catalogoDelFabricante(
         precio: Number.isFinite(Number(f.precio)) && Number(f.precio) > 0
           ? Number(f.precio) : null,
         moneda: typeof f.moneda === "string" && f.moneda.trim() ? f.moneda.trim() : null,
+        // La familia sale del propio catálogo -"iPhone", "Mac", "Aceites"- y es
+        // lo que permite elegir de a grupos en vez de producto por producto.
+        familia: typeof f.categoria === "string" && f.categoria.trim()
+          ? f.categoria.trim() : null,
       }))
       .slice(0, 30);
   } catch (_) {

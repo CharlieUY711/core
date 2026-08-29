@@ -918,6 +918,18 @@ export default function AdminArticulos(
    * tiene que llevar a donde estaba cada uno, no siempre al mismo lado.
    */
   const [masivoTrasGuardar, setMasivoTrasGuardar] = useState(false);
+  /**
+   * El cuadro tiene dos pasos: primero las familias, despues sus productos.
+   *
+   * Un catalogo entero es una lista de cuarenta o cien filas, y tildar de a una
+   * es exactamente el trabajo que este cuadro venia a evitar. Elegir "iPhone" y
+   * "Mac" y ver solo eso convierte cuarenta decisiones en dos.
+   *
+   * Con una sola familia el primer paso se saltea: una eleccion con una sola
+   * opcion no es una eleccion.
+   */
+  const [masivoPaso, setMasivoPaso] = useState<"familias" | "productos">("productos");
+  const [masivoFamilias, setMasivoFamilias] = useState<Set<string>>(new Set());
   const [elegido, setElegido] = useState<FichaCanal|null>(null);
   const [idElegido, setIdElegido] = useState<string|null>(null);
   const [condicion,   setCondicion]   = useState("Nuevo");
@@ -1636,20 +1648,70 @@ export default function AdminArticulos(
              `Cargalos de a uno.`, false);
       return;
     }
-    setMasivoItems(otros);
+    abrirCuadroCon(otros, false);
+  };
+
+  /** Abre el cuadro en el paso que corresponda segun cuantas familias haya. */
+  const abrirCuadroCon = (items: ResultadoBusqueda[], trasGuardar: boolean) => {
+    const familias = [...new Set(items.map(r => r.familia).filter(Boolean) as string[])];
+    setMasivoItems(items);
     setMasivoElegidos(new Set());
-    setMasivoTrasGuardar(false);
+    setMasivoFamilias(new Set(familias));   // todas marcadas: quitar es mas facil que sumar
+    setMasivoPaso(familias.length > 1 ? "familias" : "productos");
+    setMasivoTrasGuardar(trasGuardar);
     setMasivoAbierto(true);
   };
 
-  /** Cerrar el cuadro y volver a donde estaba: el formulario, o la lista. */
+  /**
+   * Volver: del paso de productos al de familias, y de ahi a donde estaba.
+   *
+   * Que el mismo boton retroceda un paso antes de salir es lo que hace que
+   * elegir mal una familia no cueste empezar de nuevo.
+   */
   const volverDelCuadro = () => {
+    if (masivoPaso === "productos" && hayVariasFamilias) { setMasivoPaso("familias"); return; }
     setMasivoAbierto(false);
     if (masivoTrasGuardar) salir(true);
   };
 
+  /** Las familias del catalogo, con cuantos productos tiene cada una. */
+  const familiasDelCatalogo = (() => {
+    const cuenta = new Map<string, number>();
+    for (const r of masivoItems) {
+      const f = r.familia?.trim();
+      if (f) cuenta.set(f, (cuenta.get(f) ?? 0) + 1);
+    }
+    return [...cuenta.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+  const hayVariasFamilias = familiasDelCatalogo.length > 1;
+
+  /** Los productos de las familias elegidas. Sin familias, todos. */
+  /** Los productos por familia, en el orden en que aparecen las familias. */
+  const agruparPorFamilia = (
+    items: ResultadoBusqueda[],
+  ): Array<[string, ResultadoBusqueda[]]> => {
+    const grupos = new Map<string, ResultadoBusqueda[]>();
+    for (const r of items) {
+      const f = r.familia?.trim() || "Sin familia";
+      const g = grupos.get(f);
+      if (g) g.push(r); else grupos.set(f, [r]);
+    }
+    return [...grupos.entries()];
+  };
+
+  const productosVisibles = hayVariasFamilias
+    ? masivoItems.filter(r => r.familia && masivoFamilias.has(r.familia.trim()))
+    : masivoItems;
+
   const crearElegidosDeMarca = async () => {
-    const elegidos = masivoItems.filter(r => masivoElegidos.has(r.nombre));
+    /*
+     * Solo lo VISIBLE y tildado.
+     *
+     * Si alguien tilda productos de iPhone, vuelve atras y desmarca la familia
+     * iPhone, esos tildes quedaron en el estado pero ya no estan en pantalla.
+     * Crearlos seria crear lo que dejo de elegir.
+     */
+    const elegidos = productosVisibles.filter(r => masivoElegidos.has(r.nombre));
     // Sin nada tildado, "Crear selección" no crea nada: equivale a volver.
     if (!elegidos.length) { volverDelCuadro(); return; }
 
@@ -2144,10 +2206,7 @@ export default function AdminArticulos(
       if (marcaConfirmada && marca.trim()) {
         const otros = await otrosDeLaMarca();
         if (otros.length > 0) {
-          setMasivoItems(otros);
-          setMasivoElegidos(new Set());
-          setMasivoTrasGuardar(true);
-          setMasivoAbierto(true);
+          abrirCuadroCon(otros, true);
           return;                       // se sale al cerrar el cuadro, no antes
         }
       }
@@ -3234,49 +3293,147 @@ export default function AdminArticulos(
           Aparece al guardar, con el catálogo ya consultado. No es la carga
           masiva —esa será su propio módulo, con archivos y mapeo— es el caso
           común resuelto con lo que ya está en pantalla. */}
+      {/* ¿Más de esta marca?
+          Dos pasos: primero las familias del catálogo, después sus productos.
+          Un catálogo entero son cuarenta filas, y tildar de a una es justo el
+          trabajo que este cuadro venía a evitar. */}
       {masivoAbierto && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.35)",
-          display:"flex", alignItems:"center", justifyContent:"center", zIndex:400 }}>
-          <div style={{ background:"#fff", borderRadius:14, width:"min(560px,92vw)",
-            maxHeight:"82vh", display:"flex", flexDirection:"column",
+          display:"flex", alignItems:"center", justifyContent:"center", zIndex:400 }}
+          data-enter-nativo>
+          <div style={{ background:"#fff", borderRadius:14, width:"min(600px,94vw)",
+            maxHeight:"84vh", display:"flex", flexDirection:"column",
             boxShadow:"0 20px 60px rgba(0,0,0,.25)" }}>
 
+            {/* Dice de dónde salió el catálogo: quien decide tiene que saber a
+                quién le estamos creyendo. */}
             <div style={{ padding:"1rem 1.25rem", borderBottom:"1px solid var(--border)" }}>
-              <div style={{ fontWeight:800, color:"#111" }}>
-                ¿Cargás más productos de {marca.trim()}?
+              <div style={{ fontWeight:800, color:"#111", fontSize:"1rem" }}>
+                {masivoPaso === "familias"
+                  ? `¿Qué querés cargar de ${marca.trim()}?`
+                  : `Productos de ${marca.trim()}`}
               </div>
-              <div style={{ fontSize:"0.78rem", color:"var(--gray-400)", marginTop:3 }}>
-                Se crean como borradores, con su nombre y su foto. Les vas a tener
-                que poner el precio.
+              <div style={{ fontSize:"0.76rem", color:"var(--gray-400)", marginTop:3 }}>
+                {masivoPaso === "familias"
+                  ? "Elegí las familias; después podés desmarcar productos sueltos."
+                  : "Se crean como borradores, con su nombre y su foto. Les vas a tener que poner el precio."}
+                {masivoItems[0]?.fuente ? (
+                  <> {" · "}Catálogo de <b style={{ color:"var(--mute)" }}>{masivoItems[0].fuente}</b></>
+                ) : null}
               </div>
             </div>
 
-            <div style={{ overflowY:"auto", padding:"0.5rem 0" }}>
-              {masivoItems.map((r, i) => {
-                const on = masivoElegidos.has(r.nombre);
-                return (
-                  <label key={i} style={{ display:"flex", alignItems:"center", gap:10,
-                    padding:"8px 1.25rem", cursor:"pointer" }}>
-                    <input type="checkbox" checked={on} style={{ accentColor:ACCENT }}
-                      onChange={() => setMasivoElegidos(prev => {
-                        const n = new Set(prev);
-                        n.has(r.nombre) ? n.delete(r.nombre) : n.add(r.nombre);
-                        return n;
-                      })} />
-                    {imgs.sirve(r.imagen)
-                      ? <img src={r.imagen!} alt="" onError={() => imgs.falló(r.imagen)}
-                          style={{ width:34, height:34, objectFit:"cover", borderRadius:5,
-                            border:"1px solid var(--border)", flexShrink:0 }} />
-                      : <div style={{ width:34, height:34, flexShrink:0, borderRadius:5,
-                          background:"var(--gray-50)" }} />}
-                    <span style={{ fontSize:"0.82rem", color:"#111", minWidth:0,
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {r.nombre}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+            {/* PASO 1 — familias, con cuántos productos tiene cada una.
+                Sin el número se elige a ciegas. */}
+            {masivoPaso === "familias" ? (
+              <>
+                <div style={{ padding:"0.5rem 1.25rem", display:"flex", gap:"0.9rem",
+                  borderBottom:"1px solid var(--gray-50)" }}>
+                  <button type="button"
+                    onClick={() => setMasivoFamilias(new Set(familiasDelCatalogo.map(f => f[0])))}
+                    style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                      color:ACCENT, fontSize:"0.74rem", fontWeight:700, fontFamily:"inherit" }}>
+                    Todas
+                  </button>
+                  <button type="button" onClick={() => setMasivoFamilias(new Set())}
+                    style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                      color:"var(--gray-400)", fontSize:"0.74rem", fontWeight:700,
+                      fontFamily:"inherit" }}>
+                    Ninguna
+                  </button>
+                </div>
+                <div style={{ overflowY:"auto", padding:"0.6rem 1.25rem",
+                  display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",
+                  gap:"0.5rem" }}>
+                  {familiasDelCatalogo.map(f => {
+                    const fam = f[0], n = f[1];
+                    const on = masivoFamilias.has(fam);
+                    return (
+                      <button key={fam} type="button"
+                        onClick={() => setMasivoFamilias(prev => {
+                          const s = new Set(prev);
+                          if (s.has(fam)) s.delete(fam); else s.add(fam);
+                          return s;
+                        })}
+                        style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                          gap:8, padding:"0.6rem 0.75rem", borderRadius:10, textAlign:"left",
+                          border:`1.5px solid ${on ? ACCENT : "var(--border)"}`,
+                          background: on ? `${ACCENT}0F` : "#fff",
+                          cursor:"pointer", fontFamily:"inherit" }}>
+                        <span style={{ fontSize:"0.85rem", fontWeight:700,
+                          color: on ? "#111" : "var(--mute)", minWidth:0, overflow:"hidden",
+                          textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fam}</span>
+                        <span style={{ fontSize:"0.72rem", fontWeight:800,
+                          color: on ? ACCENT : "var(--gray-400)", flexShrink:0 }}>{n}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding:"0.5rem 1.25rem", display:"flex", gap:"0.9rem",
+                  alignItems:"center", borderBottom:"1px solid var(--gray-50)" }}>
+                  <button type="button"
+                    onClick={() => setMasivoElegidos(new Set(productosVisibles.map(r => r.nombre)))}
+                    style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                      color:ACCENT, fontSize:"0.74rem", fontWeight:700, fontFamily:"inherit" }}>
+                    Todos
+                  </button>
+                  <button type="button" onClick={() => setMasivoElegidos(new Set())}
+                    style={{ border:"none", background:"none", padding:0, cursor:"pointer",
+                      color:"var(--gray-400)", fontSize:"0.74rem", fontWeight:700,
+                      fontFamily:"inherit" }}>
+                    Ninguno
+                  </button>
+                  <span style={{ marginLeft:"auto", fontSize:"0.74rem", color:"var(--gray-400)" }}>
+                    {productosVisibles.length} producto{productosVisibles.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                {/* Agrupados por familia: elegiste dos, verlas separadas es lo
+                    que hace la lista legible. */}
+                <div style={{ overflowY:"auto", padding:"0.35rem 0" }}>
+                  {agruparPorFamilia(productosVisibles).map(g => (
+                    <div key={g[0]}>
+                      {hayVariasFamilias ? (
+                        <div style={{ padding:"0.5rem 1.25rem 0.25rem", fontSize:"0.7rem",
+                          fontWeight:800, letterSpacing:".06em", textTransform:"uppercase",
+                          color:"var(--gray-400)" }}>{g[0]}</div>
+                      ) : null}
+                      {g[1].map((r, i) => {
+                        const on = masivoElegidos.has(r.nombre);
+                        return (
+                          <label key={g[0] + i} style={{ display:"flex", alignItems:"center", gap:10,
+                            padding:"7px 1.25rem", cursor:"pointer",
+                            background: on ? `${ACCENT}08` : "transparent" }}>
+                            <input type="checkbox" checked={on} style={{ accentColor:ACCENT }}
+                              onChange={() => setMasivoElegidos(prev => {
+                                const n = new Set(prev);
+                                if (n.has(r.nombre)) n.delete(r.nombre); else n.add(r.nombre);
+                                return n;
+                              })} />
+                            <span style={{ minWidth:0, flex:1, fontSize:"0.82rem", color:"#111",
+                              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                              {r.nombre}
+                            </span>
+                            {/* El precio del oficial, si el catálogo lo publica.
+                                Es contexto para decidir, no el precio propio. */}
+                            {r.precio ? (
+                              <span style={{ fontSize:"0.76rem", color:"var(--mute)",
+                                fontWeight:700, flexShrink:0, ...NUMERICO }}>
+                                {r.moneda ?? ""} {r.precio.toLocaleString("es-UY",
+                                  { maximumFractionDigits: 0 })}
+                              </span>
+                            ) : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div style={{ padding:"0.85rem 1.25rem", borderTop:"1px solid var(--border)",
               display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -3286,17 +3443,30 @@ export default function AdminArticulos(
                   fontFamily:"inherit" }}>
                 ← Volver
               </button>
-              <button onClick={crearElegidosDeMarca} disabled={masivoCargando}
-                style={{ padding:"0.55rem 1.2rem", borderRadius:9, border:"none",
-                  background: masivoElegidos.size ? ACCENT : "var(--border)",
-                  color: masivoElegidos.size ? "#fff" : "var(--gray-400)",
-                  fontWeight:800, fontSize:"0.82rem", fontFamily:"inherit",
-                  cursor: masivoCargando ? "wait" : "pointer" }}>
-                {masivoCargando ? "Creando…"
-                  : masivoElegidos.size
-                    ? `Crear selección (${masivoElegidos.size})`
-                    : "Crear selección"}
-              </button>
+
+              {masivoPaso === "familias" ? (
+                <button onClick={() => setMasivoPaso("productos")}
+                  disabled={masivoFamilias.size === 0}
+                  style={{ padding:"0.55rem 1.2rem", borderRadius:9, border:"none",
+                    background: masivoFamilias.size ? ACCENT : "var(--border)",
+                    color: masivoFamilias.size ? "#fff" : "var(--gray-400)",
+                    fontWeight:800, fontSize:"0.82rem", fontFamily:"inherit",
+                    cursor: masivoFamilias.size ? "pointer" : "not-allowed" }}>
+                  Ver productos
+                </button>
+              ) : (
+                <button onClick={crearElegidosDeMarca} disabled={masivoCargando}
+                  style={{ padding:"0.55rem 1.2rem", borderRadius:9, border:"none",
+                    background: masivoElegidos.size ? ACCENT : "var(--border)",
+                    color: masivoElegidos.size ? "#fff" : "var(--gray-400)",
+                    fontWeight:800, fontSize:"0.82rem", fontFamily:"inherit",
+                    cursor: masivoCargando ? "wait" : "pointer" }}>
+                  {masivoCargando ? "Creando…"
+                    : masivoElegidos.size
+                      ? `Crear selección (${masivoElegidos.size})`
+                      : "Crear selección"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -27,6 +27,13 @@ export interface ResultadoBusqueda {
    */
   precio?: number | null;
   moneda?: string | null;
+  /**
+   * Familia dentro del catálogo: iPhone, Mac, iPad; o Aceites, Vinagres.
+   *
+   * La declara el catálogo que se leyó, no la inventamos. Sirve para que quien
+   * carga elija por familia en vez de tildar cuarenta productos de a uno.
+   */
+  familia?: string | null;
 }
 
 async function buscarWeb(texto: string, tipo: "web" | "images" | "videos" = "web"): Promise<ResultadoBusqueda[]> {
