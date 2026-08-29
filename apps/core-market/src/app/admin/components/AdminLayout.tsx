@@ -313,12 +313,26 @@ export default function AdminLayout() {
   if (!user) { navigate("/"); return null; }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh",
+    /*
+      `height` y no `minHeight`.
+   
+      Con minHeight el shell podia crecer mas alto que la ventana, y entonces
+      el que scrolleaba era el documento entero: se iban de pantalla la barra
+      superior, la de acciones y el encabezado de la tabla, que son justamente
+      lo que tiene que quedarse quieto mientras se trabaja mas abajo.
+   
+      Con height fijo al viewport, el scroll pasa a ser de adentro: cada
+      pantalla decide que parte suya se mueve.
+    */
+    <div style={{ display: "flex", height: "100vh",
       fontFamily: "DM Sans, sans-serif", background: "#F4F5F7" }}>
       <Sidebar user={user} isAdmin={isAdmin} location={location} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      {/* minHeight 0: un hijo flex no se encoge por debajo de su contenido sin
+          esto, y entonces el `overflow: auto` del main nunca llega a aplicar. */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column",
+        minWidth: 0, minHeight: 0 }}>
         <Topbar location={location} vista={vista} />
-        <main style={{ flex: 1, overflow: "auto", padding: "1.5rem 2rem" }}>
+        <main style={{ flex: 1, overflow: "auto", minHeight: 0, padding: "1.5rem 2rem" }}>
           <ShopContext.Provider value={{ isSH, setIsSH, topStats, setTopStats, vista, setVista }}>
             <Outlet context={{ user, isAdmin }} />
           </ShopContext.Provider>

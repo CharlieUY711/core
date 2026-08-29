@@ -1021,11 +1021,20 @@ export default function AdminPublicaciones() {
   );
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",height:"100%"}}>
+    /*
+      Alto de la pagina, y minHeight 0 para que el scroll sea de la tabla.
+   
+      Sin minHeight, el contenedor de la tabla no se encoge por debajo de su
+      contenido: el formulario lo empuja, el `overflow:hidden` de la tarjeta no
+      alcanza a nada y termina scrolleando el main, llevandose la barra de
+      acciones y el encabezado.
+    */
+    <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",
+      height:"100%",minHeight:0}}>
 
       {/* TABLA — flex:1 + overflow hidden para scroll solo en tbody */}
       <div style={{background:"#fff",borderRadius:12,border:"1px solid #EAECF0",
-        display:"flex",flexDirection:"column",flex:1,overflow:"hidden",
+        display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden",
         boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
 
         {/* MENU BAR — world class */}
@@ -1180,7 +1189,9 @@ export default function AdminPublicaciones() {
         {load?(
           <div style={{textAlign:"center",padding:"3rem",color:"var(--gray-400)",flex:1}}>Cargando...</div>
         ):(
-          <div style={{overflowY:"auto",flex:1}}>
+          /* El unico que scrollea: de acá para abajo. La barra de acciones, el
+             encabezado de la tabla y la fila del articulo quedan arriba. */
+          <div style={{overflowY:"auto",flex:1,minHeight:0}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
               <thead style={{position:"sticky",top:0,zIndex:10}}>
                 <tr>
