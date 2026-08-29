@@ -436,6 +436,38 @@ export async function canalesDisponibles(): Promise<{
  * se puede traer todo lo demas. Esperar a que exista la variante llega tarde,
  * porque para entonces ya escribio a mano lo que podiamos buscar.
  */
+/**
+ * Solo la clasificacion: en que departamento y categoria cae este titulo.
+ *
+ * Es lo unico que le pedimos a Mercado Libre sobre el articulo -eso y la
+ * competencia-; el producto en si sale del fabricante.
+ *
+ * VA APARTE DE `fichaPorTitulo` A PROPOSITO
+ * Aquella devuelve null cuando ML no encuentra el producto en SU catalogo, y
+ * ahi se perdia la categoria sugerida, que el motor devuelve igual: ML sabe
+ * clasificar "Aceite de oliva extra virgen 500ml" aunque no tenga ese producto
+ * publicado. Casi todas las marcas chicas caen en ese caso, o sea justo las que
+ * mas necesitan que les adivinemos el departamento.
+ */
+export async function categoriaSugeridaDe(
+  titulo: string, channel = "mercadolibre",
+): Promise<{ id: string; nombre: string; path: string[] } | null> {
+  if (titulo.trim().length < 4) return null;
+  if (!motorDe(channel)) return null;
+  try {
+    const d = await invocar("publicar-en-ml", { soloEnriquecer: true, titulo });
+    const c = d?.categoriaSugerida;
+    if (!c) return null;
+    return {
+      id: String(c.id),
+      nombre: String(c.nombre ?? ""),
+      path: Array.isArray(c.path) ? c.path : [],
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function fichaPorTitulo(
   titulo: string, channel = "mercadolibre", productoId?: string,
 ): Promise<FichaCanal | null> {

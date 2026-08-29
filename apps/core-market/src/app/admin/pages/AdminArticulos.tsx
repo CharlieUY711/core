@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { buscarProductos, fichaPorTitulo,
+import { buscarProductos, fichaPorTitulo, categoriaSugeridaDe,
          type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, marcaElegida, dominioDeUrl,
@@ -875,6 +875,16 @@ export default function AdminArticulos(
   const [mostrandoCatalogo, setMostrandoCatalogo] = useState(false);
 
   /**
+   * Camino de categorias que sugiere el canal para este titulo.
+   *
+   * Se pide aunque ML no tenga el producto: sabe clasificar "Aceite de oliva
+   * extra virgen 500 ml" sin tenerlo publicado. Antes esto solo llegaba cuando
+   * se adoptaba un producto de SU catalogo, que es el caso raro — y por eso el
+   * departamento no se predecia casi nunca.
+   */
+  const [pathCategoriaCanal, setPathCategoriaCanal] = useState<string[] | null>(null);
+
+  /**
    * Cargar varios de la misma marca, despues de guardar uno.
    *
    * Quien carga un producto de una marca casi siempre carga varios: ya tiene el
@@ -1576,6 +1586,31 @@ export default function AdminArticulos(
    * esperando el precio, que es una linea por producto en vez de un alta
    * entera.
    */
+  /**
+   * El catalogo de la marca, sin el que se acaba de cargar y SIN LAS SECCIONES.
+   *
+   * Antes esto usaba el catalogo crudo: por eso el cuadro ofrecia dar de alta
+   * "Donde estamos" y "Cultura y Salud". Pasa por el mismo filtro que la lista
+   * de sugerencias, que es el que sabe distinguir un producto de una pagina.
+   */
+  const otrosDeLaMarca = async (): Promise<ResultadoBusqueda[]> => {
+    const { items } = await buscarArticulosDeMarca({
+      marca, dominio: marcaDominio, texto: "",
+    });
+    const yaCargado = nombre.trim().toLowerCase();
+    return items.filter(r => r.nombre.trim().toLowerCase() !== yaCargado);
+  };
+
+  /** Abrir el cuadro a pedido, sin tener que guardar primero. */
+  const abrirCargaDeMarca = async () => {
+    setMasivoCargando(true);
+    const otros = await otrosDeLaMarca();
+    setMasivoCargando(false);
+    setMasivoItems(otros);
+    setMasivoElegidos(new Set());
+    setMasivoAbierto(true);
+  };
+
   const crearElegidosDeMarca = async () => {
     const elegidos = masivoItems.filter(r => masivoElegidos.has(r.nombre));
     if (!elegidos.length) { setMasivoAbierto(false); salir(true); return; }
@@ -1805,7 +1840,7 @@ export default function AdminArticulos(
   useEffect(() => {
     if (deptoId) return;                       // ya hay algo elegido, no se toca
     if (!deptos.length) return;                 // catálogo todavía no cargó
-    const path = elegido?.categoriaSugerida?.path;
+    const path = elegido?.categoriaSugerida?.path ?? pathCategoriaCanal;
     if (!path || !path.length) return;
 
     const { departamento, categoria, subcategoria } = predecirTaxonomia(path, deptos, cats, subcats);
@@ -1818,7 +1853,26 @@ export default function AdminArticulos(
     if (categoria)    setCatId(categoria.id);
     if (subcategoria) setSubcatId(subcategoria.id);
     setTaxonomiaSugerida(true);
-  }, [elegido, deptos, cats, subcats, deptoId]);
+  }, [elegido, pathCategoriaCanal, deptos, cats, subcats, deptoId]);
+
+  /**
+   * Preguntarle al canal en que categoria cae este titulo.
+   *
+   * Se espera a que deje de escribir, como todo lo demas. Solo si todavia no
+   * hay departamento elegido: una vez que alguien clasifico a mano, no se le
+   * cambia debajo.
+   */
+  useEffect(() => {
+    if (deptoId) return;
+    const titulo = nombre.trim();
+    if (titulo.length < 4) { setPathCategoriaCanal(null); return; }
+    let vivo = true;
+    const t = setTimeout(async () => {
+      const c = await categoriaSugeridaDe(titulo);
+      if (vivo) setPathCategoriaCanal(c?.path?.length ? c.path : null);
+    }, 700);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [nombre, deptoId]);
 
 
   /**
@@ -2032,9 +2086,7 @@ export default function AdminArticulos(
        * nadie se entera de que se pregunto.
        */
       if (marcaConfirmada && marca.trim()) {
-        const catalogo = await catalogoDeMarca(marca, marcaDominio);
-        const yaCargado = nombre.trim().toLowerCase();
-        const otros = catalogo.filter(r => r.nombre.trim().toLowerCase() !== yaCargado);
+        const otros = await otrosDeLaMarca();
         if (otros.length > 0) {
           setMasivoItems(otros);
           setMasivoElegidos(new Set());
@@ -2407,6 +2459,21 @@ export default function AdminArticulos(
                   }}
                   estiloInput={inp} />
               </div>
+
+              {/* Cargar varios de la marca, sin tener que guardar primero.
+                  La misma oferta aparece sola al guardar; acá está para el
+                  caso obvio: ya identifiqué la marca y quiero su catálogo. */}
+              {marcaConfirmada && marca.trim() && !masivoAbierto && (
+                <button type="button" onClick={abrirCargaDeMarca} disabled={masivoCargando}
+                  style={{ border:"none", background:"none", padding:0, marginTop:6,
+                    cursor: masivoCargando ? "wait" : "pointer", color:ACCENT,
+                    fontSize:"0.75rem", fontWeight:700, textDecoration:"underline",
+                    fontFamily:"inherit" }}>
+                  {masivoCargando
+                    ? "Buscando el catálogo…"
+                    : `Cargar varios productos de ${marca.trim()}`}
+                </button>
+              )}
 
               {buscandoProd && !elegido && !articuloPersonalizado && (
                 <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginTop:5 }}>
