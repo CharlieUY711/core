@@ -1928,7 +1928,14 @@ export default function AdminArticulos(
                   </select>
                 </div>
                 <div className="col-precio">
-                  <input style={inp} type="number" value={precio}
+                  {/* A la derecha, como cualquier importe: un numero se lee de
+                      atras para adelante -unidades, decenas, centenas- y
+                      alineado a la izquierda las cifras bailan segun cuantos
+                      digitos tenga. `tabular-nums` ademas les da a todos los
+                      digitos el mismo ancho, asi el numero no se mueve mientras
+                      se escribe. */}
+                  <input style={{ ...inp, textAlign:"right", fontVariantNumeric:"tabular-nums" }}
+                    type="number" value={precio}
                     onChange={e => setPrecio(e.target.value)} placeholder="Precio" min="0" />
                 </div>
                 {/* El impuesto NO cambia el precio: los precios se publican con

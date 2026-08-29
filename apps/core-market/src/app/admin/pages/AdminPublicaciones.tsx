@@ -274,6 +274,8 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
   const rows = precios.length>0 ? precios : [{precio:form.precio||0,oferta:form.precio_original||0,pct:0,fecha_ini:"",hora_ini:"",fecha_fin:"",hora_fin:"",etiqueta:"Principal"}];
   const s8:React.CSSProperties = {fontSize:"8px",color:"var(--gray-400)",fontWeight:700,textTransform:"uppercase",display:"block",marginBottom:2};
   const ic:React.CSSProperties = {...inp,padding:"0.3rem 0.4rem",fontSize:"0.78rem"};
+  // Los importes van a la derecha, igual que en el formulario y en la tabla.
+  const icNum:React.CSSProperties = {...ic,textAlign:"right",fontVariantNumeric:"tabular-nums"};
   // Placeholder watermark style inyectado globalmente una sola vez
   const placeholderStyle = `input::placeholder,textarea::placeholder{color:#D1D5DB!important;font-style:italic;font-size:0.72rem}`;
   return (
@@ -285,7 +287,7 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
           {/* Fila 1: precio / % / oferta / etiqueta */}
           <div style={{display:"grid",gridTemplateColumns:"80px 30px 80px 1fr 18px",gap:"0.3rem",alignItems:"end"}}>
             <div><span style={s8}>Precio</span>
-              <input type="number" style={ic} value={pr.precio||""} min={0}
+              <input type="number" style={icNum} value={pr.precio||""} min={0}
                 onChange={e=>updRow(i,"precio",parseFloat(e.target.value)||0)}/></div>
             <div style={{textAlign:"center",paddingBottom:1}}>
               <span style={s8}>%</span>
@@ -293,7 +295,7 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
                 {pr.pct>0?pr.pct:"—"}</div>
             </div>
             <div><span style={s8}>Oferta</span>
-              <input type="number" style={ic} value={pr.oferta||""} min={0} placeholder="—"
+              <input type="number" style={icNum} value={pr.oferta||""} min={0} placeholder="—"
                 onChange={e=>updRow(i,"oferta",parseFloat(e.target.value)||0)}/></div>
             <div><span style={s8}>Etiqueta</span>
               <input style={ic} value={pr.etiqueta||""} placeholder={i===0?"Principal":"Promo..."}
@@ -1124,7 +1126,10 @@ export default function AdminPublicaciones() {
                   </th>
                   <th style={{...thB,width:48}}>Foto</th>
                   <th style={thB}>Nombre</th>
-                  <th style={thS("precio")} onClick={()=>sort("precio")}>Precio{si("precio")}</th>
+                  {/* Importes a la derecha, encabezado incluido: una columna
+                      de numeros se compara de un vistazo solo si las unidades
+                      caen todas en la misma linea. */}
+                  <th style={{...thS("precio"),textAlign:"right"}} onClick={()=>sort("precio")}>Precio{si("precio")}</th>
                   <th style={thS("stock")}  onClick={()=>sort("stock")}>Stock{si("stock")}</th>
                   <th style={{...thS("status"),cursor:"pointer"}} onClick={cycleSt}>
                     Estado{fst?" · "+S[fst]?.label:"↕"}
@@ -1181,7 +1186,9 @@ export default function AdminPublicaciones() {
                           {resumen?.nombre||"Sin título todavía"}
                         </div>
                       </td>
-                      <td style={{...td,fontWeight:700,color:resumen?.precio?color:"var(--gray-400)"}}>
+                      <td style={{...td,fontWeight:700,textAlign:"right",
+                        fontVariantNumeric:"tabular-nums",
+                        color:resumen?.precio?color:"var(--gray-400)"}}>
                         {resumen?.precio?fmtP(resumen.precio,resumen.moneda):"—"}
                       </td>
                       <td style={{...td,textAlign:"center",color:"var(--gray-400)"}}>
@@ -1265,7 +1272,8 @@ export default function AdminPublicaciones() {
                           <div style={{fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.nombre}</div>
                           {a.condicion&&<div style={{fontSize:"10px",color:"var(--gray-400)"}}>{a.condicion}</div>}
                         </td>
-                        <td style={{...td,fontWeight:700,color}}>{fmtP(a.precio,a.moneda)}</td>
+                        <td style={{...td,fontWeight:700,color,textAlign:"right",
+                          fontVariantNumeric:"tabular-nums"}}>{fmtP(a.precio,a.moneda)}</td>
                         <td style={{...td,textAlign:"center"}}>
                           <span style={{color:a.stock===0?"#EF4444":a.stock<5?"#F59E0B":"#374151",fontWeight:a.stock<5?700:400}}>{a.stock}</span>
                         </td>
