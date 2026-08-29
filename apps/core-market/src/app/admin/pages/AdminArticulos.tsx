@@ -3,6 +3,7 @@ import { buscarProductos, fichaPorTitulo,
          type FichaCanal, type ProductoEncontrado } from "../utils/canalesSync";
 import { predecirTaxonomia } from "../utils/predecirTaxonomia";
 import { buscarMarcas, logoDeDominio, type MarcaSugerida } from "../utils/marcasSync";
+import { canalesDisponibles } from "../utils/canalesSync";
 import { buscarImagenes, buscarVideos, type ResultadoBusqueda } from "../utils/busqueda";
 import { DatosDelProducto } from "../components/ficha/DatosDelProducto";
 import { BloqueDetalles } from "../components/ficha/BloquesFicha";
@@ -63,13 +64,24 @@ const MONEDAS_FALLBACK = [{ code:"UYU", decimals:2 }, { code:"USD", decimals:2 }
  * Por eso la lista es fija y corta: son los seis lugares donde hoy se vende.
  * "Otro" existe para lo que aparezca sin tener que agregar una constante.
  */
+/**
+ * `canal` es la clave del motor de sincronizacion que hace falta para poder
+ * cotizar ahi. Sin ese motor instalado y en orden, el destino no se puede
+ * elegir: poner un precio para un lugar al que el sistema no llega es escribir
+ * un numero que no va a ninguna parte.
+ *
+ * `nativo` es la excepcion, y es una sola: la web propia ES esta aplicacion.
+ * Su precio es `catalog_variante.precio` y ya funciona; no hay ninguna
+ * herramienta que instalar ni ningun tercero al que sincronizar. Pedirle un
+ * motor dejaria a la tienda sin poder ponerle precio a su propia vidriera.
+ */
 const DESTINOS_PRECIO = [
-  { id:"web",  label:"Web",  nombre:"Web propia", color:"#FF5B14" },
-  { id:"ml",   label:"ML",   nombre:"Mercado Libre", color:"#E8B400" },
-  { id:"wa",   label:"WA",   nombre:"WhatsApp",   color:"#00A63E" },
-  { id:"ig",   label:"IG",   nombre:"Instagram",  color:"#E0007B" },
-  { id:"fb",   label:"FB",   nombre:"Facebook",   color:"#1E9FD0" },
-  { id:"otro", label:"Otro", nombre:"Otro",       color:"#7A1FBF" },
+  { id:"web",  label:"Web",  nombre:"Web propia",    color:"#FF5B14", nativo:true },
+  { id:"ml",   label:"ML",   nombre:"Mercado Libre", color:"#E8B400", canal:"mercadolibre" },
+  { id:"wa",   label:"WA",   nombre:"WhatsApp",      color:"#00A63E", canal:"whatsapp" },
+  { id:"ig",   label:"IG",   nombre:"Instagram",     color:"#E0007B", canal:"instagram" },
+  { id:"fb",   label:"FB",   nombre:"Facebook",      color:"#1E9FD0", canal:"facebook" },
+  { id:"otro", label:"Otro", nombre:"Otro",          color:"#7A1FBF", canal:"otro" },
 ] as const;
 
 /** Ancho del "+", que va al final de la fila de destinos. */
@@ -494,30 +506,40 @@ const filaDestinos: React.CSSProperties = {
   gap:"0.4rem", alignItems:"center", width:"100%",
 };
 
-function PastillasDestino({ elegidos, onToggle, ocupados }: {
+function PastillasDestino({ elegidos, onToggle, ocupados, motores }: {
   elegidos: string[];
   onToggle: (id: string) => void;
   /** Destinos que ya tomo otra linea: no se pueden elegir en dos lados. */
   ocupados?: string[];
+  /** Motores de sincronizacion instalados y en orden. */
+  motores: Set<string>;
 }) {
   return (
     <>
       {DESTINOS_PRECIO.map(d => {
         const on = elegidos.includes(d.id);
-        const tomado = !on && (ocupados ?? []).includes(d.id);
+        // Sin herramienta no hay destino: la pastilla se ve y no se toca.
+        const sinMotor = !("nativo" in d) && !motores.has((d as any).canal);
+        const tomado   = !on && (ocupados ?? []).includes(d.id);
+        const off      = sinMotor || tomado;
+
         return (
-          <button key={d.id} type="button" disabled={tomado}
+          <button key={d.id} type="button" disabled={off}
             onClick={() => onToggle(d.id)}
-            title={tomado ? `${d.nombre} ya tiene otro precio` : d.nombre}
+            title={
+              sinMotor ? `${d.nombre}: falta la herramienta de sincronización`
+              : tomado  ? `${d.nombre} ya tiene otro precio`
+              : d.nombre
+            }
             style={{
               width:"100%", height:20, padding:0,
               borderRadius:999,
-              border:`1.5px solid ${tomado ? "var(--border)" : d.color}`,
-              background: on ? `${d.color}26` : "#fff",
-              color: tomado ? "var(--gray-400)" : d.color,
+              border:`1.5px ${sinMotor ? "dashed" : "solid"} ${off ? "var(--border)" : d.color}`,
+              background: on ? `${d.color}26` : sinMotor ? "#F8F9FB" : "#fff",
+              color: off ? "var(--gray-400)" : d.color,
               fontSize:"10px", fontWeight:800, letterSpacing:".02em",
               fontFamily:"inherit",
-              cursor: tomado ? "not-allowed" : "pointer",
+              cursor: off ? "not-allowed" : "pointer",
               opacity: tomado ? .5 : 1,
               transition:"background .12s",
             }}>{d.label}</button>
@@ -1056,6 +1078,22 @@ export default function AdminArticulos(
     { id: number; precio: string; moneda: string; tasaId: string | null; destinos: string[] }[]
   >([]);
   const [destinosBase, setDestinosBase] = useState<string[]>([]);
+
+  /**
+   * Motores de sincronizacion instalados y en orden.
+   *
+   * Lo contesta el registro de canales, no una lista escrita aca: la pantalla
+   * no sabe de ningun canal por nombre, y el dia que se instale WhatsApp su
+   * pastilla se enciende sola sin tocar este archivo.
+   */
+  const [motores, setMotores] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let vivo = true;
+    canalesDisponibles().then(({ disponibles }) => {
+      if (vivo) setMotores(new Set(disponibles.map(d => d.channel)));
+    });
+    return () => { vivo = false; };
+  }, []);
 
   const [detalles, setDetalles] = useState<Record<string, string>>({});
 
@@ -2071,6 +2109,7 @@ export default function AdminArticulos(
                   escribir de nuevo lo que ya estaba. */}
               <div style={filaDestinos}>
                 <PastillasDestino
+                  motores={motores}
                   elegidos={destinosBase}
                   ocupados={lineasPrecio.flatMap(l => l.destinos)}
                   onToggle={id => setDestinosBase(d =>
@@ -2115,6 +2154,7 @@ export default function AdminArticulos(
                     </div>
                     <div style={filaDestinos}>
                       <PastillasDestino
+                        motores={motores}
                         elegidos={l.destinos}
                         ocupados={ocupados}
                         onToggle={id => set("destinos",
