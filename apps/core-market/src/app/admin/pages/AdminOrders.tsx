@@ -1,193 +1,221 @@
-import { useState, useMemo } from "react";
-import { useAdminOrders } from "../hooks/useAdminOrders";
+/**
+ * Pedidos.
+ *
+ * SE LLAMA PEDIDOS, NO ÓRDENES
+ * "Orden" es la palabra de la base de datos —`orders`, `payment_status`— y ahí
+ * se queda: renombrar la tabla sería romper todo lo que la referencia para
+ * arreglar una etiqueta. Lo que se lee en pantalla es "Pedidos".
+ *
+ * LA PANTALLA ES LA DEL PANEL
+ * La barra con los estados, el buscador, el rango de fechas y la tabla salen de
+ * la definición. Acá había tres cajas de filtros con sus propias etiquetas, una
+ * tabla dibujada a mano con un botón "Ver" por fila, y un modal.
+ *
+ * EL DETALLE SE ABRE EN LA FILA, NO EN UN MODAL
+ * Un modal tapa la lista: para comparar dos pedidos hay que abrir, leer,
+ * cerrar, abrir el otro. Abierto en la fila, el de al lado sigue a la vista.
+ */
+import { useState, useMemo, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useAdminOrders } from "../hooks/useAdminOrders";
+import { useShop } from "../components/AdminLayout";
+import { Pantalla, usePantalla } from "../components/Pantalla";
+import { Tabla, Columna, Fila, Tono } from "../components/Tabla";
+
+const NIVEL = "pedidos";
+
+/**
+ * Los estados de pago. Una sola lista: son las secciones de la barra Y las
+ * opciones del selector del buscador, y de acá sale también el tono del chip.
+ *
+ * Antes el `<select>` de filtro y el `PaymentBadge` tenían cada uno su lista.
+ * Agregar un estado era acordarse de dos lugares.
+ */
+const ESTADOS: { valor: string; label: string; tono: Tono }[] = [
+  { valor: "all",             label: "Todos",       tono: "neutro"   },
+  { valor: "paid",            label: "Pagado",      tono: "ok"       },
+  { valor: "pending_payment", label: "Pendiente",   tono: "atencion" },
+  { valor: "failed",          label: "Fallido",     tono: "error"    },
+  { valor: "cancelled",       label: "Cancelado",   tono: "neutro"   },
+  { valor: "refunded",        label: "Reembolsado", tono: "neutro"   },
+];
+
+const estadoDe = (v: string) => ESTADOS.find(e => e.valor === v);
+
+/** De dónde vino el pedido. */
+const ORIGENES: Record<string, string> = {
+  oddy: "ODDY", mercadopago: "MercadoPago",
+  paypal: "PayPal", mercadolibre: "MercadoLibre",
+};
+
+const plata = (moneda: string, monto: unknown) =>
+  `${moneda === "USD" ? "U$S" : "$U"} ${Number(monto || 0).toLocaleString("es-UY")}`;
 
 export default function AdminOrders() {
   const { isAdmin } = useOutletContext<any>() || {};
-  const { orders, loading, error, refetch } = useAdminOrders(200, isAdmin);
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterFrom,   setFilterFrom]   = useState("");
-  const [filterTo,     setFilterTo]     = useState("");
-  const [search,       setSearch]       = useState("");
-  const [selected,     setSelected]     = useState<any>(null);
+  const { orders, loading, error } = useAdminOrders(200, isAdmin);
+  const p = usePantalla();
+  const { tablas } = p;
 
-  const filtered = useMemo(() => {
+  const [estado, setEstado] = useState("all");
+  const [desde,  setDesde]  = useState("");
+  const [hasta,  setHasta]  = useState("");
+  const [busca,  setBusca]  = useState("");
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
     return orders.filter(o => {
-      if (filterStatus !== "all" && o.payment_status !== filterStatus) return false;
-      if (filterFrom && new Date(o.created_at) < new Date(filterFrom)) return false;
-      if (filterTo   && new Date(o.created_at) > new Date(filterTo + "T23:59:59")) return false;
-      if (search && !o.id.includes(search.toLowerCase())) return false;
+      if (estado !== "all" && o.payment_status !== estado) return false;
+      if (desde && new Date(o.created_at) < new Date(desde)) return false;
+      if (hasta && new Date(o.created_at) > new Date(hasta + "T23:59:59")) return false;
+      if (q && !String(o.id).toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [orders, filterStatus, filterFrom, filterTo, search]);
+  }, [orders, estado, desde, hasta, busca]);
 
-  const totalRevenue = useMemo(() =>
-    filtered.filter(o => o.payment_status === "paid")
-      .reduce((s, o) => s + Number(o.total || 0), 0), [filtered]);
+  const cobrado = useMemo(() =>
+    filtrados.filter(o => o.payment_status === "paid")
+      .reduce((s, o) => s + Number(o.total || 0), 0), [filtrados]);
 
-  if (loading) return <div style={{ padding: "2rem", color: "#888" }}>Cargando órdenes...</div>;
-  if (error)   return <div style={{ padding: "1rem", background: "#fef2f2", borderRadius: "8px", color: "#dc2626" }}>Error: {error}</div>;
+  /*
+   * Los contadores van a la barra de arriba, que es donde vive lo general.
+   * Acá estaban en una caja verde adentro de los filtros, así que el número que
+   * más importa quedaba escondido al costado de un formulario.
+   *
+   * Se limpian al salir: si quedaran, el módulo siguiente mostraría los
+   * números de éste.
+   */
+  const { setTopStats } = useShop();
+  useEffect(() => {
+    setTopStats([
+      { label: "Pedidos", value: filtrados.length, color: "#fff"    },
+      { label: "Cobrado", value: `$U ${cobrado.toLocaleString("es-UY")}`, color: "#4ADE80" },
+    ]);
+    return () => { setTopStats([]); };
+  }, [filtrados.length, cobrado, setTopStats]);
+
+  /* ------------------------------------------------------------------
+   * LA TABLA
+   *
+   * Se declara ANTES del `return`: la barra va arriba en el árbol, así que si
+   * esto viviera adentro del JSX los botones no sabrían qué se puede hacer
+   * hasta un render después.
+   * ---------------------------------------------------------------- */
+  const columnas: Columna[] = [
+    {
+      id: "numero", label: "Pedido", ancho: 110,
+      ver: f => (
+        <span style={{ fontWeight: 700, fontFamily: "monospace", color: "#111" }}>
+          #{String(f.numero)}
+        </span>
+      ),
+    },
+    {
+      id: "estado", label: "Estado",
+      chip: (f): { tono: Tono; texto: string } | null => {
+        const e = estadoDe(String(f.estado));
+        /* Un estado que no está en la lista se muestra crudo, no se esconde:
+           si el back agrega uno nuevo hay que verlo, no que desaparezca. */
+        return { tono: e?.tono ?? "neutro", texto: (e?.label ?? String(f.estado)).toUpperCase() };
+      },
+    },
+    { id: "origen", label: "Origen", ancho: 110 },
+    { id: "items",  label: "Ítems",  numero: true, ancho: 60 },
+    { id: "total",  label: "Total",  numero: true, ancho: 110 },
+    { id: "creado", label: "Fecha",  rastro: true, ancho: 110 },
+  ];
+
+  const filas: Fila[] = filtrados.map(o => ({
+    clave: String(o.id),
+    numero: String(o.id ?? "").substring(0, 8).toUpperCase(),
+    estado: o.payment_status,
+    origen: ORIGENES[o.source] ?? (o.source || "ODDY"),
+    items: o.items_count,
+    total: plata(o.currency, o.total),
+    creado: new Date(o.created_at).toLocaleString("es-UY",
+      { day: "2-digit", month: "2-digit", year: "2-digit",
+        hour: "2-digit", minute: "2-digit" }),
+    orden: o,
+  }));
+
+  const nivel = tablas.nivel(NIVEL, {
+    columnas, filas,
+    nombreDe: f => `#${f.numero}`,
+    /* Un pedido no se crea, no se edita y no se borra desde acá: lo escribe la
+       tienda. Por eso la barra no trae ninguna de las cuatro — un botón apagado
+       para siempre es ruido que igual hay que leer para descartarlo. */
+    detalle: f => <Detalle orden={f.orden as Record<string, unknown>} />,
+  });
+
+  if (loading) {
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--gray-400)" }}>
+      Cargando pedidos…
+    </div>;
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                </div>
+    <Pantalla p={p}
+      /* Los estados, declarados UNA vez: se dibujan como botones del menú y
+         como selector adentro del buscador. */
+      secciones={{
+        valor: estado,
+        opciones: ESTADOS.map(e => ({ valor: e.valor, label: e.label })),
+        onCambio: setEstado,
+      }}
+      buscador={{ valor: busca, onCambio: setBusca,
+        placeholder: "Buscar por número de pedido" }}
+      rango={{ desde, hasta, onDesde: setDesde, onHasta: setHasta }}
+      error={error}>
 
-      {/* Filtros */}
-      <div style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.5rem", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Estado</label>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem", background: "#fff" }}>
-            <option value="all">Todos</option>
-            <option value="paid">Pagado</option>
-            <option value="pending_payment">Pendiente</option>
-            <option value="failed">Fallido</option>
-            <option value="cancelled">Cancelado</option>
-            <option value="refunded">Reembolsado</option>
-          </select>
+      {filas.length === 0 ? (
+        <div style={{ padding: "3rem", textAlign: "center", color: "var(--gray-400)" }}>
+          {orders.length === 0
+            ? "Todavía no hay pedidos."
+            : "Ningún pedido con estos filtros."}
         </div>
-        <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Desde</label>
-          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem" }} />
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Hasta</label>
-          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem" }} />
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--mute)", marginBottom: "4px" }}>Buscar ID</label>
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="abc12345..."
-            style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "0.85rem", width: "160px" }} />
-        </div>
-        <button onClick={() => { setFilterStatus("all"); setFilterFrom(""); setFilterTo(""); setSearch(""); }}
-          style={{ padding: "0.5rem 0.75rem", background: "transparent", border: "1px solid var(--border)", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem", color: "#888" }}>
-          Limpiar
-        </button>
-        <div style={{ marginLeft: "auto", background: "#f0fdf4", padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 700, color: "#166534" }}>
-          Revenue filtrado: $U {totalRevenue.toLocaleString("es-UY")}
-        </div>
-      </div>
-
-      {/* Tabla */}
-      <div style={{ background: "#fff", borderRadius: "12px", overflow: "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
-          <thead>
-            <tr style={{ background: "var(--gray-50)", borderBottom: "2px solid var(--border)" }}>
-              {["ID Orden", "Fecha", "Total", "Estado pago", "Items", "Origen", ""].map(h => (
-                <th key={h} style={{ padding: "0.85rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--mute)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((o, idx) => (
-              <tr key={o.id} style={{ borderBottom: "1px solid #F3F4F6", background: idx % 2 === 0 ? "#fff" : "#FAFAFA", cursor: "pointer" }}
-                onClick={() => setSelected(o)}>
-                <td style={{ padding: "0.85rem 1rem" }}>
-                  <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#111", fontFamily: "monospace" }}>
-                    #{o.id?.substring(0, 8).toUpperCase()}
-                  </div>
-                </td>
-                <td style={{ padding: "0.85rem 1rem", fontSize: "0.8rem", color: "#666" }}>
-                  {new Date(o.created_at).toLocaleDateString("es-UY")}
-                  <div style={{ fontSize: "0.7rem", color: "var(--gray-400)" }}>{new Date(o.created_at).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}</div>
-                </td>
-                <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#111" }}>
-                  {o.currency === "USD" ? "U$S" : "$U"} {Number(o.total || 0).toLocaleString("es-UY")}
-                </td>
-                <td style={{ padding: "0.85rem 1rem" }}>
-                  <PaymentBadge status={o.payment_status} />
-                </td>
-                <td style={{ padding: "0.85rem 1rem", fontSize: "0.85rem", color: "#444", fontWeight: 600 }}>{o.items_count}</td>
-                <td style={{ padding: "0.85rem 1rem" }}>
-                  <SourceBadge source={o.source} />
-                </td>
-                <td style={{ padding: "0.85rem 1rem" }}>
-                  <button onClick={e => { e.stopPropagation(); setSelected(o); }}
-                    style={{ padding: "4px 12px", background: "#FFF3EF", color: "#FF6835", border: "1px solid #FF6835", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div style={{ padding: "4rem", textAlign: "center", color: "var(--gray-400)" }}>Sin órdenes para los filtros seleccionados</div>
-        )}
-      </div>
-
-      {/* Modal detalle */}
-      {selected && (
-        <div onClick={() => setSelected(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: "16px", padding: "2rem", maxWidth: "560px", width: "100%", maxHeight: "80vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h3 style={{ margin: 0, fontWeight: 800 }}>Orden #{selected.id?.substring(0, 8).toUpperCase()}</h3>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: "1.25rem", cursor: "pointer", color: "#888" }}>✕</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {[
-                { label: "ID completo", value: selected.id, mono: true },
-                { label: "Fecha", value: new Date(selected.created_at).toLocaleString("es-UY") },
-                { label: "Total", value: `${selected.currency === "USD" ? "U$S" : "$U"} ${Number(selected.total || 0).toLocaleString("es-UY")}` },
-                { label: "Moneda", value: selected.currency },
-                { label: "Estado pago", value: selected.payment_status },
-                { label: "Items", value: selected.items_count },
-                { label: "Origen", value: selected.source || "oddy" },
-                { label: "MP Payment ID", value: selected.mp_payment_id || "—", mono: true },
-                { label: "PayPal Order ID", value: selected.paypal_order_id || "—", mono: true },
-              ].map(row => (
-                <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #F3F4F6" }}>
-                  <span style={{ color: "var(--mute)", fontSize: "0.85rem" }}>{row.label}</span>
-                  <span style={{ fontWeight: 600, fontSize: "0.85rem", fontFamily: row.mono ? "monospace" : undefined, color: "#111", maxWidth: "260px", textAlign: "right", wordBreak: "break-all" }}>
-                    {String(row.value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-              <button onClick={() => setSelected(null)}
-                style={{ padding: "0.6rem 1.25rem", background: "#f1f5f9", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" }}>
-                Cerrar
-              </button>
-              <a href={`/orden/${selected.id}`} target="_blank" rel="noopener noreferrer"
-                style={{ padding: "0.6rem 1.25rem", background: "#FF6835", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
-                Ver en tienda →
-              </a>
-            </div>
-          </div>
-        </div>
+      ) : (
+        <Tabla {...nivel} />
       )}
-    </div>
+    </Pantalla>
   );
 }
 
-function PaymentBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; color: string; label: string }> = {
-    paid:            { bg: "#f0fdf4", color: "#166534", label: "✅ Pagado" },
-    pending_payment: { bg: "#fffbeb", color: "#92400e", label: "⏳ Pendiente" },
-    failed:          { bg: "#fef2f2", color: "#dc2626", label: "❌ Fallido" },
-    cancelled:       { bg: "#f1f5f9", color: "#64748b", label: "🚫 Cancelado" },
-    refunded:        { bg: "#f0f9ff", color: "#0369a1", label: "↩️ Reembolsado" },
-  };
-  const s = map[status] || { bg: "#f1f5f9", color: "var(--gray-400)", label: status };
-  return <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</span>;
+/** Lo que no entra en la fila. Se abre debajo, sin tapar la lista. */
+function Detalle({ orden }: { orden: Record<string, unknown> }) {
+  const filas: { label: string; valor: string; mono?: boolean }[] = [
+    { label: "Número completo", valor: String(orden.id ?? "—"), mono: true },
+    { label: "Fecha",  valor: new Date(String(orden.created_at)).toLocaleString("es-UY") },
+    { label: "Total",  valor: plata(String(orden.currency), orden.total) },
+    { label: "Moneda", valor: String(orden.currency ?? "—") },
+    { label: "Ítems",  valor: String(orden.items_count ?? 0) },
+    { label: "Origen", valor: ORIGENES[String(orden.source)] ?? String(orden.source || "ODDY") },
+    /* Los identificadores del cobro: es lo que hay que copiar para reclamarle
+       algo a la pasarela. Sin esto había que ir a buscarlos a otro lado. */
+    { label: "MercadoPago", valor: String(orden.mp_payment_id ?? "—"), mono: true },
+    { label: "PayPal",      valor: String(orden.paypal_order_id ?? "—"), mono: true },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem",
+      maxWidth: 560 }}>
+      {filas.map(f => (
+        <div key={f.label} style={{ display: "flex", justifyContent: "space-between",
+          gap: "1rem", padding: "0.3rem 0", borderBottom: "1px solid #F3F4F6" }}>
+          <span style={{ color: "var(--mute)", fontSize: "0.78rem" }}>{f.label}</span>
+          <span style={{ fontWeight: 600, fontSize: "0.78rem", color: "#111",
+            fontFamily: f.mono ? "monospace" : undefined,
+            textAlign: "right", wordBreak: "break-all" }}>
+            {f.valor}
+          </span>
+        </div>
+      ))}
+
+      <a href={`/orden/${orden.id}`} target="_blank" rel="noopener noreferrer"
+        style={{ alignSelf: "flex-start", marginTop: "0.5rem",
+          fontSize: "0.78rem", fontWeight: 700, color: "var(--brand-madre)",
+          textDecoration: "none" }}>
+        Ver en la tienda →
+      </a>
+    </div>
+  );
 }
-
-function SourceBadge({ source }: { source: string }) {
-  const map: Record<string, { label: string; color: string }> = {
-    oddy:          { label: "🛍 ODDY",   color: "#FF6835" },
-    mercadopago:   { label: "💳 MP",     color: "#009EE3" },
-    paypal:        { label: "🅿️ PayPal", color: "#003087" },
-    mercadolibre:  { label: "🟡 ML",     color: "#FFE600" },
-  };
-  const s = map[source] || { label: source || "oddy", color: "#888" };
-  return <span style={{ fontSize: "0.78rem", fontWeight: 600, color: s.color }}>{s.label}</span>;
-}
-
-
-

@@ -2,38 +2,61 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { Tabla, fecha } from '../components/Tabla'
+import { supabase } from '../../../utils/supabase/client'
+import { Pantalla, usePantalla } from '../components/Pantalla'
+import { Asistente } from '../components/Asistente'
+import { GUIAS, guiaDe } from '../ui/comoObtener'
+import { requeridasDe, requerida, nadieLaLee } from '../ui/credencialesRequeridas'
+import { BarraDeAccionesSuelta } from '../components/BarraDeAcciones'
+import { useShop } from '../components/AdminLayout'
 import { useApiVault } from '../hooks/useApiVault'
 import type { ApiVaultEntry, ApiVaultInsert, VaultEnv, VaultType } from '../services/apiVaultTypes'
 import {
   VAULT_TYPE_LABELS,
+  VAULT_TYPE_GROUPS,
   VAULT_ENV_LABELS,
   VAULT_PLATFORM_DEFS,
   VAULT_PLATFORM_CATEGORIES,
-  PLATFORM_ICONS,
+  VAULT_PLATFORMS_FRECUENTES,
 } from '../services/apiVaultTypes'
 import { isExpired, isExpiringSoon } from '../services/apiVaultService'
 
 // ── Paleta CORE Market (tokens oficiales brand.css + theme.css) ──────────────
+/**
+ * El Vault no define colores.
+ *
+ * Acá había veinte valores hexadecimales copiados de los tokens de marca, con
+ * el nombre del token al lado en un comentario. Una copia que envejece sola: el
+ * día que cambie la marca, el Vault se queda con los viejos.
+ *
+ * Y además pintaba la pantalla oscura, adentro de un panel claro. Una isla. La
+ * navegación tiene que ser la misma en todos lados: si cada herramienta elige
+ * su aspecto, hay que estudiar cada pantalla antes de poder usarla.
+ *
+ * Esto queda como el puente a los tokens, no como una paleta: los valores no
+ * están acá, se leen de las variables del panel.
+ */
 const C = {
-  bg:        '#081C38',   // --brand-secondary-dark
-  surface:   '#0D2B55',   // --brand-secondary / --color-bg-sidebar
-  surfaceAlt:'#0F3060',   // variante intermedia
-  border:    '#1A3A6A',   // borde sutil azul
-  borderAlt: '#C8D5E8',   // --color-border (para modales claros)
-  text:      '#E8EDF5',   // --gray-100
-  textMuted: '#7A8FAA',   // intermedio
-  textDim:   '#3D5C7A',   // apagado
-  green:     '#1D9E75',   // --color-success
-  greenDim:  'rgba(29,158,117,0.12)',
-  blue:      '#1A4F9C',   // --brand-primary
-  blueDim:   'rgba(26,79,156,0.15)',
-  accent:    '#C9A84C',   // --brand-accent (dorado)
-  accentDim: 'rgba(201,168,76,0.1)',
-  red:       '#C0392B',   // --color-danger
-  amber:     '#C9A84C',   // --color-warning
-  overlay:   'rgba(8,28,56,0.82)',
-  font:      "Calibri, 'Segoe UI', system-ui, sans-serif",
-  mono:      "'Courier New', monospace",
+  bg:        'transparent',
+  surface:   '#fff',
+  surfaceAlt:'var(--gray-50)',
+  border:    'var(--border)',
+  borderAlt: 'var(--border)',
+  text:      '#111',
+  textMuted: 'var(--mute)',
+  textDim:   'var(--gray-400)',
+  green:     'var(--color-success)',
+  greenDim:  'color-mix(in srgb, var(--color-success) 12%, transparent)',
+  blue:      'var(--brand-navy)',
+  blueDim:   'color-mix(in srgb, var(--brand-navy) 12%, transparent)',
+  accent:    'var(--brand-madre)',
+  accentDim: 'color-mix(in srgb, var(--brand-madre) 10%, transparent)',
+  red:       'var(--color-danger)',
+  amber:     'var(--color-warning)',
+  overlay:   'rgba(0,0,0,0.45)',
+  font:      "DM Sans, sans-serif",
+  mono:      "ui-monospace, 'SF Mono', Menlo, monospace",
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -47,10 +70,6 @@ export interface ApiVaultPageProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function mask(val: string) {
-  if (val.length <= 8) return '\u2022'.repeat(val.length)
-  return val.slice(0, 4) + '\u2022'.repeat(Math.min(val.length - 8, 24)) + val.slice(-4)
-}
 
 type ExpiryStatus = 'ok' | 'soon' | 'expired' | 'none'
 function expiryStatus(exp: string | null): ExpiryStatus {
@@ -60,66 +79,79 @@ function expiryStatus(exp: string | null): ExpiryStatus {
   return 'ok'
 }
 
-const ENV_BADGE: Record<VaultEnv, { bg: string; color: string; label: string }> = {
-  production:  { bg:'rgba(229,62,62,0.12)',  color:'#FC8181', label:'PROD'  },
-  staging:     { bg:'rgba(217,119,6,0.15)',  color:'#FBBF24', label:'STAGE' },
-  development: { bg:'rgba(27,90,196,0.18)',  color:'#60A5FA', label:'DEV'   },
-  testing:     { bg:'rgba(107,130,168,0.15)',color:'#94A3B8', label:'TEST'  },
-}
 
-function EnvBadge({ env }: { env: VaultEnv }) {
-  const b = ENV_BADGE[env] || ENV_BADGE.testing
-  return (
-    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:4, fontFamily:C.mono,
-      fontWeight:700, letterSpacing:'0.06em', background:b.bg, color:b.color }}>
-      {b.label}
-    </span>
-  )
-}
-
-function Tag({ children }: { children: string }) {
-  return (
-    <span style={{ fontSize:10, padding:'2px 8px', borderRadius:4,
-      background:C.greenDim, color:C.green, fontFamily:C.mono }}>
-      {children}
-    </span>
-  )
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 // `supabase` se sigue aceptando para no romper a quien ya monta este
 // componente, pero no se usa: el acceso a datos va por el hook, que usa el
 // cliente compartido de la app.
-export default function AdminApiVault({ tenantId, appId, className = '' }: ApiVaultPageProps) {
+// `className` se sigue aceptando en las props para no romper a quien ya monta
+// este componente, pero no se usa: el ancho y el contenedor los define
+// `Pantalla`, igual que en todas las vistas.
+export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
   const { entries, loading, error, load, add, edit, remove, stats } = useApiVault()
 
   const [search,   setSearch]   = useState('')
   const [filter,   setFilter]   = useState('all')
+  /* Qué plataforma se está guiando. `''` es el elegidor; null, cerrado. */
+  const [guiando,  setGuiando]  = useState<string | null>(null)
+
+  /*
+   * Las de servidor no las devuelve la lectura normal —las políticas de lectura
+   * las excluyen a propósito— así que sin esto DESAPARECEN: se cargan, se
+   * guardan bien, y el Vault se ve igual que antes.
+   *
+   * Se piden aparte, por una función que devuelve todo MENOS el valor. Poder
+   * decir "está cargada y desde cuándo" es lo que hace que el Vault sirva; el
+   * valor no hace falta para eso, y es justamente lo que no puede salir.
+   */
+  const [deServidor, setDeServidor] = useState<
+    { plataforma: string; nombre: string; cargada: string; largo: number }[]>([])
+
+  useEffect(() => {
+    supabase.rpc('credenciales_de_servidor').then(({ data, error }: {
+      data: { plataforma: string; nombre: string; cargada: string; largo: number }[] | null
+      error: unknown
+    }) => {
+      // Una tienda no las ve y no es un error: son de la plataforma.
+      if (!error) setDeServidor(data ?? [])
+    })
+  }, [])
   const [showForm, setShowForm] = useState(false)
-  const [detail,   setDetail]   = useState<ApiVaultEntry | null>(null)
   const [editing,  setEditing]  = useState<ApiVaultEntry | null>(null)
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [copied,   setCopied]   = useState<string | null>(null)
+  const pantalla = usePantalla()
+  const tablas = pantalla.tablas
+  const { setTopStats } = useShop()
 
   // El hook toma sus propias dependencias: usa el cliente compartido y no
   // recibe filtros. Pasarle argumentos que no espera fue la causa de que el
   // alta insertara una fila vacia.
   useEffect(() => { load() }, [])
 
-  const platforms = useMemo(
-    () => ['all', ...Array.from(new Set(entries.map((e) => e.platform)))],
-    [entries]
-  )
+  /* Los contadores van a la barra de arriba: son del módulo, no de la lista, y
+     acá adentro ocupaban una fila entera arriba de lo que se vino a ver. */
+  useEffect(() => {
+    const st = stats()
+    setTopStats([
+      { label:'Credenciales', value: st.total,    color:'#fff' },
+      { label:'Plataformas',  value: st.platforms, color:'#38BDF8' },
+      { label:'Por vencer',   value: st.expiring, color: st.expiring > 0 ? '#FBBF24' : '#4ADE80' },
+    ])
+    return () => setTopStats([])
+  }, [entries, setTopStats])
+
 
   const filtered = useMemo(() => entries.filter((e) => {
-    const matchPlatform = filter === 'all' || e.platform === filter
+    const grupo = VAULT_TYPE_GROUPS.find((g) => g.id === filter)
+    const matchPlatform = filter === 'all' || (grupo?.tipos.includes(e.type) ?? false)
     const q = search.toLowerCase()
     const matchSearch = !q || [e.name, e.platform, ...e.tags].join(' ').toLowerCase().includes(q)
     return matchPlatform && matchSearch
   }), [entries, filter, search])
 
-  const s = stats()
 
   function toggleReveal(id: string) {
     setRevealed((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -131,161 +163,187 @@ export default function AdminApiVault({ tenantId, appId, className = '' }: ApiVa
   }
 
   function openEdit(entry: ApiVaultEntry) {
-    setEditing(entry); setDetail(null); setShowForm(true)
+    setEditing(entry); setShowForm(true)
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Eliminar esta credencial?')) return
-    await remove(id)
-    if (detail?.id === id) setDetail(null)
-  }
+
+  /* Se declara ANTES de dibujar: si viviera adentro del JSX, la barra —que va
+     arriba— no sabría qué se puede hacer hasta un render después. */
+  const nivelCredenciales = tablas.nivel("credenciales", {
+          columnas: [
+            { id: "nombre",     label: "Credencial", ancho: 240 },
+            { id: "plataforma", label: "Plataforma", ancho: 150 },
+            { id: "tipo",       label: "Tipo",       ancho: 120 },
+            { id: "entorno",    label: "Entorno",    ancho: 100 },
+            { id: "estado", label: "Estado", ancho: 140,
+              // La herramienta dice QUE pasa; como se ve lo decide la tabla.
+              chip: f => {
+                /* Las de servidor no tienen fila propia en el Vault: se sabe
+                   que están, no cuánto duran. */
+                if (f.servidor) {
+                  return { tono: 'ok' as const, texto: 'Sólo servidor' }
+                }
+                const e = f.entry as ApiVaultEntry
+                const st = expiryStatus(e.expires_at)
+                /* Vencida o por vencer es lo primero que hay que ver: una
+                   credencial vencida falla en silencio del otro lado. */
+                if (st === 'expired') return { tono: 'error' as const,    texto: 'Vencida' }
+                if (st === 'soon')    return { tono: 'atencion' as const, texto: 'Vence pronto' }
+
+                /* Y esto es peor que vencida: cargada, vigente, y con un nombre
+                   que el código no busca. No la lee nadie y no se nota — la
+                   pantalla que la necesita dice que falta justo eso que está
+                   acá. Pasó con "META App ID" en vez de "META_APP_ID". */
+                if (nadieLaLee(e.platform, e.name)) {
+                  return { tono: 'atencion' as const, texto: 'No la lee nadie' }
+                }
+                return { tono: 'ok' as const, texto: 'Vigente' }
+              } },
+            { id: "vence",      label: "Vence",      rastro: true, ancho: 80 },
+            { id: "creado",     label: "Creada",     rastro: true, ancho: 80,
+              ver: f => fecha(f.creado) },
+          ],
+          filas: [
+            ...filtered.map((e) => ({
+              clave: e.id,
+              nombre: e.name,
+              plataforma: e.platform,
+              tipo: VAULT_TYPE_LABELS[e.type],
+              entorno: e.env,
+              vence: e.expires_at
+                ? new Date(e.expires_at).toLocaleDateString('es-UY',
+                    { day:'2-digit', month:'2-digit', year:'2-digit' })
+                : "—",
+              creado: e.created_at,
+              entry: e,
+            })),
+
+            /* Las de servidor, en la MISMA lista. Aparte serían dos lugares
+               donde mirar si una credencial está cargada, y la pregunta es una
+               sola. No traen valor ni se pueden abrir: no hay `entry`, así que
+               Editar y Eliminar quedan apagados sobre ellas. */
+            ...deServidor
+              .filter(c => {
+                const q = search.toLowerCase()
+                return !q || `${c.nombre} ${c.plataforma}`.toLowerCase().includes(q)
+              })
+              .map(c => ({
+                clave: `servidor:${c.plataforma}:${c.nombre}`,
+                nombre: c.nombre,
+                plataforma: c.plataforma,
+                tipo: 'Del servidor',
+                entorno: 'production',
+                vence: "—",
+                creado: c.cargada,
+                servidor: true,
+              })),
+          ],
+          nombreDe: f => String(f.nombre),
+          onAgregar: () => { setEditing(null); setShowForm(true) },
+          /* Sobre una de servidor no se puede: el navegador no tiene su valor
+             para editarla, y borrarla desde acá dejaría al sistema sin
+             conectar sin que nadie lo relacione. Se cambian donde se cargan. */
+          onEditar:  f => { if (!f.servidor) openEdit(f.entry as ApiVaultEntry) },
+          onBorrar: async (fs) => {
+            for (const f of fs) if (!f.servidor) await remove(f.clave)
+          },
+          detalle: f => {
+            const e = f.entry as ApiVaultEntry
+            const revelada = revealed.has(f.clave)
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:10, maxWidth:720 }}>
+                <div>
+                  <div style={{ fontSize:'0.74rem', fontWeight:800, color:'#374151' }}>Secreto</div>
+                  <div style={{ fontSize:'0.72rem', color:C.textDim, marginBottom:6 }}>
+                    Se muestra sólo si lo pedís. Queda a la vista hasta que cierres la fila.
+                  </div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <code style={{ flex:1, fontFamily:C.mono, fontSize:12, padding:'0.45rem 0.6rem',
+                      background:C.surfaceAlt, border:`1px solid ${C.border}`, borderRadius:7,
+                      wordBreak:'break-all', color:C.text }}>
+                      {revelada ? e.value : '•'.repeat(Math.min(e.value?.length ?? 12, 40))}
+                    </code>
+                    <BarraDeAccionesSuelta acciones={[
+                      { label: revelada ? 'Ocultar' : 'Ver', color: C.blue,
+                        onClick: () => toggleReveal(f.clave) },
+                      { label: copied === f.clave ? 'Copiado' : 'Copiar', color: C.accent,
+                        onClick: () => { void copyValue(e) } },
+                    ]} />
+                  </div>
+                </div>
+
+                {e.notes && (
+                  <div>
+                    <div style={{ fontSize:'0.74rem', fontWeight:800, color:'#374151' }}>Notas</div>
+                    <div style={{ fontSize:'0.8rem', color:C.textMuted }}>{e.notes}</div>
+                  </div>
+                )}
+
+                {e.tags?.length > 0 && (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    {e.tags.map(t => (
+                      <span key={t} style={{ fontSize:'0.72rem', padding:'2px 9px', borderRadius:999,
+                        background:C.blueDim, color:C.blue }}>#{t}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          },
+  })
 
   return (
-    <div className={className} style={{ padding:'1.5rem 2rem', maxWidth:960, margin:'0 auto', color:C.text }}>
+    /* La barra, el buscador, el aviso, el error y el ancho los define
+       `Pantalla`. Acá había un contenedor propio con `maxWidth: 960` centrado,
+       así que el Vault se veía más angosto que todo el resto sin razón. */
+    <Pantalla p={pantalla}
+      /* El menú son TIPOS, no entradas, y AGRUPADOS.
+         Antes estaban las plataformas —Mapbox, MercadoLibre…— que son datos y
+         crecen con lo que se carga: con ese criterio, en la Biblioteca el menú
+         serían las imágenes una por una.
+         Y ocho tipos eran ocho botones: nadie necesita separar un JWT de un
+         OAuth token para mirar sus credenciales. El tipo exacto sigue en su
+         columna. */
+      /* Los tipos, UNA sola vez: `Pantalla` los dibuja en el menú y adentro
+         del buscador. La plataforma -Mapbox, MercadoLibre- es una columna y se
+         busca; el menú es el puñado de categorías que no cambia. */
+      secciones={{
+        valor: filter,
+        opciones: [
+          { valor: 'all', label: 'Todo' },
+          ...VAULT_TYPE_GROUPS.map((g) => ({ valor: g.id, label: g.label })),
+        ],
+        onCambio: setFilter,
+      }}
+      buscador={{ valor: search, onCambio: setSearch }}
 
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.75rem' }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-            <span style={{ fontSize:18 }}>🔐</span>
-            <span style={{ fontSize:17, fontWeight:700, letterSpacing:'-0.02em' }}>API Vault</span>
-          </div>
-          <div style={{ fontSize:12, color:C.textMuted }}>Gestion de tokens y credenciales</div>
-        </div>
-        <button onClick={() => { setEditing(null); setShowForm(true) }}
-          style={{ display:'flex', alignItems:'center', gap:6, background:C.blue, color:'#fff',
-            border:'none', borderRadius:6, padding:'8px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-          + Nueva credencial
-        </button>
-      </div>
+      /* "Cómo la consigo" antes que "Agregar": el que no tiene la clave no
+         necesita un formulario, necesita la clave. Ese es el orden real del
+         problema, y por eso está primero. */
+      extra={[
+        { label: 'Cómo la consigo', color: 'var(--brand-navy)',
+          title: 'Te llevo paso a paso hasta la credencial',
+          onClick: () => setGuiando('') },
+      ]}
+      error={error}>
 
-      {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:20 }}>
-        {[
-          { label:'TOTAL',      value: s.total },
-          { label:'PLATAFORMAS',value: s.platforms },
-          { label:'ACTIVAS',    value: s.active },
-          { label:'POR VENCER', value: s.expiring, warn: s.expiring > 0 },
-        ].map((st) => (
-          <div key={st.label} style={{ background:C.surface, border:`1px solid ${C.border}`,
-            borderRadius:8, padding:'12px 16px' }}>
-            <div style={{ fontSize:9, color:C.textDim, fontFamily:C.mono,
-              letterSpacing:'0.1em', marginBottom:6 }}>{st.label}</div>
-            <div style={{ fontSize:24, fontWeight:700,
-              color: st.warn ? C.amber : C.text }}>{st.value}</div>
-          </div>
-        ))}
-      </div>
 
-      {/* Search */}
-      <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar por nombre, plataforma o etiqueta..."
-        style={{ width:'100%', background:C.surface, border:`1px solid ${C.border}`,
-          borderRadius:6, padding:'9px 14px', fontSize:13, color:C.text,
-          marginBottom:10, boxSizing:'border-box', outline:'none' }} />
+      {/* ── La lista ─────────────────────────────────────────────────────
+          La misma tabla que el resto del panel: check por fila y los botones
+          en la barra.
 
-      {/* Filtros */}
-      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:18 }}>
-        {platforms.map((p) => (
-          <button key={p} onClick={() => setFilter(p)}
-            style={{ padding:'4px 12px', borderRadius:4, fontSize:12, cursor:'pointer',
-              fontFamily:C.mono, letterSpacing:'0.04em', transition:'all .15s',
-              background: filter === p ? C.green    : 'transparent',
-              color:      filter === p ? '#061A0E'  : C.textMuted,
-              border:     filter === p ? `1px solid ${C.green}` : `1px solid ${C.border}` }}>
-            {p === 'all' ? 'TODO' : p}
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <div style={{ background:'rgba(229,62,62,0.1)', border:`1px solid rgba(229,62,62,0.3)`,
-          borderRadius:6, padding:'10px 14px', fontSize:13, color:'#FC8181', marginBottom:12 }}>
-          {error}
-        </div>
-      )}
-
-      {/* Lista */}
+          AGREGAR Y EDITAR ABREN EL FORMULARIO, NO UNA FILA
+          Una credencial no es un renglón de datos: tiene un secreto, un tipo,
+          un entorno y un vencimiento, y el secreto no se escribe en una celda
+          entre otras celdas. Lo que NO cambia es dónde está el botón — que es
+          lo que importa: se aprieta "Agregar" en el mismo lugar de siempre y
+          lo que se abre después es asunto de esta herramienta.
+       ──────────────────────────────────────────────────────────────────── */}
       {loading ? (
         <p style={{ textAlign:'center', color:C.textMuted, padding:'3rem',
           fontFamily:C.mono, fontSize:12 }}>Cargando...</p>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'4rem 1rem', color:C.textDim,
-          border:`1px dashed ${C.border}`, borderRadius:10 }}>
-          <div style={{ fontSize:32, marginBottom:10 }}>🔑</div>
-          <p style={{ fontSize:14, color:C.textMuted }}>No hay credenciales guardadas</p>
-          <p style={{ fontSize:12, color:C.textDim, marginTop:4 }}>
-            Hace clic en "Nueva credencial" para empezar
-          </p>
-        </div>
       ) : (
-        <div style={{ display:'grid', gap:8 }}>
-          {filtered.map((entry) => {
-            const status = expiryStatus(entry.expires_at)
-            const isRev  = revealed.has(entry.id)
-            return (
-              <div key={entry.id} style={{ background:C.surface, border:`1px solid ${C.border}`,
-                borderRadius:8, padding:'14px 16px', transition:'border-color .15s' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:32, height:32, borderRadius:6, background:C.surfaceAlt,
-                      border:`1px solid ${C.borderAlt}`, display:'flex', alignItems:'center',
-                      justifyContent:'center', fontSize:15, flexShrink:0 }}>
-                      {PLATFORM_ICONS[entry.platform] ?? '🔑'}
-                    </div>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:600, color:C.text }}>{entry.name}</div>
-                      <div style={{ fontSize:11, color:C.textMuted, marginTop:1 }}>
-                        {entry.platform} &middot; {VAULT_TYPE_LABELS[entry.type]}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display:'flex', gap:4 }}>
-                    {[
-                      { icon:'👁', title:'Ver detalle',  action: () => setDetail(entry) },
-                      { icon: copied === entry.id ? '✅' : '📋', title:'Copiar', action: () => copyValue(entry) },
-                      { icon:'✏️', title:'Editar',        action: () => openEdit(entry) },
-                      { icon:'🗑', title:'Eliminar',      action: () => handleDelete(entry.id) },
-                    ].map((btn) => (
-                      <button key={btn.title} onClick={btn.action} title={btn.title}
-                        style={{ width:28, height:28, border:`1px solid ${C.border}`,
-                          background:'transparent', cursor:'pointer', borderRadius:5, fontSize:13,
-                          color:C.textMuted, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        {btn.icon}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Valor */}
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                  <code style={{ flex:1, fontSize:11, background:C.bg, border:`1px solid ${C.border}`,
-                    borderRadius:5, padding:'6px 10px', color:C.textMuted, overflow:'hidden',
-                    textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:C.mono }}>
-                    {isRev ? entry.value : mask(entry.value)}
-                  </code>
-                  <button onClick={() => toggleReveal(entry.id)}
-                    style={{ padding:'4px 8px', border:`1px solid ${C.border}`, borderRadius:5,
-                      background:'transparent', cursor:'pointer', fontSize:12, color:C.textMuted }}>
-                    {isRev ? '🙈' : '👁'}
-                  </button>
-                </div>
-
-                {/* Tags + env */}
-                <div style={{ display:'flex', flexWrap:'wrap', gap:5, alignItems:'center' }}>
-                  <EnvBadge env={entry.env} />
-                  {entry.tags.map((t) => <Tag key={t}>{t}</Tag>)}
-                  {status === 'expired' && (
-                    <span style={{ fontSize:11, color:C.red, fontFamily:C.mono }}>⚠ VENCIDA</span>
-                  )}
-                  {status === 'soon' && (
-                    <span style={{ fontSize:11, color:C.amber, fontFamily:C.mono }}>⏰ VENCE PRONTO</span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <Tabla {...nivelCredenciales} />
       )}
 
       {showForm && (
@@ -301,13 +359,51 @@ export default function AdminApiVault({ tenantId, appId, className = '' }: ApiVa
           }} />
       )}
 
-      {detail && (
-        <VaultDetail entry={detail}
-          onClose={() => setDetail(null)}
-          onEdit={() => openEdit(detail)}
-          onDelete={() => handleDelete(detail.id)} />
+      {/* El elegidor: qué credencial. Sale de la misma lista de guías, así que
+          no puede ofrecer una para la que no hay pasos. */}
+      {guiando === '' && (
+        <div onClick={e => { if (e.target === e.currentTarget) setGuiando(null) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+            zIndex: 9998, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: 14, width: '100%',
+            maxWidth: 460, maxHeight: '80vh', overflow: 'auto' }}>
+            <div style={{ padding: '1rem 1.25rem',
+              borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111' }}>
+                ¿Cuál necesitás?
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--mute)', marginTop: 2 }}>
+                Te llevo paso a paso hasta conseguirla.
+              </div>
+            </div>
+            <div style={{ padding: '0.5rem' }}>
+              {GUIAS.map(g => (
+                <button key={g.plataforma} onClick={() => setGuiando(g.plataforma)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left',
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    padding: '0.6rem 0.75rem', borderRadius: 8 }}>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#111' }}>
+                    {g.plataforma}
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--mute)' }}>
+                    {g.para}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+
+      {guiando && guiaDe(guiando) && (
+        <Asistente
+          guia={guiaDe(guiando)!}
+          onCerrar={() => setGuiando(null)}
+          onIr={ruta => { window.location.href = ruta }}
+          avisar={pantalla.avisar} />
+      )}
+    </Pantalla>
   )
 }
 
@@ -322,6 +418,18 @@ interface VaultFormProps {
 function VaultForm({ initial, onClose, onSave }: VaultFormProps) {
   const [name,      setName]      = useState(initial?.name ?? '')
   const [platform,  setPlatform]  = useState(initial?.platform ?? '')
+  /*
+   * La lista arranca CORTA.
+   *
+   * Son noventa y dos plataformas en quince categorías. Ponerlas todas —aunque
+   * sea con las usadas arriba— sigue siendo una lista de noventa y dos: hay que
+   * frenar a leer para no pasarse de largo lo que buscabas.
+   *
+   * Se abre entera si la editada no está entre las cortas: si no, el selector
+   * se vería vacío sobre una credencial que tiene plataforma.
+   */
+  const [todasLasPlataformas, setTodasLasPlataformas] = useState(
+    !!initial?.platform && !VAULT_PLATFORMS_FRECUENTES.includes(initial.platform))
   const [type,      setType]      = useState<VaultType>(initial?.type ?? 'api_key')
   const [value,     setValue]     = useState(initial?.value ?? '')
   const [env,       setEnv]       = useState<VaultEnv>(initial?.env ?? 'production')
@@ -381,25 +489,39 @@ function VaultForm({ initial, onClose, onSave }: VaultFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding:24, display:'grid', gap:16 }}>
-          <div>
-            <label style={labelStyle}>NOMBRE *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="ej. Produccion, Staging..." style={inputStyle} />
-          </div>
-
+          {/* La PLATAFORMA primero: de ella depende qué nombres tienen sentido.
+              Al revés obligaba a escribir el nombre a ciegas y después elegir
+              contra qué. */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <div>
               <label style={labelStyle}>PLATAFORMA *</label>
               <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={inputStyle}>
                 <option value="">Seleccionar...</option>
-                {VAULT_PLATFORM_CATEGORIES.map((cat) => (
-                  <optgroup key={cat} label={cat}>
-                    {VAULT_PLATFORM_DEFS.filter(p => p.category === cat).map(p => (
-                      <option key={p.name} value={p.name}>{p.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
+
+                {todasLasPlataformas
+                  ? VAULT_PLATFORM_CATEGORIES.map((cat) => (
+                      <optgroup key={cat} label={cat}>
+                        {VAULT_PLATFORM_DEFS.filter(p => p.category === cat).map(p => (
+                          <option key={p.name} value={p.name}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    ))
+                  : VAULT_PLATFORMS_FRECUENTES.map(n => {
+                      const p = VAULT_PLATFORM_DEFS.find(x => x.name === n)
+                      return p ? <option key={p.name} value={p.name}>{p.name}</option> : null
+                    })}
               </select>
+
+              {/* Las otras ochenta y cuatro, a un click. No se sacan: alguna vez
+                  va a hacer falta una. Pero no se muestran hasta que se pidan. */}
+              {!todasLasPlataformas && (
+                <button type="button" onClick={() => setTodasLasPlataformas(true)}
+                  style={{ marginTop: 5, background:'none', border:'none', padding:0,
+                    cursor:'pointer', fontSize:11, color:C.textMuted,
+                    textDecoration:'underline' }}>
+                  Ver las {VAULT_PLATFORM_DEFS.length} plataformas
+                </button>
+              )}
             </div>
             <div>
               <label style={labelStyle}>TIPO</label>
@@ -409,6 +531,51 @@ function VaultForm({ initial, onClose, onSave }: VaultFormProps) {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/*
+            * EL NOMBRE SE ELIGE, NO SE ESCRIBE.
+            *
+            * Sólo cuando la plataforma tiene nombres definidos. Para las demás
+            * sigue siendo un campo libre: no todas las claves las lee nuestro
+            * código, y obligar a elegir de una lista vacía sería peor.
+            */}
+          <div>
+            <label style={labelStyle}>NOMBRE *</label>
+            {requeridasDe(platform).length > 0 ? (<>
+              <select value={name} onChange={(e) => setName(e.target.value)}
+                style={inputStyle}>
+                <option value="">Seleccionar...</option>
+                {requeridasDe(platform).map(c => (
+                  <option key={c.name} value={c.name}>
+                    {c.etiqueta}{c.porBoton ? ' · la escribe Conectar' : ''}
+                  </option>
+                ))}
+              </select>
+              {(() => {
+                const c = requerida(platform, name)
+                if (!c) return null
+                return (
+                  <div style={{ marginTop: 5, fontSize: 11, color: C.textMuted,
+                    lineHeight: 1.5 }}>
+                    {c.para} Se guarda como <b>{c.name}</b>.
+                    {c.porBoton && (
+                      /* Cargarla a mano no está prohibido, pero la próxima
+                         conexión la pisa. Decirlo ahora evita el "la cargué y
+                         se borró sola". */
+                      <> <span style={{ color:'#B45309', fontWeight:600 }}>
+                        La escribe el botón Conectar: si la cargás a mano, la
+                        próxima conexión la reemplaza.
+                      </span></>
+                    )}
+                  </div>
+                )
+              })()}
+            </>) : (
+              <input value={name} onChange={(e) => setName(e.target.value)}
+                placeholder={platform ? 'Un nombre para reconocerla' : 'Elegí primero la plataforma'}
+                style={inputStyle} />
+            )}
           </div>
 
           <div>
@@ -475,138 +642,3 @@ function VaultForm({ initial, onClose, onSave }: VaultFormProps) {
 }
 
 // ── Detalle ───────────────────────────────────────────────────────────────────
-
-interface VaultDetailProps {
-  entry:    ApiVaultEntry
-  onClose:  () => void
-  onEdit:   () => void
-  onDelete: () => void
-}
-
-function VaultDetail({ entry, onClose, onEdit, onDelete }: VaultDetailProps) {
-  const [showVal, setShowVal] = useState(false)
-  const [copied,  setCopied]  = useState(false)
-  const status = expiryStatus(entry.expires_at)
-
-  async function copy() {
-    await navigator.clipboard.writeText(entry.value)
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:50, background:C.overlay,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12,
-        width:'100%', maxWidth:460, boxShadow:'0 24px 64px rgba(0,0,0,.6)' }}>
-
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'20px 24px', borderBottom:`1px solid ${C.border}` }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:36, height:36, borderRadius:7, background:C.surfaceAlt,
-              border:`1px solid ${C.borderAlt}`, display:'flex', alignItems:'center',
-              justifyContent:'center', fontSize:18 }}>
-              {PLATFORM_ICONS[entry.platform] ?? '🔑'}
-            </div>
-            <div>
-              <div style={{ fontSize:15, fontWeight:700, color:C.text }}>{entry.name}</div>
-              <div style={{ fontSize:11, color:C.textMuted, marginTop:2 }}>
-                {entry.platform} &middot; {VAULT_TYPE_LABELS[entry.type]}
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose}
-            style={{ background:'none', border:'none', cursor:'pointer',
-              fontSize:18, color:C.textMuted }}>✕</button>
-        </div>
-
-        <div style={{ padding:24 }}>
-          {/* Valor */}
-          <div style={{ marginBottom:18 }}>
-            <div style={{ fontSize:9, color:C.textDim, fontFamily:C.mono,
-              letterSpacing:'0.1em', marginBottom:8 }}>VALOR</div>
-            <div style={{ display:'flex', gap:8 }}>
-              <code style={{ flex:1, fontSize:11, background:C.bg, border:`1px solid ${C.border}`,
-                borderRadius:6, padding:'8px 12px', fontFamily:C.mono, color:C.textMuted,
-                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {showVal ? entry.value : mask(entry.value)}
-              </code>
-              <button onClick={() => setShowVal(!showVal)}
-                style={{ padding:'6px 10px', border:`1px solid ${C.border}`, borderRadius:6,
-                  background:'transparent', cursor:'pointer', fontSize:13, color:C.textMuted }}>
-                {showVal ? '🙈' : '👁'}
-              </button>
-              <button onClick={copy}
-                style={{ padding:'6px 10px', border:`1px solid ${copied ? C.green : C.border}`,
-                  borderRadius:6, background: copied ? C.greenDim : 'transparent',
-                  cursor:'pointer', fontSize:13, color: copied ? C.green : C.textMuted }}>
-                {copied ? '✅' : '📋'}
-              </button>
-            </div>
-          </div>
-
-          {/* Metadata */}
-          <table style={{ width:'100%', fontSize:12, borderCollapse:'collapse' }}>
-            <tbody>
-              {[
-                ['Entorno',    <EnvBadge env={entry.env} />],
-                ['Plataforma', entry.platform],
-                ['Tipo',       VAULT_TYPE_LABELS[entry.type]],
-                ['Vencimiento', entry.expires_at
-                  ? new Date(entry.expires_at).toLocaleDateString('es-UY')
-                  : 'Sin vencimiento'],
-                ['Creada', new Date(entry.created_at).toLocaleDateString('es-UY')],
-              ].filter(Boolean).map((row) => {
-                const [l, v] = row as [string, React.ReactNode]
-                return (
-                  <tr key={l} style={{ borderBottom:`1px solid ${C.border}` }}>
-                    <td style={{ padding:'8px 0', color:C.textDim, width:110,
-                      fontSize:10, fontFamily:C.mono, letterSpacing:'0.06em' }}>
-                      {(l as string).toUpperCase()}
-                    </td>
-                    <td style={{ padding:'8px 0', color:C.text }}>{v}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-
-          {entry.tags.length > 0 && (
-            <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:14 }}>
-              {entry.tags.map((t) => <Tag key={t}>{t}</Tag>)}
-            </div>
-          )}
-          {entry.notes && (
-            <p style={{ fontSize:12, background:C.surfaceAlt, border:`1px solid ${C.border}`,
-              borderRadius:6, padding:'10px 12px', color:C.textMuted, marginTop:14, lineHeight:1.6 }}>
-              {entry.notes}
-            </p>
-          )}
-          {status === 'expired' && (
-            <p style={{ fontSize:12, color:C.red, marginTop:10, fontFamily:C.mono }}>
-              ⚠ CREDENCIAL VENCIDA
-            </p>
-          )}
-          {status === 'soon' && (
-            <p style={{ fontSize:12, color:C.amber, marginTop:10, fontFamily:C.mono }}>
-              ⏰ VENCE EN MENOS DE 30 DIAS
-            </p>
-          )}
-        </div>
-
-        <div style={{ display:'flex', justifyContent:'space-between',
-          padding:'0 24px 24px' }}>
-          <button onClick={onDelete}
-            style={{ padding:'8px 16px', fontSize:13, border:`1px solid rgba(229,62,62,0.4)`,
-              color:C.red, borderRadius:6, background:'transparent', cursor:'pointer' }}>
-            Eliminar
-          </button>
-          <button onClick={onEdit}
-            style={{ padding:'8px 20px', fontSize:13, fontWeight:700,
-              background:C.blue, color:'#fff', border:'none', borderRadius:6, cursor:'pointer' }}>
-            Editar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}

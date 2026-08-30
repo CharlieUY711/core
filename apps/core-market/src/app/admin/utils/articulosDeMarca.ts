@@ -317,16 +317,26 @@ async function catalogoGuardadoDeMarket(marca: string): Promise<ResultadoBusqued
 }
 
 /**
- * Guarda lo leído para las tiendas que vengan.
+ * Guarda lo leído en la biblioteca de ESTA tienda.
+ *
+ * POR QUÉ NO VA A MARKET
+ * La información va de Market a las tiendas, no al revés. Lo que una tienda
+ * sale a leer es suyo: sirve para ella, y no se promueve al catálogo que ven
+ * todas. Antes esto llamaba a `guardar_catalogo_market`, que escribe el
+ * catálogo compartido — la dirección prohibida.
+ *
+ * (Esa llamada además venía fallando en silencio desde el 28/08: su
+ * `on conflict` apuntaba a un índice único que se eliminó al agregarle
+ * `tenant_id` a la identidad de la ficha. Nunca guardó nada.)
  *
  * Que falle no invalida nada: quien lo pidió ya tiene su catálogo en pantalla.
- * Se pierde el beneficio para el siguiente, no para este.
+ * Se pierde el beneficio para la próxima, no para esta.
  */
 async function guardarEnMarket(
   marca: string, fuente: string, items: ResultadoBusqueda[],
 ): Promise<void> {
   try {
-    const { error } = await supabase.rpc("guardar_catalogo_market", {
+    const { error } = await supabase.rpc("guardar_fichas_biblioteca", {
       p_marca: marca,
       p_fuente: fuente,
       p_items: items.map((r) => ({
@@ -335,8 +345,8 @@ async function guardarEnMarket(
         precio: r.precio ?? null, moneda: r.moneda ?? null,
       })),
     });
-    if (error) console.warn("[catalogo] no se pudo guardar en Market:", error.message);
-    else console.info(`[catalogo] guardados ${items.length} productos de ${marca} en Market`);
+    if (error) console.warn("[catalogo] no se pudo guardar en la Biblioteca:", error.message);
+    else console.info(`[catalogo] guardados ${items.length} productos de ${marca} en la Biblioteca`);
   } catch (err) {
     console.warn("[catalogo] no se pudo guardar en Market:", err);
   }

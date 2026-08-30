@@ -701,11 +701,26 @@ export default function AdminPublicaciones() {
   };
   // catalog_items no tiene borrado lógico: 'archived' es su equivalente.
   const archivar=async(ids:string[])=>{await chSt(ids,"archived");};
+  /**
+   * Eliminar elimina.
+   *
+   * Antes esto llamaba a `chSt(ids,"archived")` -exactamente lo mismo que el
+   * botón "Archivar" de al lado- y después sacaba la fila de la pantalla con
+   * un filtro en memoria. Parecía borrada hasta que alguien refrescaba.
+   *
+   * El botón terminó archivando por una buena razón: borrar una publicación
+   * era borrar lo único que la tienda sabía del producto. Con la Biblioteca
+   * como fuente eso ya no pasa —la ficha queda y se puede volver a publicar
+   * sin cargar nada— así que ahora puede borrar de verdad.
+   */
   const eliminar=async(ids:string[])=>{
-    if(!confirm("¿Archivar "+ids.length+" publicación(es)? Dejan de verse en la tienda pero no se borran."))return;
-    await chSt(ids,"archived");
+    if(!confirm("¿Eliminar "+ids.length+" publicación(es)?\n\nDejan de venderse. El artículo queda en la Biblioteca: se puede volver a publicar sin cargarlo otra vez."))return;
+    const{error}=await supabase.rpc("eliminar_publicacion",{p_variant_ids:ids});
+    if(error){notify(error.message,false);return;}
     setArts(p=>p.filter(a=>!ids.includes(a.id)));
     setExp(null);setSel(new Set());
+    notify(ids.length===1?"Eliminada. El artículo sigue en la Biblioteca."
+                         :ids.length+" eliminadas. Los artículos siguen en la Biblioteca.");
   };
 
   const saveEdit=async()=>{

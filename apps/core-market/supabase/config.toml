@@ -36,3 +36,14 @@ entrypoint = "./functions/ml_webhook/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/ml-oauth/index.ts"
+
+# meta-oauth NO puede pedir JWT, y no es un descuido:
+#   - `connect` es una NAVEGACION del navegador a Facebook, y una navegacion no
+#     lleva header de autorizacion.
+#   - `callback` lo llama Facebook, que no tiene sesion nuestra.
+# La funcion valida por su cuenta: `connect` y `disconnect` verifican el token
+# contra `auth.getUser` antes de hacer nada. Es lo mismo que ml-oauth.
+[functions.meta-oauth]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/meta-oauth/index.ts"

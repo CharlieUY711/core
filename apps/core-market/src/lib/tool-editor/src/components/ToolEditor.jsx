@@ -91,15 +91,27 @@ function FilterThumb({ filter, active, imgEl, onClick }) {
   );
 }
 
-function TbBtn({ onClick, children, dim, accent, danger }) {
+/**
+ * Un boton de la barra de herramientas.
+ *
+ * Reemplaza al que vivia en la barra azul del editor. Mismo tamano y misma
+ * forma que las herramientas de arriba, porque estan en la misma columna: si
+ * fueran distintos se leerian como dos cosas separadas pegadas.
+ *
+ * `dim` no lo esconde: lo apaga y lo deja sin apretar. Un boton que desaparece
+ * se busca donde ya no esta.
+ */
+function OpBtn({ onClick, children, dim, accent, danger, title }) {
   return (
-    <button onClick={onClick} style={{
-      background: accent?"#00d4aa":"none",
-      color: accent?"#fff":danger?"#ff6b6b":"#fff",
-      border:"none", padding:"4px 9px", borderRadius:4,
-      cursor:"pointer", fontSize:11, opacity:dim?0.35:1,
-      fontFamily:"inherit",
-    }}>{children}</button>
+    <button onClick={dim ? undefined : onClick} disabled={!!dim} title={title}
+      style={{
+        width:34, height:34, borderRadius:5, border:"none",
+        fontSize:15, fontFamily:"inherit",
+        cursor: dim ? "not-allowed" : "pointer",
+        background: accent ? "#00d4aa" : "none",
+        color: accent ? "#fff" : danger ? "#c0392b" : "#6B7280",
+        opacity: dim ? 0.3 : 1,
+      }}>{children}</button>
   );
 }
 
@@ -107,7 +119,12 @@ function TbBtn({ onClick, children, dim, accent, danger }) {
 
 // ─── Componente interno (sin error boundary) ──────────────────────────────────
 
-function ToolEditorInner({ initialImage, config: userConfig, onExport, onSaveToLibrary, onRequestLibrary, incomingImage, aiEnabled, onToggleAI, onReady, onChange, onError }) {
+function ToolEditorInner({ initialImage, config: userConfig, onExport, onSaveToLibrary,
+  onRequestLibrary, incomingImage, aiEnabled, onToggleAI, onReady, onChange, onError,
+  /* El puente con el panel: `onApi` entrega las acciones de archivo una sola
+     vez -es un objeto que se muta, no se reemplaza- y `onEstado` avisa lo que
+     cambia. Ver el comentario largo mas abajo. */
+  onApi, onEstado }) {
   const canvasRef    = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -503,70 +520,41 @@ function ToolEditorInner({ initialImage, config: userConfig, onExport, onSaveToL
   const canUndo   = histPos > 0;
   const canRedo   = histPos < historyLen - 1;
 
-  // Estilos de los botones de acción de la topbar (Opción A)
-  const TB_BASE = { display:"inline-flex", alignItems:"center", gap:5, fontSize:11, borderRadius:6,
-                    padding:"5px 9px", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"inherit", lineHeight:1 };
-  const tb = {
-    solid:   { ...TB_BASE, background:"#1A4F9C", color:"#fff", border:"none" },
-    outline: { ...TB_BASE, background:"transparent", color:"#fff", border:"1px solid rgba(255,255,255,.35)" },
-    ghost:   { ...TB_BASE, background:"transparent", color:"rgba(255,255,255,.7)", border:"none", fontSize:13 },
-    gold:    { ...TB_BASE, background:"#C9A84C", color:"#0D2B55", border:"none", fontWeight:600 },
-    ai: (on)=>({ ...TB_BASE, background: on?"rgba(0,212,170,.15)":"transparent",
-                 color: on?"#00d4aa":"#fff", border:`1px solid ${on?"#00d4aa":"rgba(255,255,255,.35)"}` }),
-    group: { display:"inline-flex", borderRadius:6, overflow:"hidden" },
-    seg: (bg,color,left)=>({ ...TB_BASE, background:bg, color, border:"none", borderRadius:0,
-           fontWeight: color==="#0D2B55"?600:500,
-           borderRight: left ? `1px solid ${color==="#0D2B55"?"rgba(0,0,0,.15)":"rgba(255,255,255,.25)"}` : "none" }),
-  };
+  /*
+   * EL PUENTE CON EL PANEL.
+   *
+   * `api` es un objeto que NUNCA cambia de identidad: se muta, no se
+   * reemplaza. Por eso se puede entregar una sola vez y el panel lo guarda sin
+   * que eso lo vuelva a dibujar. Si se entregaran funciones nuevas en cada
+   * render, el panel se redibujaria, el editor tambien, y no pararia nunca.
+   *
+   * Lo que si cambia -si hay imagen, si se puede deshacer- viaja aparte y como
+   * datos sueltos, que es lo unico que puede disparar un dibujo nuevo.
+   */
+  const api = useRef({});
+  api.current.abrir     = () => onRequestLibrary && onRequestLibrary();
+  api.current.subir     = () => fileInputRef.current && fileInputRef.current.click();
+  api.current.guardar   = () => sendToLibrary();
+  api.current.descargar = () => downloadImage();
+  api.current.nuevo     = () => clearEditor();
+
+  useEffect(() => { if (onApi) onApi(api.current); }, [onApi]);
+
+  useEffect(() => {
+    if (onEstado) onEstado({ canUndo, canRedo, archivo: fileName });
+  }, [onEstado, canUndo, canRedo, fileName]);
 
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <div style={S.root}>
-      {/* TOP BAR */}
-      <div style={S.topbar}>
-        <div style={{display:"flex",flexDirection:"column",justifyContent:"center",lineHeight:1.05,paddingRight:12,marginRight:2,borderRight:"1px solid rgba(255,255,255,.15)"}}>
-          <span style={{fontSize:13,fontWeight:700,letterSpacing:2,color:"#fff"}}>CORE<span style={{color:"#fff"}}>EDITOR</span></span>
-          <span style={{fontSize:11,color:"#fff"}}>Editá y exportá directo a la Biblioteca</span>
-        </div>
-        <div style={S.tbGroup}>
-          <TbBtn onClick={undo} dim={!canUndo}>↩ deshacer</TbBtn>
-          <TbBtn onClick={redo} dim={!canRedo}>↪ rehacer</TbBtn>
-        </div>
-        <div style={S.tbGroup}>
-          <TbBtn onClick={()=>rotateCanvas(-90)}>↺ −90°</TbBtn>
-          <TbBtn onClick={()=>rotateCanvas(90)}>↻ +90°</TbBtn>
-          <TbBtn onClick={()=>flipCanvas("h")}>⇄ H</TbBtn>
-          <TbBtn onClick={()=>flipCanvas("v")}>⇅ V</TbBtn>
-        </div>
-        <div style={S.tbGroup}>
-          <TbBtn onClick={commitToBase}>✓ aplicar todo</TbBtn>
-        </div>
-        {activeTool==="crop" && (
-          <div style={S.tbGroup}>
-            <TbBtn onClick={applyCrop} accent>✂ aplicar corte</TbBtn>
-            <TbBtn onClick={()=>{setCropStart(null);setCropEnd(null);setActiveTool("select");}} danger>✕ cancelar</TbBtn>
-          </div>
-        )}
-        <div style={{flex:1}}/>
-        <span style={{fontSize:11,color:"rgba(255,255,255,.55)",marginRight:6,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fileName}</span>
-        <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
-          onChange={e=>{if(e.target.files[0]){ if(cleanImgRef.current&&(onSaveToLibrary||onExport))sendToLibrary(); loadImage(e.target.files[0]); }}}/>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button style={tb.ai(aiEnabled)} onClick={()=>onToggleAI&&onToggleAI()} title="Activar AI">✨ {aiEnabled?"AI ✓":"AI"}</button>
-          <button style={tb.ghost} onClick={clearEditor} title="Nuevo — descarta y resetea todo">✚ Nuevo</button>
-          <div style={tb.group}>
-            <button style={tb.seg("#1A4F9C","#fff",true)}  onClick={()=>fileInputRef.current.click()} title="Subir del dispositivo">⬆ Subir</button>
-            <button style={tb.seg("#1A4F9C","#fff",false)} onClick={downloadImage} title="Descargar al equipo">⬇ Descargar</button>
-          </div>
-          <div style={tb.group}>
-            <button style={tb.seg("#C9A84C","#0D2B55",true)}  onClick={()=>onRequestLibrary&&onRequestLibrary()} title="Abrir desde biblioteca">⬇ Abrir</button>
-            <button style={tb.seg("#C9A84C","#0D2B55",false)} onClick={sendToLibrary} title="Enviar a biblioteca">⬆ Enviar</button>
-          </div>
-        </div>
-      </div>
+      {/* La barra propia se fue: las acciones de archivo estan en el MenuBar del
+          panel y las de imagen, abajo, al lado de las herramientas. El nombre
+          del editor tambien se fue: ya esta en la barra de arriba. */}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
+        onChange={e=>{if(e.target.files[0]){ if(cleanImgRef.current&&(onSaveToLibrary||onExport))sendToLibrary(); loadImage(e.target.files[0]); }}}/>
 
       <div style={S.main}>
-        {/* HERRAMIENTAS */}
+        {/* HERRAMIENTAS, y debajo lo que se le hace a la imagen */}
         <div style={S.toolsPanel}>
           {TOOLS.map(t=>(
             <button key={t.id} title={t.label}
@@ -575,6 +563,29 @@ function ToolEditorInner({ initialImage, config: userConfig, onExport, onSaveToL
               {t.icon}
             </button>
           ))}
+
+          {/* La raya separa elegir CON QUE trabajar de hacerle algo a la
+              imagen. Son dos cosas distintas y antes vivian en dos barras
+              distintas; juntas y separadas por una linea se entiende igual sin
+              cruzar la pantalla. */}
+          <div style={{width:26,height:1,background:"#C8D5E8",margin:"8px 0"}}/>
+
+          <OpBtn onClick={undo} dim={!canUndo} title="Deshacer">&#8629;</OpBtn>
+          <OpBtn onClick={redo} dim={!canRedo} title="Rehacer">&#8628;</OpBtn>
+          <OpBtn onClick={()=>rotateCanvas(-90)} title="Rotar 90&deg; a la izquierda">&#8630;</OpBtn>
+          <OpBtn onClick={()=>rotateCanvas(90)}  title="Rotar 90&deg; a la derecha">&#8631;</OpBtn>
+          <OpBtn onClick={()=>flipCanvas("h")}   title="Espejar en horizontal">&#8646;</OpBtn>
+          <OpBtn onClick={()=>flipCanvas("v")}   title="Espejar en vertical">&#8645;</OpBtn>
+          <OpBtn onClick={commitToBase} title="Aplicar todo: fija los ajustes sobre la imagen">&#10003;</OpBtn>
+
+          {/* Recortar aparece solo mientras se esta recortando: fuera de eso no
+              hay nada que aplicar ni que cancelar. */}
+          {activeTool==="crop" && (<>
+            <div style={{width:26,height:1,background:"#C8D5E8",margin:"8px 0"}}/>
+            <OpBtn onClick={applyCrop} accent title="Aplicar el corte">&#9986;</OpBtn>
+            <OpBtn danger title="Cancelar el corte"
+              onClick={()=>{setCropStart(null);setCropEnd(null);setActiveTool("select");}}>&#10005;</OpBtn>
+          </>)}
         </div>
 
         {/* CANVAS */}
@@ -779,6 +790,9 @@ function ToolEditorInner({ initialImage, config: userConfig, onExport, onSaveToL
 
       {/* STATUS BAR */}
       <div style={S.statusbar}>
+        {/* El nombre del archivo estaba arriba, cortado a 120px. Aca, con la
+            dimension y el zoom, esta con la informacion de su mismo tipo. */}
+        <StatItem label="archivo"     value={fileName || "sin imagen"}/>
         <StatItem label="herramienta" value={activeTool}/>
         <StatItem label="dimensión"   value={canvasDims.w>0?`${canvasDims.w}×${canvasDims.h}`:"—"}/>
         <StatItem label="zoom"        value={`${Math.round(zoomLevel*100)}%`}/>

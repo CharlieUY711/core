@@ -49,6 +49,35 @@ export const VAULT_TYPE_LABELS: Record<VaultType, string> = {
   cert:       'Certificate / PEM',
 }
 
+/**
+ * Los tipos, agrupados para el menú.
+ *
+ * POR QUÉ AGRUPAR
+ * Ocho botones para ocho tipos es pedirle a alguien que sepa la diferencia
+ * entre un JWT y un OAuth token antes de poder mirar sus credenciales. Y no la
+ * necesita: en el panel las cinco primeras se usan igual —se guardan, se
+ * revelan, se copian, vencen— y nadie va a querer ver los JWT sin ver los
+ * tokens.
+ *
+ * EL CRITERIO ES QUÉ HACÉS CON ELLA, NO QUÉ FORMA TIENE
+ *   Claves        lo que se presenta para autenticarse. Es un secreto.
+ *   Conexiones    a dónde se apunta. Una dirección, no una identidad.
+ *   Certificados  un archivo, con un vencimiento que importa de verdad.
+ *
+ * AGRUPAR EN EL MENÚ NO ES PERDER EL DATO
+ * El tipo guardado sigue siendo exacto —un OAuth token no es una API key, y esa
+ * diferencia importa para renovarlo— y se ve en su columna. Lo que se hace
+ * grueso es la navegación, no la información.
+ */
+export const VAULT_TYPE_GROUPS: { id: string; label: string; tipos: VaultType[] }[] = [
+  { id: 'clave',    label: 'Claves',
+    tipos: ['api_key', 'token', 'oauth', 'jwt', 'secret'] },
+  { id: 'conexion', label: 'Conexiones',
+    tipos: ['connection', 'webhook'] },
+  { id: 'cert',     label: 'Certificados',
+    tipos: ['cert'] },
+]
+
 export const VAULT_ENV_LABELS: Record<VaultEnv, string> = {
   production:  'Production',
   staging:     'Staging',
@@ -124,6 +153,15 @@ export const VAULT_PLATFORM_DEFS: VaultPlatformDef[] = [
   { name: 'Vonage',          category: 'Email & SMS',   icon: '💬' },
   { name: 'AWS SES',         category: 'Email & SMS',   icon: '📩' },
   // Comunicación
+  //
+  // Los nombres NO son decorativos: `useMetaVault` filtra las entradas por
+  // `platform === 'Instagram'` -comparación exacta contra este texto-, así que
+  // sin estas tres filas la pantalla de Meta no podía leer nada. Y no fallaba:
+  // decía "no hay credenciales" para siempre, que es lo que hace que nadie
+  // sepa por qué.
+  { name: 'Meta',            category: 'Comunicación',  icon: '📣' },
+  { name: 'Instagram',       category: 'Comunicación',  icon: '📸' },
+  { name: 'Facebook',        category: 'Comunicación',  icon: '👥' },
   { name: 'Slack',           category: 'Comunicación',  icon: '💬' },
   { name: 'Discord',         category: 'Comunicación',  icon: '🎮' },
   { name: 'WhatsApp',        category: 'Comunicación',  icon: '🟢' },
@@ -145,6 +183,12 @@ export const VAULT_PLATFORM_DEFS: VaultPlatformDef[] = [
   { name: 'ActiveCampaign',  category: 'CRM',           icon: '📣' },
   { name: 'Klaviyo',         category: 'CRM',           icon: '📧' },
   { name: 'Mailchimp',       category: 'CRM',           icon: '🐵' },
+  // Publicidad. `meta_ads` es el identificador canonico que resuelve la edge
+  // function meta-ads-read via resolveCredential (DEC-011): el valor de `name`
+  // viaja literal a api_vault.platform y la comparacion es exacta, por eso es
+  // el slug y no un nombre de display. Sin alias. Mismo motivo por el que se
+  // registro 'Serper.dev' para buscar-web.
+  { name: 'meta_ads',        category: 'CRM',           icon: '📢' },
   // Búsqueda
   { name: 'Serper.dev',      category: 'Búsqueda',      icon: '🔎' },
   // Mapas & Geo
@@ -170,6 +214,25 @@ export const VAULT_PLATFORM_DEFS: VaultPlatformDef[] = [
 ]
 
 export const VAULT_PLATFORMS = VAULT_PLATFORM_DEFS.map(p => p.name)
+
+/**
+ * Las que se usan de verdad, arriba de todo.
+ *
+ * La lista completa tiene noventa y dos plataformas ordenadas por categoría, y
+ * las cinco que este sistema realmente lee están desparramadas en cuatro
+ * categorías distintas: Meta en "Comunicación", Mercado Libre en "Pagos",
+ * Serper en "Búsqueda". Cargar una credencial obligaba a recorrer la lista
+ * entera sabiendo de antemano en qué categoría la pusimos nosotros.
+ *
+ * Estas son las que el código lee -las mismas de `credencialesRequeridas`- más
+ * las dos de Mercado. Las otras ochenta y siete siguen ahí abajo: no se saca
+ * ninguna, sólo se ponen éstas primero.
+ */
+export const VAULT_PLATFORMS_FRECUENTES = [
+  'Meta', 'Instagram', 'Facebook', 'WhatsApp',
+  'MercadoLibre', 'MercadoPago',
+  'Serper.dev', 'Mapbox',
+]
 
 export const VAULT_PLATFORM_CATEGORIES = [
   'AI & ML', 'Pagos', 'Cloud', 'Base de datos', 'Deploy',

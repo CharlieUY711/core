@@ -9,7 +9,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["tests/**/*.test.ts"],
+    /* `.tsx` tambien: sin esto, un test que dibuja un componente no corre y
+       nadie se entera -no falla, no existe-. Es como se nos pasaron dos veces
+       los botones de la barra. */
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     exclude: ["node_modules/**", "supabase/functions/**", "dist/**"],
   },
 });

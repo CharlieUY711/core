@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Pantalla, usePantalla } from "../components/Pantalla";
+import { ItemDeBarra } from "../components/BarraDeAcciones";
 import { supabase } from "../../../utils/supabase/client";
 import AddressAutocomplete from "../../components/maps/AddressAutocomplete";
 import AddressCard from "../../components/profile/AddressCard";
@@ -55,6 +57,7 @@ const CONTACT_LABELS: Record<string, string> = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminProfile() {
   const { user } = useOutletContext<any>() || {};
+  const p = usePantalla();
   const [profile, setProfile] = useState<ProfileData>({
     nombre:"", documento:"", addresses:[], contacts:[],
     prefContactMethod:"whatsapp", prefSchedule:"mañana", notes:"",
@@ -100,21 +103,42 @@ export default function AdminProfile() {
     reader.readAsDataURL(file);
   };
 
-  const tabs = [
-    { id:"personal",    label:"Datos personales", icon:"👤" },
-    { id:"addresses",   label:"Direcciones",       icon:"📍" },
-    { id:"contacts",    label:"Contacto",          icon:"📱" },
-    { id:"preferences", label:"Preferencias",      icon:"⚙️"  },
-  ] as const;
+  /* Las solapas son las secciones de la barra, como en todo el panel. Antes
+     eran una fila de pestanas propia debajo de la ficha: otro lugar mas donde
+     mirar, y distinto al de las demas pantallas. */
+  const SECCIONES = [
+    { valor:"personal",    label:"Datos personales" },
+    { valor:"addresses",   label:"Direcciones" },
+    { valor:"contacts",    label:"Contacto" },
+    { valor:"preferences", label:"Preferencias" },
+  ];
 
   const initials = profile.nombre
     ? profile.nombre.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()
     : user?.email?.[0]?.toUpperCase() || "U";
 
-  return (
-    <div style={{ maxWidth:"860px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"1.5rem" }}>
+  /* "Grabar" esta siempre, apagado hasta que haya algo que grabar. Antes era
+     un boton propio adentro de la ficha, con su color y su tamano. */
+  const acciones: ItemDeBarra[] = [
+    { label: saving ? "Grabando…" : saved ? "Grabado" : "Grabar",
+      destacado: true, color: "var(--brand-madre)",
+      desactivada: saving,
+      motivo: "Esperá a que termine de grabar",
+      onClick: () => { void handleSave(); } },
+  ];
 
-      {/* ── Profile Header ── */}
+  return (
+    /* La barra, el aviso y el ancho los define `Pantalla`. Acá había un
+       `maxWidth: 860` centrado, así que Perfil se veía más angosto que el resto
+       del panel sin ninguna razón. */
+    <Pantalla p={p}
+      secciones={{ valor: tab, opciones: SECCIONES,
+        onCambio: v => setTab(v as typeof tab) }}
+      extra={acciones}>
+
+      {/* ── La ficha de la persona ──
+          Siempre son personas físicas las que acceden: el perfil es de la
+          persona, y una persona puede administrar N tiendas. */}
       <div style={{ background:"#fff", borderRadius:"16px", padding:"2rem", boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", alignItems:"center", gap:"1.5rem" }}>
         <div style={{ position:"relative", flexShrink:0 }}>
           <div onClick={() => inputRef.current?.click()}
@@ -143,30 +167,9 @@ export default function AdminProfile() {
             </span>
           </div>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          style={{ padding:"0.6rem 1.5rem", background: saved?"color-mix(in srgb, var(--color-success) 70%, white)":saving?"#ccc":"var(--brand-madre)",
-            color:"#fff", border:"none", borderRadius:"10px", fontWeight:700,
-            cursor: saving?"not-allowed":"pointer", fontSize:"0.875rem", transition:"all 0.2s",
-            whiteSpace:"nowrap" }}>
-          {saved ? "✓ Guardado" : saving ? "Guardando..." : "Guardar cambios"}
-        </button>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ display:"flex", gap:"0.5rem", background:"#fff", borderRadius:"12px", padding:"6px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex:1, padding:"0.6rem 1rem", borderRadius:"8px", border:"none", cursor:"pointer",
-            fontWeight: tab===t.id ? 700 : 400, fontSize:"0.85rem",
-            background: tab===t.id ? "var(--brand-madre)" : "transparent",
-            color: tab===t.id ? "#fff" : "#666", transition:"all 0.15s",
-          }}>
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Content ── */}
+      {/* ── La sección abierta ── */}
       <div style={{ background:"#fff", borderRadius:"16px", padding:"2rem", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
 
         {tab === "personal" && (
@@ -182,7 +185,7 @@ export default function AdminProfile() {
           <PreferencesTab profile={profile} onChange={save} />
         )}
       </div>
-    </div>
+    </Pantalla>
   );
 }
 

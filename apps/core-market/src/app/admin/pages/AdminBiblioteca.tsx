@@ -1,11 +1,35 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useShop } from "../components/AdminLayout";
 import { supabase } from "../../../utils/supabase/client";
-import { useMediaLibrary, MediaTipo, MediaItem } from "../../hooks/useMediaLibrary";
+import { MediaItem } from "../../hooks/useMediaLibrary";
 import AdminImport from "./AdminImport";
 import AdminExport from "./AdminExport";
 import AdminCatalog from "./AdminCatalog";
-import { BarraDeAcciones } from "../components/BarraDeAcciones";
+import { BarraDeAccionesSuelta, ItemDeBarra } from "../components/BarraDeAcciones";
+import { Pantalla, usePantalla } from "../components/Pantalla";
+import { Tabla, Columna } from "../components/Tabla";
+import { TIPOS_DE_BIBLIOTECA, TipoDeBiblioteca, definicionDe } from "../ui/tiposDeBiblioteca";
+import { Vista, definicionDeVista } from "../ui/vistas";
+import { useElementosDeBiblioteca, ElementoDeBiblioteca, ClaseDeElemento,
+         FichaDeBiblioteca } from "../hooks/useElementosDeBiblioteca";
+
+/**
+ * Las columnas de la vista Lista.
+ *
+ * "Columnas" sólo tiene sentido en Lista: en una grilla de íconos no hay
+ * columnas que elegir. Por eso en las otras vistas el botón queda apagado y
+ * dice por qué, en vez de desaparecer — un control que aparece y desaparece se
+ * busca donde ya no está.
+ */
+const COLUMNAS_BIBLIOTECA = [
+  { id: "clase", label: "Tipo"    },
+  { id: "sub",   label: "Detalle" },
+  { id: "fecha", label: "Fecha", rastro: true },
+] as const;
+
+/** El nivel de la tabla. La grilla usa el mismo, así la selección es una sola. */
+const NIVEL = "biblioteca";
 
 const ACCENT = "var(--brand-madre)";
 const BLUE   = "var(--brand-navy)";
@@ -19,16 +43,49 @@ function fmtDate(s: string): string {
   return new Date(s).toLocaleDateString("es-UY", { day:"2-digit", month:"2-digit", year:"2-digit" });
 }
 
-function getThumbUrl(item: MediaItem): string {
-  if (item.tipo === "documento") return "";
-  if (item.tipo === "video") {
-    if (item.thumbnail_path) {
-      return supabase.storage.from("biblioteca").getPublicUrl(item.thumbnail_path).data.publicUrl;
-    }
-    return "";
-  }
-  const url = supabase.storage.from(item.bucket).getPublicUrl(item.path).data.publicUrl;
-  return `${url}?width=200&height=200&resize=cover`;
+
+/** Las etiquetas visibles de cada clase. Un solo lugar donde se nombran. */
+const ETIQUETA_DE_CLASE: Record<ClaseDeElemento, string> = {
+  articulo:   "Articulo",
+  imagen:     "Imagen",
+  video:      "Video",
+  documento:  "Documento",
+};
+
+const ICONO_DE_CLASE: Record<ClaseDeElemento, string> = {
+  articulo: "\u{1F6CD}", imagen: "\u{1F5BC}", video: "\u{1F3AC}", documento: "\u{1F4C4}",
+};
+
+/**
+ * La miniatura de un elemento, con lo que se ve cuando NO hay miniatura.
+ *
+ * Un cuadro roto es peor que un icono: parece un error de la aplicacion cuando
+ * en realidad la ficha simplemente no tiene foto todavia. Por eso el `onError`
+ * esconde la imagen y deja al icono debajo.
+ *
+ * `lado` en null significa "ocupa lo que te den": es lo que hace que la misma
+ * miniatura sirva para la lista (26px) y para las tres grillas.
+ */
+function Miniatura({ el, lado }: { el: ElementoDeBiblioteca; lado: number | null }) {
+  const caja: React.CSSProperties = lado
+    ? { width: lado, height: lado, flexShrink: 0 }
+    : { width: "100%", height: "100%" };
+
+  return (
+    <div style={{ ...caja, display: "flex", alignItems: "center",
+      justifyContent: "center", background: "var(--gray-50)",
+      borderRadius: lado ? 5 : 0, overflow: "hidden", position: "relative" }}>
+      <span style={{ fontSize: lado ? "0.8rem" : "2.2rem", opacity: 0.55 }}>
+        {ICONO_DE_CLASE[el.clase]}
+      </span>
+      {el.thumb ? (
+        <img src={el.thumb} alt="" loading="lazy"
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "cover" }} />
+      ) : null}
+    </div>
+  );
 }
 
 interface Props {
@@ -37,6 +94,8 @@ interface Props {
   maxVideos?: number;
   onSelect?: (items: MediaItem[]) => void;
   selectedIds?: string[];
+  /** Con qué llega buscada. Para abrirla desde otra pantalla ya filtrada. */
+  busca?: string;
 }
 
 interface UploadItem {
@@ -52,6 +111,7 @@ export default function AdminBiblioteca({
   maxVideos = 5,
   onSelect,
   selectedIds = [],
+  busca = "",
 }: Props) {
   useOutletContext<any>();
 
@@ -62,41 +122,100 @@ export default function AdminBiblioteca({
    * el menú obligaban a saber de antemano que existían y sobre qué actuaban;
    * acá están donde está lo que importan y exportan.
    */
+  /* La barra, el buscador, el selector de vista, "Columnas", el aviso, el
+     error y el ancho los define `Pantalla`. Acá estaban escritos a mano. */
+  const p = usePantalla();
+  const { tablas } = p;
+
   const [tab,        setTab]        = useState<
     "biblioteca" | "subir" | "taxonomia" | "importar" | "exportar">("biblioteca");
-  const [search,     setSearch]     = useState("");
-  const [filterTipo, setFilterTipo] = useState<MediaTipo | "all">("all");
-  const [filterCat,  setFilterCat]  = useState<string>("all");
-  const [selected,   setSelected]   = useState<Set<string>>(new Set(selectedIds));
+  const [search,     setSearch]     = useState(busca);
+  /*
+   * UN SOLO ESTADO PARA EL TIPO.
+   *
+   * Lo tocan dos controles —los botones de la barra y el selector de adentro
+   * del buscador— y por eso no pueden discrepar: no hay dos valores que
+   * sincronizar, hay uno que se escribe desde dos lados. Manda el último gesto
+   * del usuario porque es lo único que puede mandar.
+   */
+  const [tipo,       setTipo]       = useState<TipoDeBiblioteca>("todo");
+  const [presentacion, setPresentacion] = useState<Vista>("grandes");
+  const [cols,       setCols]       = useState<Set<string>>(
+    new Set(COLUMNAS_BIBLIOTECA.map(c => c.id)));
+  const [ficha,      setFicha]      = useState<FichaDeBiblioteca | null>(null);
+  const [fichaForm,  setFichaForm]  = useState<Record<string, string>>({});
+  const [guardandoFicha, setGuardandoFicha] = useState(false);
+  /*
+   * La selección NO vive acá: la presta el control de la tabla.
+   *
+   * La lista y las tres grillas muestran lo mismo de dos maneras. Con una
+   * selección propia había dos: elegías en íconos, pasabas a Lista y no había
+   * nada elegido — y "Eliminar", que lee la de la tabla, actuaba sobre otra
+   * cosa que la que estabas viendo.
+   */
+  const selected = tablas.seleccionadas(NIVEL);
+
+  /* Se llega con algo ya elegido cuando la Biblioteca se abre desde una ficha
+     para cambiarle las fotos: lo que ya tenía puesto viene marcado. */
+  useEffect(() => {
+    if (selectedIds.length) tablas.seleccionar(NIVEL, selectedIds);
+    // Sólo al abrir: después manda lo que el usuario toca.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [uploads,    setUploads]    = useState<UploadItem[]>([]);
   const [uploadCat,  setUploadCat]  = useState<"articulo" | "documento" | "otro">("articulo");
   const [uploadTags, setUploadTags] = useState("");
   const [preview,    setPreview]    = useState<MediaItem | null>(null);
-  const [toast,      setToast]      = useState<{ text: string; ok: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { items, loading, reload, deleteItem, stats } = useMediaLibrary({
-    tipo:     filterTipo === "all" ? undefined : filterTipo,
-    categoria: filterCat === "all" ? undefined : filterCat as any,
-    search,
-  });
+  /*
+   * Fichas y archivos llegan normalizados en una sola lista. La pantalla no
+   * pregunta de qué tabla salió cada cosa: si lo hiciera, "Todo" tendría que
+   * dibujar dos grillas y cada vista nueva habría que escribirla dos veces.
+   */
+  const { elementos, items, loading, errorFichas, reload, deleteItem, stats } =
+    useElementosDeBiblioteca(tipo, search);
 
-  const notify = (text: string, ok = true) => {
-    setToast({ text, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
+  /*
+   * Los contadores y la sección se publican en la barra de arriba, que es
+   * donde vive lo general. Se limpian al salir: si quedaran, el módulo
+   * siguiente mostraría los números de éste.
+   */
+  const { setTopStats, setVista: setVistaGeneral } = useShop();
+  const seccionActual = tab === "biblioteca" ? definicionDe(tipo).label
+                      : tab === "taxonomia"  ? "Deptos y Categorías"
+                      : tab === "importar"   ? "Importar"
+                      : tab === "exportar"   ? "Exportar"
+                      : "Cargar";
+
+  useEffect(() => {
+    if (mode !== "page") return;
+    setVistaGeneral(seccionActual);
+    setTopStats([
+      { label:"Total",      value: stats.total,      color:"#fff"    },
+      { label:"Imágenes",   value: stats.imagenes,   color:"#F5C542" },
+      { label:"Videos",     value: stats.videos,     color:"#A78BFA" },
+      { label:"Documentos", value: stats.documentos, color:"#38BDF8" },
+    ]);
+    return () => { setTopStats([]); setVistaGeneral(""); };
+  }, [mode, seccionActual, stats.total, stats.imagenes, stats.videos,
+      stats.documentos, setTopStats, setVistaGeneral]);
+
+  /* El aviso es el de la pantalla: uno solo, en la misma esquina, con el
+     mismo tiempo. Antes cada herramienta tenía el suyo. */
+  const notify = p.avisar;
 
   const toggleSelect = (item: MediaItem) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(item.id)) { next.delete(item.id); return next; }
-      const selImgs = items.filter(i => next.has(i.id) && i.tipo === "imagen").length;
-      const selVids = items.filter(i => next.has(i.id) && i.tipo === "video").length;
-      if (item.tipo === "imagen" && selImgs >= maxImages) { notify(`Máx ${maxImages} imágenes`, false); return prev; }
-      if (item.tipo === "video"  && selVids >= maxVideos)  { notify(`Máx ${maxVideos} videos`,   false); return prev; }
-      next.add(item.id);
-      return next;
-    });
+    /* Los topes -9 imágenes, 5 videos- se revisan ANTES de tocar la selección:
+       la selección la mueve el control de la tabla, que no sabe de topes ni
+       tiene por qué saber. */
+    if (!selected.has(item.id)) {
+      const yaImgs = items.filter(i => selected.has(i.id) && i.tipo === "imagen").length;
+      const yaVids = items.filter(i => selected.has(i.id) && i.tipo === "video").length;
+      if (item.tipo === "imagen" && yaImgs >= maxImages) { notify(`Máx ${maxImages} imágenes`, false); return; }
+      if (item.tipo === "video"  && yaVids >= maxVideos)  { notify(`Máx ${maxVideos} videos`,   false); return; }
+    }
+    tablas.alternar(NIVEL, item.id);
   };
 
   const captureVideoThumb = async (file: File, userId: string, name: string): Promise<string | null> => {
@@ -204,11 +323,81 @@ export default function AdminBiblioteca({
     setTimeout(() => setTab("biblioteca"), 600);
   }, [uploadCat, uploadTags, reload]);
 
-  const handleDelete = async (item: MediaItem) => {
-    if (!confirm(`¿Eliminar "${item.nombre}"?`)) return;
-    await deleteItem(item);
-    setSelected(prev => { const n = new Set(prev); n.delete(item.id); return n; });
-    notify("Eliminado");
+
+  /* ------------------------------------------------------------------ *
+   * Selección y apertura
+   *
+   * Un click SELECCIONA; doble click ABRE. Antes el click abría, y con eso las
+   * acciones de la barra —Editar, Eliminar— no tenían sobre qué actuar: había
+   * que elegir algo, y no había forma de elegir sin abrirlo.
+   * ------------------------------------------------------------------ */
+  const alternar = (el: ElementoDeBiblioteca) => {
+    // En modo modal hay topes -9 imagenes, 5 videos- y los sabe `toggleSelect`.
+    // Duplicar la regla aca era garantizar que algun dia dejaran de coincidir:
+    // se elegirian 12 fotos desde la Biblioteca y el formulario aceptaria 9.
+    if (mode === "modal" && el.media) { toggleSelect(el.media); return; }
+    tablas.alternar(NIVEL, el.id);
+  };
+
+  const abrir = (el: ElementoDeBiblioteca) => {
+    if (el.media) { setPreview(el.media); return; }
+    if (!el.ficha) return;
+    setFicha(el.ficha);
+    // El formulario arranca con lo que hay. Un campo vacio es un campo vacio,
+    // no un null: `null` significa "no lo mande" para la funcion que guarda, y
+    // asi vaciar la descripcion no la borraria nunca.
+    setFichaForm({
+      nombre:      el.ficha.nombre ?? "",
+      marca:       el.ficha.marca ?? "",
+      familia:     el.ficha.familia ?? "",
+      descripcion: el.ficha.descripcion ?? "",
+    });
+  };
+
+  const guardarFicha = async () => {
+    if (!ficha) return;
+    setGuardandoFicha(true);
+    const { error } = await supabase.rpc("actualizar_ficha_biblioteca", {
+      p_id:          ficha.id,
+      p_nombre:      fichaForm.nombre,
+      p_marca:       fichaForm.marca,
+      p_familia:     fichaForm.familia,
+      p_descripcion: fichaForm.descripcion,
+    });
+    setGuardandoFicha(false);
+    // El mensaje de la funcion explica el caso -ficha de la plataforma, titulo
+    // repetido- asi que se muestra tal cual en vez de un "no se pudo guardar".
+    if (error) { notify(error.message, false); return; }
+    setFicha(null);
+    reload();
+    notify("Artículo guardado");
+  };
+
+  /* La confirmación la hace la tabla, con el nombre de lo que se va a borrar.
+     Preguntar acá también era preguntar dos veces. */
+  const eliminar = async (aBorrar: ElementoDeBiblioteca[]) => {
+    const archivos = aBorrar.filter(e => e.media).map(e => e.media!);
+    const fichas   = aBorrar.filter(e => e.ficha).map(e => e.ficha!);
+
+    for (const a of archivos) await deleteItem(a);
+
+    // Las fichas se borran de a una y cada una puede fallar por su cuenta: una
+    // con publicaciones no se puede borrar, y una de la plataforma tampoco. Un
+    // unico "no se pudo" escondería cuál y por qué.
+    const problemas: string[] = [];
+    for (const f of fichas) {
+      const { error } = await supabase.rpc("eliminar_ficha_biblioteca", { p_id: f.id });
+      if (error) problemas.push(`${f.nombre}: ${error.message}`);
+    }
+
+    tablas.limpiarSeleccion();
+    reload();
+
+    if (problemas.length) {
+      notify(problemas[0] + (problemas.length > 1 ? ` (y ${problemas.length - 1} más)` : ""), false);
+    } else {
+      notify(`${aBorrar.length} eliminado(s)`);
+    }
   };
 
   const selImgs = items.filter(i => selected.has(i.id) && i.tipo === "imagen").length;
@@ -220,63 +409,111 @@ export default function AdminBiblioteca({
     fontSize:"0.85rem", outline:"none", background:"#fff", color:"#111",
   };
 
+  /* ------------------------------------------------------------------
+   * LA TABLA
+   *
+   * Se declara ANTES del `return`: la barra va arriba en el árbol, así que si
+   * esto viviera adentro del JSX los botones no sabrían qué se puede hacer
+   * hasta un render después.
+   *
+   * Y se declara aunque estemos en una grilla de íconos, porque la grilla usa
+   * el MISMO nivel: es la misma selección y las mismas cuatro acciones,
+   * cambia sólo cómo se dibuja.
+   * ---------------------------------------------------------------- */
+  const columnasDeLaTabla: Columna[] = [
+    {
+      id: "nombre", label: "Nombre",
+      ver: f => (
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <Miniatura el={f.el as ElementoDeBiblioteca} lado={26} />
+          <span style={{ fontWeight:600, color:"#374151" }}>{String(f.nombre)}</span>
+        </div>
+      ),
+    },
+    ...COLUMNAS_BIBLIOTECA
+      .filter(c => cols.has(c.id))
+      .map(c => ({ id: c.id, label: c.label, rastro: "rastro" in c })),
+  ];
+
+  const nivelBiblioteca = tab !== "biblioteca" ? null : tablas.nivel(NIVEL, {
+    columnas: columnasDeLaTabla,
+    filas: elementos.map(el => ({
+      clave: el.id,
+      nombre: el.nombre,
+      clase: ETIQUETA_DE_CLASE[el.clase],
+      sub: el.sub,
+      fecha: fmtDate(el.fecha),
+      el,
+    })),
+    /* Cargar no cabe en una fila: un archivo se elige, se clasifica y se
+       etiqueta. Por eso "Agregar" abre la pantalla de carga en vez de abrir
+       un renglón vacío — pero está en el mismo lugar que en todas. */
+    onAgregar: () => setTab("subir"),
+    onEditar:  f => abrir(f.el as ElementoDeBiblioteca),
+    onBorrar:  async fs => eliminar(fs.map(f => f.el as ElementoDeBiblioteca)),
+    nombreDe:  f => String(f.nombre),
+  });
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+    /* La barra, el buscador, el selector de vista, "Columnas", el aviso, el
+       error y el ancho los define `Pantalla`. Acá estaban escritos a mano —y
+       en Tiendas, y en el Vault—, así que las tres podían divergir. */
+    <Pantalla p={p}
+      /* Los tipos se declaran UNA vez: `Pantalla` los dibuja como botones del
+         menú y como selector adentro del buscador. No son dos controles, es el
+         mismo en dos lugares.
 
-      {toast && (
-        <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999,
-          padding:"0.75rem 1.25rem", borderRadius:"10px", fontWeight:600, fontSize:"0.875rem",
-          background: toast.ok ? "#f0fdf4" : "#fef2f2",
-          color: toast.ok ? "#166534" : "#dc2626",
-          border:`1px solid ${toast.ok?"color-mix(in srgb, var(--color-success) 70%, white)":"#ef4444"}`,
-          boxShadow:"0 4px 16px rgba(0,0,0,0.1)" }}>
-          {toast.text}
-        </div>
-      )}
+         Deptos y Categorías se fue a CORE Market → Plataforma: `departamentos`
+         y `categorias` no tienen tenant_id, son de la plataforma y las usan
+         todas las tiendas. Acá adentro, un operador de tienda se las cambiaba
+         a todas. */
+      secciones={{
+        valor: tab === "biblioteca" ? tipo : "",
+        opciones: TIPOS_DE_BIBLIOTECA.map(t => ({ valor: t.id, label: t.label })),
+        onCambio: v => { setTipo(v as TipoDeBiblioteca); setTab("biblioteca"); },
+      }}
 
-      {/* Stats */}
-      {mode === "page" && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"0.5rem" }}>
-          {[
-            { label:"Total",      value: stats.total,      color: BLUE   },
-            { label:"Imágenes",   value: stats.imagenes,   color: ACCENT },
-            { label:"Videos",     value: stats.videos,     color: "#8B5CF6" },
-            { label:"Documentos", value: stats.documentos, color: "#0EA5E9" },
-          ].map(s => (
-            <div key={s.label} style={{ background:"#fff", borderRadius:10, padding:"0.6rem 0.85rem",
-              borderLeft:`3px solid ${s.color}`, border:`1px solid #F3F4F6` }}>
-              <div style={{ fontSize:"1.25rem", fontWeight:800, color:s.color }}>{s.value}</div>
-              <div style={{ fontSize:"0.72rem", color:"var(--gray-400)" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      /* Lo que hace la Biblioteca y no son las cuatro acciones de la tabla.
+         Importar y Exportar viven acá y no en la barra lateral: son
+         operaciones SOBRE la Biblioteca, no lugares a los que se va. */
+      extra={[
+        ...(mode === "modal" ? [{
+          label: `Usar (${selected.size})`, destacado: true, color: ACCENT,
+          desactivada: selected.size === 0, motivo: "Elegí al menos uno",
+          onClick: () => onSelect?.(items.filter(i => selected.has(i.id))),
+        }] : []),
+        { label:"Importar", color:BLUE, activa: tab === "importar",
+          onClick:()=>setTab("importar") },
+        { label:"Exportar", color:BLUE, activa: tab === "exportar",
+          onClick:()=>setTab("exportar") },
+        { label:"Actualizar", onClick: reload },
+      ] as ItemDeBarra[]}
 
-      {/* La misma barra que el resto del panel: la dibuja el shell y acá sólo
-          se declara qué hay. Antes eran pestañas con su propio estilo, así que
-          Biblioteca y Publicaciones no se parecían aunque hicieran lo mismo. */}
-      <BarraDeAcciones
-        acciones={([
-          ["biblioteca", `Biblioteca (${stats.total})`],
-          ["subir",      "Subir"],
-          ["taxonomia",  "Deptos y Categorías"],
-          ["importar",   "Importar"],
-          ["exportar",   "Exportar"],
-        ] as const).map(([id, label]) => ({
-          label,
-          activa: tab === id,
-          color: ACCENT,
-          onClick: () => setTab(id as typeof tab),
-        }))}
-        derecha={mode === "modal" && selected.size > 0 ? (
-          <button onClick={() => onSelect?.(items.filter(i => selected.has(i.id)))}
-            style={{ padding:"0.42rem 1.1rem", background:ACCENT, color:"#fff",
-              border:"none", borderRadius:7, fontWeight:700, fontSize:"0.76rem",
-              cursor:"pointer", fontFamily:"DM Sans,sans-serif" }}>
-            Usar ({selected.size}) →
-          </button>
-        ) : undefined}
-      />
+      vista={{ valor: presentacion, onCambio: setPresentacion }}
+
+      /* "Columnas" sólo significa algo en Lista. En las grillas se apaga y lo
+         dice, en vez de desaparecer: un control que se va se busca donde ya
+         no está. */
+      columnas={{
+        opciones: COLUMNAS_BIBLIOTECA.map(c => ({ id: c.id, label: c.label })),
+        elegidas: cols,
+        onCambio: id => setCols(prev => {
+          const n = new Set(prev);
+          n.has(id) ? n.delete(id) : n.add(id);
+          return n;
+        }),
+        apagado: presentacion === "lista" ? undefined
+                                          : "Las columnas se eligen en la vista Lista",
+      }}
+
+      buscador={tab === "biblioteca"
+        ? { valor: search, onCambio: setSearch }
+        : undefined}
+
+      error={tab === "biblioteca" && errorFichas
+        ? `No se pudieron leer los artículos de la Biblioteca: ${errorFichas}`
+        : null}>
+
 
       {/* Importar y Exportar: las pantallas que ya existían, ahora acá adentro.
           No se reescriben — funcionan y son las mismas; lo que cambia es dónde
@@ -299,51 +536,9 @@ export default function AdminBiblioteca({
       {tab === "biblioteca" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
 
-          {/* Filtros */}
-          <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o etiqueta..."
-              style={{ ...inp, flex:1, minWidth:160 }} />
-
-            {/* Filtro tipo */}
-            <div style={{ display:"flex", gap:"3px" }}>
-              {(["all","imagen","video","documento"] as const).map(t => (
-                <button key={t} onClick={() => setFilterTipo(t)} style={{
-                  padding:"0.4rem 0.65rem", borderRadius:7, fontSize:"0.78rem",
-                  border:`1.5px solid ${filterTipo===t ? ACCENT : "var(--border)"}`,
-                  background: filterTipo===t ? `color-mix(in srgb, var(--brand-madre) 8%, transparent)` : "#fff",
-                  color: filterTipo===t ? ACCENT : "var(--mute)",
-                  fontWeight: filterTipo===t ? 700 : 400, cursor:"pointer",
-                }}>
-                  {t==="all"?"Todo":t==="imagen"?"🖼":t==="video"?"🎬":"📄"}
-                </button>
-              ))}
-            </div>
-
-            {/* Filtro categoria */}
-            <div style={{ display:"flex", gap:"3px" }}>
-              {(["all","articulo","documento","venta"] as const).map(c => (
-                <button key={c} onClick={() => setFilterCat(c)} style={{
-                  padding:"0.4rem 0.65rem", borderRadius:7, fontSize:"0.78rem",
-                  border:`1.5px solid ${filterCat===c ? BLUE : "var(--border)"}`,
-                  background: filterCat===c ? `color-mix(in srgb, var(--brand-navy) 8%, transparent)` : "#fff",
-                  color: filterCat===c ? BLUE : "var(--mute)",
-                  fontWeight: filterCat===c ? 700 : 400, cursor:"pointer",
-                }}>
-                  {c==="all"?"Todas":c==="articulo"?"🛍 Art.":c==="documento"?"📄 Doc":"💰 Venta"}
-                </button>
-              ))}
-            </div>
-
-            <input ref={inputRef} type="file" multiple accept="image/*,video/*,text/html,application/pdf"
-              style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
-            <button onClick={() => inputRef.current?.click()} style={{
-              padding:"0.45rem 0.9rem", background:ACCENT, color:"#fff",
-              border:"none", borderRadius:8, fontWeight:700, fontSize:"0.82rem", cursor:"pointer" }}>
-              ⬆ Subir
-            </button>
-            <button onClick={reload} style={{ ...inp, cursor:"pointer", color:"var(--mute)", padding:"0.45rem 0.6rem" }}>↻</button>
-          </div>
+          <input ref={inputRef} type="file" multiple
+            accept="image/*,video/*,text/html,application/pdf"
+            style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
 
           {/* Selección info en modal */}
           {mode === "modal" && (
@@ -354,106 +549,78 @@ export default function AdminBiblioteca({
             </div>
           )}
 
-          {/* Grid */}
           {loading ? (
             <div style={{ textAlign:"center", padding:"3rem", color:"var(--gray-400)" }}>Cargando...</div>
-          ) : items.length === 0 ? (
+          ) : elementos.length === 0 ? (
             <div style={{ textAlign:"center", padding:"3rem" }}>
               <div style={{ fontSize:"3rem" }}>🗂</div>
-              <div style={{ color:"var(--gray-400)", marginTop:"0.5rem" }}>Biblioteca vacía</div>
+              <div style={{ color:"var(--gray-400)", marginTop:"0.5rem" }}>
+                {search ? "Nada en " + definicionDe(tipo).label + " para “" + search + "”"
+                        : "Nada en " + definicionDe(tipo).label}
+              </div>
             </div>
+          ) : presentacion === "lista" ? (
+            /* ---------------------------------------------------------------
+             * LISTA
+             *
+             * La tabla del panel, la misma que Tiendas, el Vault y
+             * Definiciones: check por fila, las cuatro acciones en la barra,
+             * las columnas en el mismo orden y con el mismo ancho, y el rastro
+             * a la derecha.
+             *
+             * Acá estaba dibujada a mano y compartía el aspecto sin compartir
+             * el código, así que las dos podían divergir sin que nadie se
+             * entere. Ahora si cambia la tabla, cambia también acá.
+             * ------------------------------------------------------------- */
+            nivelBiblioteca && <Tabla {...nivelBiblioteca} />
           ) : (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))", gap:"0.6rem" }}>
-              {items.map(item => {
-                const isSel  = selected.has(item.id);
-                const thumb  = getThumbUrl(item);
-                const isDoc  = item.tipo === "documento";
+            /* ---------------------------------------------------------------
+             * ICONOS
+             * El ancho es un MINIMO, no un ancho fijo: `auto-fill` mas `1fr`
+             * reparte el sobrante, asi que la grilla llena el ancho visible en
+             * vez de dejar un hueco a la derecha que crece con la pantalla.
+             * ------------------------------------------------------------- */
+            <div style={{ display:"grid", gap:"0.6rem",
+              gridTemplateColumns:"repeat(auto-fill,minmax(" + definicionDeVista(presentacion).ancho + "px,1fr))" }}>
+              {elementos.map(el => {
+                const sel     = selected.has(el.id);
+                const detalle = definicionDeVista(presentacion).detalle;
                 return (
-                  <div key={item.id}
-                    onClick={() => mode === "modal" ? toggleSelect(item) : setPreview(item)}
+                  <div key={el.id} title={el.nombre}
+                    onClick={() => alternar(el)} onDoubleClick={() => abrir(el)}
                     style={{
-                      border:`2px solid ${isSel ? ACCENT : "var(--border)"}`, borderRadius:10,
+                      border:"2px solid " + (sel ? ACCENT : "var(--border)"), borderRadius:10,
                       overflow:"hidden", cursor:"pointer", background:"#fff", position:"relative",
-                      boxShadow: isSel ? `0 0 0 3px color-mix(in srgb, var(--brand-madre) 15%, transparent)` : "0 1px 3px rgba(0,0,0,.05)",
+                      boxShadow: sel ? "0 0 0 3px color-mix(in srgb, var(--brand-madre) 15%, transparent)"
+                                     : "0 1px 3px rgba(0,0,0,.05)",
                       transition:"all .15s",
                     }}>
-
-                    {/* Thumbnail */}
-                    <div style={{ height:100, background:"var(--gray-50)", display:"flex",
-                      alignItems:"center", justifyContent:"center", overflow:"hidden", position:"relative" }}>
-                      {isDoc ? (
-                        <div style={{ textAlign:"center" }}>
-                          <div style={{ fontSize:"2.5rem" }}>📄</div>
-                          <div style={{ fontSize:"8px", color:"var(--gray-400)", marginTop:"2px" }}>
-                            {item.nombre.split(".").pop()?.toUpperCase()}
-                          </div>
-                        </div>
-                      ) : thumb ? (
-                        <img src={thumb} alt={item.nombre} loading="lazy"
-                          style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                      ) : (
-                        <div style={{ fontSize:"2.5rem" }}>🎬</div>
-                      )}
-
-                      {/* Duración video */}
-                      {item.tipo === "video" && item.duracion_seg && (
-                        <div style={{ position:"absolute", bottom:3, right:3,
-                          background:"rgba(0,0,0,.65)", color:"#fff",
-                          fontSize:"8px", padding:"1px 4px", borderRadius:3 }}>
-                          {item.duracion_seg}s
-                        </div>
-                      )}
-
-                      {/* Checkbox modal */}
-                      {mode === "modal" && (
-                        <div style={{ position:"absolute", top:4, left:4,
-                          width:16, height:16, borderRadius:4,
-                          border:`2px solid ${isSel ? ACCENT : "rgba(255,255,255,.8)"}`,
-                          background: isSel ? ACCENT : "rgba(255,255,255,.6)",
-                          display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          {isSel && <span style={{ color:"#fff", fontSize:"9px" }}>✓</span>}
-                        </div>
+                    {/* Cuadrada, como la tarjeta de la tienda: en "Grandes" el
+                        articulo se ve como se va a ver publicado. */}
+                    <div style={{ aspectRatio:"1 / 1", background:"var(--gray-50)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      overflow:"hidden", position:"relative" }}>
+                      <Miniatura el={el} lado={null} />
+                      {sel && (
+                        <div style={{ position:"absolute", top:5, left:5, width:17, height:17,
+                          borderRadius:5, background:ACCENT, color:"#fff", fontSize:"10px",
+                          display:"flex", alignItems:"center", justifyContent:"center" }}>✓</div>
                       )}
                     </div>
 
-                    {/* Info */}
-                    <div style={{ padding:"0.4rem 0.5rem" }}>
-                      <div style={{ fontSize:"10px", fontWeight:600, color:"#374151",
-                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {item.nombre}
+                    {detalle !== "ninguno" && (
+                      <div style={{ padding:"0.4rem 0.5rem" }}>
+                        <div style={{ fontSize: detalle === "completo" ? "0.8rem" : "0.7rem",
+                          fontWeight:600, color:"#374151", overflow:"hidden",
+                          textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {el.nombre}
+                        </div>
+                        {detalle === "completo" && (
+                          <div style={{ fontSize:"0.7rem", color:"var(--gray-400)", overflow:"hidden",
+                            textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{el.sub}</div>
+                        )}
                       </div>
-                      <div style={{ fontSize:"9px", color:"var(--gray-400)" }}>
-                        {fmtSize(item.size_bytes)} · {fmtDate(item.created_at)}
-                      </div>
-                      {item.etiquetas?.length > 0 && (
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:"2px", marginTop:"2px" }}>
-                          {item.etiquetas.slice(0,2).map(t => (
-                            <span key={t} style={{ fontSize:"8px", padding:"1px 4px",
-                              background:`color-mix(in srgb, var(--brand-navy) 8%, transparent)`, color:BLUE, borderRadius:3 }}>
-                              #{t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Acciones */}
-                    <div style={{ display:"flex", borderTop:"1px solid #F3F4F6" }}>
-                      <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(item.url||""); notify("URL copiada"); }}
-                        style={{ flex:1, padding:"0.3rem", background:"none", border:"none", cursor:"pointer", fontSize:"10px", color:"var(--mute)" }}>
-                        📋
-                      </button>
-                      {isDoc && (
-                        <button onClick={e => { e.stopPropagation(); window.open(item.url, "_blank"); }}
-                          style={{ flex:1, padding:"0.3rem", background:"none", border:"none", cursor:"pointer", fontSize:"10px", color:BLUE }}>
-                          👁
-                        </button>
-                      )}
-                      <button onClick={e => { e.stopPropagation(); handleDelete(item); }}
-                        style={{ flex:1, padding:"0.3rem", background:"none", border:"none", cursor:"pointer", fontSize:"10px", color:"#EF4444" }}>
-                        🗑
-                      </button>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -470,7 +637,7 @@ export default function AdminBiblioteca({
                 {selDocs>0 && `${selDocs} doc(s) `}
                 seleccionado(s)
               </span>
-              <button onClick={() => setSelected(new Set())} style={{
+              <button onClick={() => tablas.limpiarSeleccion()} style={{
                 padding:"0.45rem 0.9rem", background:"none", border:"1.5px solid var(--border)",
                 borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"var(--mute)" }}>
                 Limpiar
@@ -565,6 +732,104 @@ export default function AdminBiblioteca({
         </div>
       )}
 
+      {/* La ficha de un artículo.
+          Se edita si es propia de la tienda. Las de la plataforma se ven pero
+          no se tocan: las comparten todas las tiendas, y corregir una acá se
+          la corrige a todas. */}
+      {ficha && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.7)", zIndex:9999,
+          display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}
+          onClick={() => setFicha(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background:"#fff",
+            borderRadius:16, maxWidth:620, width:"100%", overflow:"hidden" }}>
+
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              padding:"0.75rem 1rem", borderBottom:"1px solid var(--border)" }}>
+              <span style={{ fontWeight:700, fontSize:"0.9rem", color:"#111" }}>
+                {ficha.propia ? "Artículo de la Biblioteca" : ficha.nombre}
+              </span>
+              <button onClick={() => setFicha(null)} style={{ background:"none", border:"none",
+                fontSize:"1.25rem", cursor:"pointer", color:"var(--mute)" }}>&#10005;</button>
+            </div>
+
+            <div style={{ padding:"1rem", display:"flex", gap:"1rem" }}>
+              {ficha.imagen && (
+                <img src={ficha.imagen} alt="" style={{ width:140, height:140,
+                  objectFit:"cover", borderRadius:10, flexShrink:0 }}
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+              )}
+
+              <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+                {ficha.propia ? (
+                  <>
+                    {([
+                      ["nombre",      "Título"],
+                      ["marca",       "Marca"],
+                      ["familia",     "Familia"],
+                      ["descripcion", "Descripción"],
+                    ] as const).map(([campo, label]) => (
+                      <label key={campo} style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                        <span style={{ fontSize:"0.7rem", fontWeight:700, color:"var(--mute)" }}>{label}</span>
+                        {campo === "descripcion" ? (
+                          <textarea rows={3} value={fichaForm[campo] ?? ""}
+                            onChange={e => setFichaForm(f => ({ ...f, [campo]: e.target.value }))}
+                            style={{ ...inp, resize:"vertical", fontFamily:"inherit" }} />
+                        ) : (
+                          <input value={fichaForm[campo] ?? ""}
+                            onChange={e => setFichaForm(f => ({ ...f, [campo]: e.target.value }))}
+                            style={inp} />
+                        )}
+                      </label>
+                    ))}
+
+                    {/* El título es la identidad del artículo, así que hay que
+                        decir qué pasa al cambiarlo antes de que pase. */}
+                    <div style={{ fontSize:"0.72rem", color:"var(--mute)" }}>
+                      Cambiar el título cambia el artículo. Dos títulos son dos artículos.
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize:"0.82rem", color:"#374151", display:"flex",
+                    flexDirection:"column", gap:"0.35rem" }}>
+                    <div><b>Marca:</b> {ficha.marca || "—"}</div>
+                    <div><b>Familia:</b> {ficha.familia || "—"}</div>
+                    <div><b>Fuente:</b> {ficha.fuente || "—"}</div>
+                    {ficha.precio_ref != null && (
+                      <div><b>Precio de referencia:</b>{" "}
+                        <span style={{ fontVariantNumeric:"tabular-nums" }}>
+                          {ficha.moneda || ""} {ficha.precio_ref}
+                        </span>
+                      </div>
+                    )}
+                    {ficha.descripcion && (
+                      <div style={{ color:"var(--mute)" }}>{ficha.descripcion}</div>
+                    )}
+                    <div style={{ marginTop:"0.4rem", padding:"0.5rem 0.6rem", borderRadius:8,
+                      background:"rgba(245,158,11,.12)", color:"#B45309", fontWeight:600,
+                      fontSize:"0.75rem" }}>
+                      Es una ficha de la plataforma: la comparten todas las tiendas, así que
+                      no se edita desde acá.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {ficha.propia && (
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:8,
+                padding:"0.7rem 1rem", borderTop:"1px solid var(--border)" }}>
+                <BarraDeAccionesSuelta acciones={[
+                  { label:"Cancelar", color:"var(--mute)", onClick:()=>setFicha(null) },
+                  { label: guardandoFicha ? "Guardando…" : "Guardar",
+                    destacado:true, color:ACCENT, desactivada:guardandoFicha,
+                    onClick:guardarFicha },
+                ]} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Preview modal */}
       {preview && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.7)", zIndex:9999,
@@ -619,8 +884,6 @@ export default function AdminBiblioteca({
           </div>
         </div>
       )}
-    </div>
+    </Pantalla>
   );
 }
-
-

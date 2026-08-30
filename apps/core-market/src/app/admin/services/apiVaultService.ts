@@ -3,6 +3,7 @@
 // Usa el cliente de Supabase del proyecto (ajustar la ruta si es distinta).
 
 import { supabase } from '../../../utils/supabase/client'
+import { requerida } from '../ui/credencialesRequeridas'
 import type {
   ApiVaultEntry,
   ApiVaultInsert,
@@ -74,9 +75,29 @@ export async function createVaultEntry(
     return { ok: false, error: 'No hay sesión activa. Volvé a iniciar sesión para guardar credenciales.' }
   }
 
+  /*
+   * Las que son de servidor NACEN marcadas.
+   *
+   * Pasó al revés: `META_APP_ID` y `META_APP_SECRET` cargadas con los nombres
+   * exactos y sin la marca, así que la función que las lee —que filtra por
+   * `solo_servidor`— no las encontró nunca. Nombre correcto, valor correcto, y
+   * aun así invisibles para quien las necesita.
+   *
+   * Y era además un problema de seguridad: sin la marca, la clave secreta de la
+   * app la puede leer su dueño desde el panel, o sea que llega al navegador.
+   *
+   * No se le pregunta a quien carga: está declarado en
+   * `ui/credencialesRequeridas.ts`, que es donde se dice qué credencial es cuál.
+   */
+  const declarada = requerida(entry.platform, entry.name)
+
   const { data, error } = await supabase
     .from(TABLE)
-    .insert({ ...entry, user_id: userId })
+    .insert({
+      ...entry,
+      user_id: userId,
+      ...(declarada?.soloServidor ? { solo_servidor: true } : {}),
+    })
     .select()
     .single()
 
