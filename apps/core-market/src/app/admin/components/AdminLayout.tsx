@@ -278,11 +278,13 @@ function Sidebar({ user, isAdmin, esPlataforma, location }: {
 
       <nav style={{ flex: 1, overflowY: "auto", padding: "0.5rem 0" }}>
 
+        {/* Las sueltas: Dashboard y todo lo que no declara sección. */}
         {[
           { path: "/admin", label: "Dashboard", exact: true },
           /* Del catálogo, no de una lista escrita acá: lo que se ofrece lo
              decide CORE Market en su configurador. */
-          ...deSidebar.map(f => ({ path: f.ruta!, label: f.nombre, exact: false })),
+          ...deSidebar.filter(f => !f.seccion)
+            .map(f => ({ path: f.ruta!, label: f.nombre, exact: false })),
           { ...entradaDeApps, exact: false },
         ].map(item => {
           const active = isActive(item.path, item.exact);
@@ -292,6 +294,34 @@ function Sidebar({ user, isAdmin, esPlataforma, location }: {
             </Link>
           );
         })}
+
+        {/*
+          * Las agrupadas. La sección sale del CATÁLOGO, no de una lista escrita
+          * acá: el menú ya sale de ahí, y escribir los grupos en la barra sería
+          * el segundo lugar donde decidir lo mismo —y el que se olvida siempre
+          * es el segundo—.
+          *
+          * El orden de los grupos es el de la primera entrada de cada uno, que
+          * es el orden del catálogo. Sin eso habría que mantener un orden de
+          * secciones aparte, que es otra lista más.
+          */}
+        {[...new Map(
+          deSidebar.filter(f => f.seccion)
+            .map(f => [f.seccion!, deSidebar.filter(x => x.seccion === f.seccion)]),
+        )].map(([seccion, entradas]) => (
+          <div key={seccion} style={{ marginTop: "0.9rem" }}>
+            <div style={{ padding: "0 1.25rem 0.3rem", fontSize: "0.66rem",
+              fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)" }}>
+              {seccion}
+            </div>
+            {entradas.map(f => (
+              <Link key={f.ruta} to={f.ruta!} style={linkStyle(isActive(f.ruta!, false))}>
+                {f.nombre}
+              </Link>
+            ))}
+          </div>
+        ))}
 
         {[
           ...(isAdmin ? adminSections : []),

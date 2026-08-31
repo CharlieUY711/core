@@ -74,6 +74,9 @@ export const RUTAS: Record<string, string> = {
   // Lo que administra CORE Market. Son rutas propias, no secciones de una
   // pantalla: se llega desde el menú, no desde una barra adentro del Dashboard.
   tiendas:       "/admin/tiendas",
+  // La misma informacion que Tiendas, mirada al reves: una persona y en que
+  // tiendas esta. Es la que hace falta cuando alguien dice "no puedo entrar".
+  personas:      "/admin/personas",
   definiciones:  "/admin/definiciones",
 };
 
@@ -111,6 +114,8 @@ export interface AppDelCatalogo {
   solo_tiendas: boolean;
   /** Sólo CORE Market: el espejo de `solo_tiendas`. */
   solo_plataforma: boolean;
+  /** El grupo del menú lateral. En null, va suelta arriba. */
+  seccion: string | null;
   vault_platform: string | null;
   /**
    * Todas las plataformas del Vault que toca.
@@ -166,6 +171,7 @@ async function traer(todas: boolean): Promise<AppDelCatalogo[]> {
       en_sidebar:   !!r.en_sidebar,
       solo_tiendas: !!r.solo_tiendas,
       solo_plataforma: !!r.solo_plataforma,
+      seccion: (r.seccion as string) ?? null,
       vault_platform: (r.vault_platform as string) ?? null,
       /* Si la base no trae la lista, vale la de siempre: una sola. */
       vault_platforms: (r.vault_platforms as string[])
