@@ -92,7 +92,7 @@ export function AppsDeTienda({ storeId, avisar }: {
           <input type="checkbox" checked={a.habilitada}
             disabled={ocupado !== null || a.obligatoria}
             title={a.obligatoria
-              ? "No se puede apagar: hace falta para que la tienda funcione"
+              ? "No se puede apagar: hace falta para que el vendedor funcione"
               : undefined}
             onChange={() => { if (!a.obligatoria) void alternar(a); }}
             style={{ accentColor: "var(--brand-madre)" }} />

@@ -46,7 +46,15 @@ interface Tienda {
   capacidades: string[] | null; vidrieras: string[] | null;
   moneda_base: string | null; pais: string | null;
   publicaciones: number; fichas: number; creada: string;
+  /* Con qué se identifica. Es la ÚNICA diferencia entre una empresa y un
+     particular: `rut` o `ci`. Ver docs/architecture/vendedor.md. */
+  documento_clase: string | null; documento_numero: string | null;
 }
+
+const DOCUMENTO: Record<string, string> = {
+  rut: "Registro fiscal (RUT)",
+  ci:  "Documento de identidad",
+};
 
 export default function AdminTienda() {
   const { id } = useParams<{ id: string }>();
@@ -136,7 +144,7 @@ export default function AdminTienda() {
   /* La salida, una sola vez: esta pantalla tiene cuatro returns -cargando, sin
      permiso, no encontrada y la tienda- y en todos se sale al mismo lugar.
      Escrita en cada uno, el dia que cambie el destino cambian tres. */
-  const VOLVER_A_TIENDAS = { a: "Tiendas", onVolver: () => navegar("/admin/tiendas") };
+  const VOLVER_A_TIENDAS = { a: "Vendedores", onVolver: () => navegar("/admin/tiendas") };
 
   const acciones: ItemDeBarra[] = [
 
@@ -160,7 +168,7 @@ export default function AdminTienda() {
     return (
       <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}
         explicacion="Nombre y territorio. Lo demás se configura una vez creada.">
-        <Bloque titulo="Nueva tienda"
+        <Bloque titulo="Nuevo vendedor"
           nota="Se piden dos cosas: el resto se configura acá mismo apenas exista.">
           <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem",
             maxWidth: 460 }}>
@@ -197,7 +205,7 @@ export default function AdminTienda() {
             </Campo>
 
             <BarraDeAccionesSuelta acciones={[{
-              label: creando ? "Creando…" : "Crear tienda",
+              label: creando ? "Creando…" : "Crear vendedor",
               destacado: true, color: ACCENT,
               desactivada: creando || !nombre.trim() || !monedaDe(pais),
               motivo: !nombre.trim() ? "Escribí el nombre"
@@ -221,7 +229,7 @@ export default function AdminTienda() {
 
   if (!tienda) {
     return <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}
-      error="No existe esa tienda, o no tenés acceso a ella." >
+      error="No existe ese vendedor, o no tenés acceso a él." >
       <div />
     </Pantalla>;
   }
@@ -231,7 +239,7 @@ export default function AdminTienda() {
       explicacion={`${tienda.codigo} · ${territorios.find(t => t.iso === tienda.pais)?.nombre ?? tienda.pais ?? "sin territorio"}`}
       notificaciones={[
         ...(!tienda.owner_email ? [{ tono: "atencion" as const,
-          texto: "Esta tienda no tiene titular. Revisá que haya alguien en Miembros que pueda entrar." }] : []),
+          texto: "Este vendedor no tiene titular. Revisá que haya alguien en Miembros que pueda entrar." }] : []),
         ...(!tienda.activa ? [{ tono: "atencion" as const,
           texto: "Está desactivada: no opera. Se reactiva desde la barra." }] : []),
       ]}>
@@ -249,7 +257,7 @@ export default function AdminTienda() {
       </Bloque>
 
       <Bloque titulo="Vidrieras"
-        nota="Dónde puede publicar. Una tienda puede vender en las dos.">
+        nota="Dónde se muestra. Tener tienda es tener la vidriera Market; se puede estar en las dos.">
         <BarraDeAccionesSuelta acciones={VIDRIERAS.map(v => ({
           label: v.label,
           activa: tienda.vidrieras?.includes(v.id),
@@ -266,6 +274,34 @@ export default function AdminTienda() {
           gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
           gap: "0.8rem", maxWidth: 760 }}>
           <Dato label="Código"      valor={tienda.codigo} />
+          {/* Lo que identifica al vendedor. No hay dos clases de vendedor: hay
+              uno que se identifica con registro fiscal y otro con documento de
+              identidad, y todo lo demás funciona igual. */}
+          <Campo label="Se identifica con">
+            <select value={tienda.documento_clase ?? ""} style={inp}
+              onChange={e => void rpc("actualizar_documento_de_vendedor", {
+                p_id: tienda.id, p_clase: e.target.value,
+                p_numero: e.target.value ? (tienda.documento_numero ?? "") : "",
+              }, "Guardado")}>
+              <option value="">Sin identificar</option>
+              <option value="rut">{DOCUMENTO.rut}</option>
+              <option value="ci">{DOCUMENTO.ci}</option>
+            </select>
+          </Campo>
+          <Campo label="Número">
+            {/* Se guarda al salir del campo y no en cada tecla: un número a
+                medio escribir chocaría con el índice único de otro. */}
+            <input defaultValue={tienda.documento_numero ?? ""} style={inp}
+              placeholder={tienda.documento_clase ? "" : "Elegí primero con qué se identifica"}
+              disabled={!tienda.documento_clase}
+              onBlur={e => {
+                if (e.target.value === (tienda.documento_numero ?? "")) return;
+                void rpc("actualizar_documento_de_vendedor", {
+                  p_id: tienda.id, p_clase: tienda.documento_clase,
+                  p_numero: e.target.value,
+                }, "Guardado");
+              }} />
+          </Campo>
           <Dato label="Titular"     valor={tienda.owner_email ?? "sin titular"} />
           <Dato label="Territorio"
             valor={territorios.find(t => t.iso === tienda.pais)?.nombre ?? tienda.pais ?? "—"} />

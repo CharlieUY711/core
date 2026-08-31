@@ -87,9 +87,9 @@ export default function AdminPersonas() {
 
   const columnas: Columna[] = [
     { id: "correo", label: "Persona", ancho: 240 },
-    { id: "tiendas_txt", label: "En qué tiendas" },
+    { id: "tiendas_txt", label: "En qué vendedores" },
     { id: "roles", label: "Rol", ancho: 160 },
-    { id: "cuantas", label: "Tiendas", numero: true, esUso: true, ancho: 70 },
+    { id: "cuantas", label: "Vendedores", numero: true, esUso: true, ancho: 70 },
     { id: "acceso", label: "Último acceso", rastro: true, ancho: 100,
       /* Se dice «nunca» y no se deja vacío: un hueco parece un dato que falta,
          y esto es un dato que está y dice algo. */
@@ -121,7 +121,7 @@ export default function AdminPersonas() {
   return (
     <Pantalla p={p}
       buscador={{ valor: busca, onCambio: setBusca }}
-      explicacion="Quiénes administran tiendas, en cuáles y con qué rol. Se agrega y se saca desde cada tienda."
+      explicacion="Quiénes operan a los vendedores, en cuáles y con qué rol. Se agrega y se saca desde cada uno."
       error={error}
       notificaciones={nuncaEntraron === 0 ? [] : [{
         tono: "atencion",

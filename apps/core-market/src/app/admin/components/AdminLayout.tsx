@@ -161,7 +161,7 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
     const { error: eSesion } = await supabase.auth.refreshSession();
     if (eSesion) {
       setCambiando(false);
-      setFallo(`La tienda cambió pero no se pudo renovar la sesión: ${eSesion.message}`);
+      setFallo(`El vendedor cambió pero no se pudo renovar la sesión: ${eSesion.message}`);
       setAbierto(true);
       return;
     }
@@ -210,7 +210,7 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
             <button
               onClick={() => tiendas.length > 1 && setAbierto(a => !a)}
               disabled={tiendas.length < 2 || cambiando}
-              title={tiendas.length > 1 ? "Cambiar de tienda" : undefined}
+              title={tiendas.length > 1 ? "Cambiar de vendedor" : undefined}
               style={{
                 background: "transparent", border: "none", padding: 0,
                 cursor: tiendas.length > 1 ? "pointer" : "default",
@@ -449,7 +449,7 @@ function Topbar({ location, vista, explicacion, topStats }: {
     { path: "/admin", label: "Dashboard", exact: true },
     ...apps.filter(a => a.ruta).map(a => ({ path: a.ruta!, label: a.nombre, exact: false })),
     { path: "/admin/aplicaciones", label: "Herramientas y Apps", exact: false },
-    { path: "/admin/tiendas",      label: "Tiendas",             exact: false },
+    { path: "/admin/tiendas",      label: "Vendedores",             exact: false },
     { path: "/admin/plataforma",   label: "Plataforma",          exact: false },
     { path: "/admin/profile",      label: "Mi perfil",           exact: false },
   ];

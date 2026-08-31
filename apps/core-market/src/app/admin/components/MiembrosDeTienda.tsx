@@ -109,12 +109,12 @@ export function MiembrosDeTienda({ storeId, avisar }: {
       /* Se frena acá con el motivo, en vez de mandar la llamada y mostrar el
          error del servidor: es la misma respuesta, pero antes. */
       if (fs.some(f => f.esUltimoDuenio)) {
-        avisar("Es el último dueño: la tienda quedaría sin nadie que pueda administrarla.", false);
+        avisar("Es el último dueño: el vendedor quedaría sin nadie que pueda administrarlo.", false);
         return;
       }
       for (const f of fs) {
         await llamar("sacar_miembro", { p_store_id: storeId, p_user_id: f.clave },
-          `${f.correo} ya no pertenece a la tienda.`);
+          `${f.correo} ya no pertenece a este vendedor.`);
       }
     },
   });

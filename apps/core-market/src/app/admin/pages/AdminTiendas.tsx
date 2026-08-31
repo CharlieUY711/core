@@ -68,7 +68,7 @@ export default function AdminTiendas() {
     setVista("");
     const propias = tiendas.filter(x => !x.es_plataforma);
     setTopStats(propias.length ? [
-      { label: "Tiendas", value: propias.length, color: "#fff" },
+      { label: "Vendedores", value: propias.length, color: "#fff" },
       { label: "Activas", value: propias.filter(x => x.activa).length, color: "#4ADE80" },
     ] : []);
     return () => { setTopStats([]); setVista(""); };
@@ -128,7 +128,7 @@ export default function AdminTiendas() {
           columnas: [
             /* Sin `editable`: configurar una tienda es ir a su página. Editar
                en la fila dejaba dos campos sueltos y el resto vacío. */
-            { id: "nombre", label: "Tienda", ancho: 240,
+            { id: "nombre", label: "Vendedor", ancho: 240,
               ver: f => (
                 <span>
                   <b>{String(f.nombre)}</b>
@@ -230,7 +230,7 @@ export default function AdminTiendas() {
             }
             await traer();
             if (problemas.length) avisar(problemas[0], false);
-            else avisar(`${fs.length} tienda(s) desactivada(s). No se borran: tienen publicaciones y órdenes.`);
+            else avisar(`${fs.length} vendedor(es) desactivado(s). No se borran: tienen publicaciones y órdenes.`);
           },
 
           detalle: f => <ConfigurarTienda s={f.s as Tienda} rpc={rpc} avisar={avisar} />,
@@ -253,7 +253,7 @@ export default function AdminTiendas() {
         label: "Reactivar",
         color: "var(--brand-navy)",
         desactivada: apagadasElegidas.length === 0,
-        motivo: "Elegí una tienda desactivada",
+        motivo: "Elegí un vendedor desactivado",
         onClick: async () => {
           for (const s of apagadasElegidas) {
             await rpc("actualizar_tienda", { p_id: s.id, p_activa: true },
@@ -293,7 +293,7 @@ function ConfigurarTienda({ s, rpc, avisar }: {
       {/* Quiénes trabajan acá y hasta dónde puede cada uno. Va PRIMERO: sin
           alguien que pueda entrar, configurar lo demás no sirve de nada. */}
       <Bloque titulo="Miembros"
-        nota="Quiénes entran a esta tienda y qué puede hacer cada uno. El acceso lo da esta lista.">
+        nota="Quiénes entran a este vendedor y qué puede hacer cada uno. El acceso lo da esta lista.">
         <MiembrosDeTienda storeId={s.id} avisar={avisar} />
       </Bloque>
 
@@ -305,7 +305,7 @@ function ConfigurarTienda({ s, rpc, avisar }: {
       </Bloque>
 
       <Bloque titulo="Titular"
-        nota="Quién figura como dueño de la tienda. El acceso NO sale de acá, sale de la lista de miembros.">
+        nota="Quién figura como dueño. El acceso NO sale de acá, sale de la lista de miembros.">
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: "0.82rem", color: s.owner_email ? "#374151" : "#B45309",
             fontWeight: s.owner_email ? 400 : 600, minWidth: 180 }}>
@@ -327,7 +327,7 @@ function ConfigurarTienda({ s, rpc, avisar }: {
       <Bloque titulo="Vidrieras"
         nota={s.es_plataforma
           ? "CORE Market administra la plataforma y no vende: no publica en ninguna vidriera."
-          : "Dónde puede publicar. Una tienda puede vender en las dos."}>
+          : "Dónde se muestra. Tener tienda es tener la vidriera Market; se puede estar en las dos."}>
         <BarraDeAccionesSuelta acciones={VIDRIERAS.map(v => ({
           label: v.label, color: BLUE,
           activa: s.vidrieras?.includes(v.id),

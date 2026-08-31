@@ -1,7 +1,10 @@
 # Spec — El Vendedor
 
-Estado: **propuesta**. Nada de esto está implementado.
+Estado: **implementado el 2026-08-31**, salvo lo que se lista al final.
 Fecha: 2026-08-31.
+
+Los seis pasos del plan de migración están aplicados en producción. Lo que sigue
+abierto está en "Lo que este spec NO resuelve".
 
 ---
 
