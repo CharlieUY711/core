@@ -30,13 +30,10 @@
  *                            la ficha ya sabe, para no volver a escribirlo.
  *   sin id                 → un artículo nuevo, de cero.
  */
-import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../../../utils/supabase/client";
 import { Pantalla, usePantalla } from "../components/Pantalla";
 import AdminArticulos from "./AdminArticulos";
-import { Art, toArt } from "../ui/articulo";
-import { publicacionDeFicha } from "../hooks/useCatalogPublicaciones";
+import { useArticuloDeFicha } from "../hooks/useArticuloDeFicha";
 
 const AVISO: React.CSSProperties = {
   padding: "3rem", textAlign: "center", color: "var(--gray-400)",
@@ -49,62 +46,10 @@ export default function ArticuloDeBiblioteca() {
   const [params] = useSearchParams();
   const navegar = useNavigate();
 
-  const [articulo, setArticulo] = useState<Art | undefined>();
-  const [cargando, setCargando] = useState(!!id);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) { setArticulo(undefined); setCargando(false); return; }
-    let vivo = true;
-
-    (async () => {
-      setCargando(true);
-      try {
-        const p = await publicacionDeFicha(id);
-        if (!vivo) return;
-
-        if (p) { setArticulo(toArt(p)); setError(null); setCargando(false); return; }
-
-        /*
-         * La ficha todavía no se vende. Se abre el alta con lo que la ficha ya
-         * sabe —sin `id`, así el formulario crea en vez de actualizar— para no
-         * hacer escribir de nuevo el nombre y la descripción que ya están.
-         */
-        const { data, error: e } = await supabase
-          .from("catalogo_market")
-          .select("id, marca, nombre, descripcion, imagen, precio_ref, moneda")
-          .eq("id", id)
-          .maybeSingle();
-        if (!vivo) return;
-
-        if (e) { setError(e.message); setCargando(false); return; }
-        if (!data) {
-          setError("Esa ficha no está en la Biblioteca de esta tienda.");
-          setCargando(false); return;
-        }
-
-        setError(null);
-        setArticulo({
-          // Sin `id`: es un alta. Ver `articulo?.id` en AdminArticulos.
-          nombre:      data.nombre ?? "",
-          descripcion: data.descripcion ?? undefined,
-          imagen_principal: data.imagen ?? undefined,
-          precio:      data.precio_ref ?? 0,
-          moneda:      data.moneda ?? "UYU",
-          stock:       1,
-        } as unknown as Art);
-        setCargando(false);
-      } catch (err: any) {
-        if (!vivo) return;
-        // Un fallo acá no puede quedarse en un formulario vacío que parece
-        // nuevo: se dice qué pasó.
-        setError(err?.message ?? String(err));
-        setCargando(false);
-      }
-    })();
-
-    return () => { vivo = false; };
-  }, [id]);
+  /* La resolución ficha -> publicación vive en el hook: la comparte con la fila
+     desplegada de la Biblioteca, que es donde se carga y se edita a diario.
+     Esta ruta existe para poder ENLAZAR un artículo desde afuera. */
+  const { articulo, cargando, error } = useArticuloDeFicha(id);
 
   const volver = () => navegar("/admin/biblioteca");
 

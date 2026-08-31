@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { useShop } from "../components/AdminLayout";
 import { supabase } from "../../../utils/supabase/client";
 import { MediaItem } from "../../hooks/useMediaLibrary";
@@ -7,6 +7,7 @@ import AdminImport from "./AdminImport";
 import AdminExport from "./AdminExport";
 import AdminCatalog from "./AdminCatalog";
 import { BarraDeAccionesSuelta, ItemDeBarra } from "../components/BarraDeAcciones";
+import { ArticuloEnLinea, ResumenDeArticulo } from "../components/ArticuloEnLinea";
 import { Pantalla, usePantalla } from "../components/Pantalla";
 import { Tabla, Columna } from "../components/Tabla";
 import { TIPOS_DE_BIBLIOTECA, TipoDeBiblioteca, definicionDe } from "../ui/tiposDeBiblioteca";
@@ -126,7 +127,6 @@ export default function AdminBiblioteca({
      error y el ancho los define `Pantalla`. Acá estaban escritos a mano. */
   const p = usePantalla();
   const { tablas } = p;
-  const navegar = useNavigate();
 
   const [tab,        setTab]        = useState<
     "biblioteca" | "subir" | "taxonomia" | "importar" | "exportar">("biblioteca");
@@ -140,13 +140,44 @@ export default function AdminBiblioteca({
    * del usuario porque es lo único que puede mandar.
    */
   const [tipo,       setTipo]       = useState<TipoDeBiblioteca>("todo");
-  const [presentacion, setPresentacion] = useState<Vista>("grandes");
+  /* Lista por defecto. La grilla de íconos luce mejor vacía, pero acá se
+     trabaja: el artículo se carga y se edita en su fila, y en una grilla no hay
+     fila que desplegar. Las otras vistas siguen a un clic. */
+  const [presentacion, setPresentacion] = useState<Vista>("lista");
   const [cols,       setCols]       = useState<Set<string>>(
     new Set(COLUMNAS_BIBLIOTECA.map(c => c.id)));
   /* Sólo las fichas COMPARTIDAS abren esta tarjeta: las propias son el
-     artículo de la tienda y abren el editor. Por eso ya no hay formulario ni
-     estado de guardado acá — se editaban en dos lados. */
+     artículo de la tienda y se editan en la fila desplegada. Por eso ya no hay
+     formulario ni estado de guardado acá — se editaban en dos lados. */
   const [ficha,      setFicha]      = useState<FichaDeBiblioteca | null>(null);
+
+  /*
+   * EL ARTÍCULO SE CARGA Y SE EDITA ACÁ, EN LA LISTA.
+   *
+   * `articuloAbierto` es el id de la ficha que se está editando, o "nueva" para
+   * un alta. La fila de un alta no existe en la base todavía: se agrega a la
+   * lista como una fila más —misma tabla, mismas columnas— y se va completando
+   * con lo que el formulario avisa por `onResumen`. Al guardar, la fila real
+   * ocupa su lugar.
+   */
+  const [articuloAbierto, setArticuloAbierto] = useState<string | null>(null);
+  const [tipoDeAlta, setTipoDeAlta] = useState<"market" | "secondhand">("market");
+  const [resumen, setResumen] = useState<ResumenDeArticulo | null>(null);
+
+  const cerrarArticulo = () => { setArticuloAbierto(null); setResumen(null); };
+
+  /*
+   * Abrir un artículo obliga a la vista Lista: el formulario sale DEBAJO de su
+   * fila, y en una grilla de íconos no hay fila que desplegar. Sin esto, abrir
+   * desde una grilla dejaba la fila marcada y ningún formulario, sin que nada
+   * dijera por qué.
+   */
+  const abrirArticulo = (clave: string, tipoAlta?: "market" | "secondhand") => {
+    if (tipoAlta) setTipoDeAlta(tipoAlta);
+    setPresentacion("lista");
+    setResumen(null);
+    setArticuloAbierto(clave);
+  };
   /*
    * La selección NO vive acá: la presta el control de la tabla.
    *
@@ -356,7 +387,12 @@ export default function AdminBiblioteca({
   const abrir = (el: ElementoDeBiblioteca) => {
     if (el.media) { setPreview(el.media); return; }
     if (!el.ficha) return;
-    if (el.ficha.propia) { navegar(`/admin/biblioteca/articulo/${el.ficha.id}`); return; }
+    /* La ficha propia se abre ACÁ, en su fila: cargar un artículo es ir y
+       venir entre el formulario y la lista, y sacar al usuario de la lista le
+       hace perder de vista en qué anda. La ruta
+       /admin/biblioteca/articulo/:id sigue existiendo para poder ENLAZAR uno
+       desde afuera, y monta exactamente el mismo formulario. */
+    if (el.ficha.propia) { abrirArticulo(el.ficha.id); return; }
     setFicha(el.ficha);
   };
 
@@ -422,16 +458,67 @@ export default function AdminBiblioteca({
       .map(c => ({ id: c.id, label: c.label, rastro: "rastro" in c })),
   ];
 
+  /*
+   * La fila del artículo que se está dando de alta.
+   *
+   * Va como una fila MÁS: la tabla no cambia de forma para recibirla, y al
+   * guardar la fila real ocupa su lugar. Lo que todavía no se escribió se
+   * muestra con una raya, no en blanco: un hueco no dice si falta o si no
+   * aplica.
+   */
+  const filaDelAlta = articuloAbierto !== "nueva" ? [] : [{
+    clave: "nueva",
+    nombre: resumen?.nombre || "Sin título todavía",
+    clase: ETIQUETA_DE_CLASE.articulo,
+    sub: resumen?.precio
+      ? `${resumen.moneda} ${resumen.precio}`
+      : "Se completa mientras escribís",
+    fecha: "—",
+    /* Un elemento de verdad, no null: la miniatura y todo lo que dibuja la
+       fila esperan uno. Así la portada aparece mientras se elige, y no recién
+       después de guardar. */
+    el: {
+      id: "nueva", clase: "articulo" as const,
+      nombre: resumen?.nombre || "Sin título todavía",
+      sub: "", thumb: resumen?.imagen ?? "", fecha: "",
+    } as ElementoDeBiblioteca,
+  }];
+
   const nivelBiblioteca = tab !== "biblioteca" ? null : tablas.nivel(NIVEL, {
     columnas: columnasDeLaTabla,
-    filas: elementos.map(el => ({
+    filas: [...filaDelAlta, ...elementos.map(el => ({
       clave: el.id,
       nombre: el.nombre,
       clase: ETIQUETA_DE_CLASE[el.clase],
       sub: el.sub,
       fecha: fmtDate(el.fecha),
       el,
-    })),
+    }))],
+
+    /* Qué fila está desplegada lo decide esta pantalla y no la tabla: el alta
+       aparece CON su formulario abierto, y pedir un clic más sería pedir que
+       confirme algo que ya pidió. */
+    abierta: articuloAbierto,
+    onAbierta: clave => { setArticuloAbierto(clave); if (!clave) setResumen(null); },
+
+    /* Lo que se ve al desplegar: el formulario del artículo, el mismo de
+       siempre. Un archivo no despliega nada —se previsualiza—, y una ficha
+       compartida tampoco: no se edita desde acá. */
+    detalle: f => {
+      if (f.clave === "nueva") return (
+        <ArticuloEnLinea tipo={tipoDeAlta} onResumen={setResumen}
+          onCerrar={cerrarArticulo}
+          onGuardado={() => { cerrarArticulo(); reload(); }} />
+      );
+      const el = f.el as ElementoDeBiblioteca | undefined;
+      if (!el?.ficha?.propia) return null;
+      return (
+        <ArticuloEnLinea fichaId={el.ficha.id} onResumen={setResumen}
+          onCerrar={cerrarArticulo}
+          onGuardado={() => { cerrarArticulo(); reload(); }} />
+      );
+    },
+
     /* Cargar no cabe en una fila: un archivo se elige, se clasifica y se
        etiqueta. Por eso "Agregar" abre la pantalla de carga en vez de abrir
        un renglón vacío — pero está en el mismo lugar que en todas.
@@ -439,9 +526,11 @@ export default function AdminBiblioteca({
        Y en la sección Artículos agrega un ARTÍCULO, que es lo que se está
        mirando. La sección ya dice de qué se habla: preguntarlo otra vez con un
        menú sería el segundo lugar donde se decide lo mismo. */
-    onAgregar: () => tipo === "articulos"
-      ? navegar("/admin/biblioteca/articulo")
-      : setTab("subir"),
+    onAgregar: () => {
+      if (tipo !== "articulos") { setTab("subir"); return; }
+      // El caso normal es Market. Second Hand está al lado, en la barra.
+      abrirArticulo("nueva", "market");
+    },
     onEditar:  f => abrir(f.el as ElementoDeBiblioteca),
     /* Doble clic, como en todas las tablas: el clic simple sigue eligiendo,
        que es de lo que dependen las acciones masivas. */
@@ -477,6 +566,13 @@ export default function AdminBiblioteca({
           label: `Usar (${selected.size})`, destacado: true, color: ACCENT,
           desactivada: selected.size === 0, motivo: "Elegí al menos uno",
           onClick: () => onSelect?.(items.filter(i => selected.has(i.id))),
+        }] : []),
+        /* Second Hand vive acá y no adentro del formulario: el tipo lo decide
+           quien abre el alta, no se elige a mitad de camino. Sólo aparece en
+           Artículos, que es donde significa algo. */
+        ...(tab === "biblioteca" && tipo === "articulos" ? [{
+          label: "Second +", color: "var(--color-success)",
+          onClick: () => abrirArticulo("nueva", "secondhand"),
         }] : []),
         { label:"Importar", color:BLUE, activa: tab === "importar",
           onClick:()=>setTab("importar") },

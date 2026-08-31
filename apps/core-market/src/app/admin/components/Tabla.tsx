@@ -112,6 +112,19 @@ interface Nivel {
   /** Qué se ve al abrir la fila. Sin esto, la fila no se abre. */
   detalle?: (fila: Fila) => React.ReactNode;
   /**
+   * Qué fila está abierta, cuando lo decide la pantalla y no la tabla.
+   *
+   * Por defecto lo decide la tabla: se aprieta la flecha y se abre. Pero hay
+   * casos donde la pantalla YA SABE cuál tiene que estar abierta —el alta, que
+   * aparece con su formulario desplegado— y esperar un clic más sería pedirle
+   * al usuario que confirme algo que ya pidió.
+   *
+   * Se pasan las dos o ninguna: con `abierta` sin `onAbierta` la flecha dejaría
+   * de responder y nadie sabría por qué.
+   */
+  abierta?: string | null;
+  onAbierta?: (clave: string | null) => void;
+  /**
    * Doble clic: lo que corresponda hacer con esa fila.
    *
    * El clic simple ELIGE y no actúa, y eso no se negocia: de la selección
@@ -400,7 +413,16 @@ const ANCHO_CHECK  = 34;
 const ANCHO_FLECHA = 22;
 
 export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>) {
-  const [abierta, setAbierta] = useState<string | null>(null);
+  /* La fila abierta la maneja la tabla, salvo que la pantalla la controle. Es
+     el patrón de siempre: si viene de afuera manda lo de afuera, y si no, la
+     tabla se arregla sola. */
+  const [abiertaPropia, setAbiertaPropia] = useState<string | null>(null);
+  const controlada = cfg.abierta !== undefined;
+  const abierta = controlada ? cfg.abierta ?? null : abiertaPropia;
+  const setAbierta = (siguiente: (a: string | null) => string | null) => {
+    if (controlada) cfg.onAbierta?.(siguiente(abierta));
+    else setAbiertaPropia(siguiente);
+  };
   const { seleccion, setSeleccion, edicion, setForm, form } = control;
 
   const columnas = [
