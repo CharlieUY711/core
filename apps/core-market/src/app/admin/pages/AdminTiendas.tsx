@@ -18,6 +18,7 @@
  * crearla, no está terminada.
  */
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import { BarraDeAccionesSuelta } from "../components/BarraDeAcciones";
 import { Tabla, fecha } from "../components/Tabla";
@@ -80,6 +81,7 @@ export default function AdminTiendas() {
     avisar(ok);
   };
 
+  const navegar = useNavigate();
   const [busca, setBusca] = useState("");
 
   /*
@@ -124,7 +126,9 @@ export default function AdminTiendas() {
      hasta un render después. */
   const nivelTiendas = t.nivel("tiendas", {
           columnas: [
-            { id: "nombre", label: "Tienda", editable: true, ancho: 240,
+            /* Sin `editable`: configurar una tienda es ir a su página. Editar
+               en la fila dejaba dos campos sueltos y el resto vacío. */
+            { id: "nombre", label: "Tienda", ancho: 240,
               ver: f => (
                 <span>
                   <b>{String(f.nombre)}</b>
@@ -162,7 +166,7 @@ export default function AdminTiendas() {
              * territorio sin moneda definida se dice, en vez de dejar el hueco:
              * es un territorio con el que no se puede operar.
              */
-            { id: "pais", label: "Territorio", editable: true, ancho: 120,
+            { id: "pais", label: "Territorio", ancho: 120,
               opciones: territorios.map(t => ({ valor: t.iso, label: t.nombre })),
               ver: f => {
                 const t = territorios.find(x => x.iso === f.pais);
@@ -199,22 +203,15 @@ export default function AdminTiendas() {
           inactiva: f => !(f.activa as boolean),
           nombreDe: f => String(f.nombre),
 
-          // Crear son dos campos: código y nombre. Lo demás se configura al
-          // abrir la fila, que es otra decisión y de otro momento.
-          onCrear: v => rpc("crear_tienda", {
-            p_codigo: v.codigo ?? slugCorto(v.nombre), p_nombre: v.nombre,
-            p_owner_email: null, p_capacidades: [], p_vidrieras: ["market"],
-            p_moneda_base: v.moneda_base || "UYU", p_pais: v.pais || "UY",
-          }, `Tienda "${v.nombre}" creada. Falta asignarle dueño.`),
-
-          /* La moneda viaja CON el territorio y no se pide aparte: guardando
-             sólo el país quedaría la moneda vieja de otro territorio, y nadie
-             lo notaría hasta ver un precio en la moneda equivocada. */
-          onGuardar: (f, v) => rpc("actualizar_tienda", {
-            p_id: f.clave, p_nombre: v.nombre,
-            p_pais: v.pais,
-            p_moneda_base: monedaDe(v.pais) ?? "",
-          }, "Guardado"),
+          /* Agregar y editar van a la PÁGINA de la tienda, no a un renglón.
+             Crear una tienda no es escribir un nombre: es dejarla en
+             condiciones de operar —quién entra, qué tiene habilitado, dónde
+             publica—, y nada de eso entra en una fila. */
+          onAgregar: () => navegar("/admin/tiendas/nueva"),
+          onEditar:  f => navegar(`/admin/tiendas/${f.clave}`),
+          /* Doble clic también, como en Herramientas y Apps: el clic simple
+             sigue eligiendo, que es de lo que dependen las acciones masivas. */
+          onAbrir:   f => navegar(`/admin/tiendas/${f.clave}`),
 
           /* Reactivar. Sin esto, "Eliminar" desactivaba y no había ningún
              camino de vuelta: la tienda quedaba al 55% de opacidad para
@@ -355,9 +352,8 @@ const inp: React.CSSProperties = {
   fontFamily: "DM Sans, sans-serif",
 };
 
-/** Un código a partir del nombre, para no pedir dos campos que dicen lo mismo. */
-const slugCorto = (s?: string) => (s ?? "").toLowerCase().normalize("NFD")
-  .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/* `slugCorto` armaba el código al crear una tienda desde la fila. Crear se
+   mudó a la página de la tienda y la función se fue con él. */
 
 function Bloque({ titulo, nota, children }: {
   titulo: string; nota?: string; children: React.ReactNode;

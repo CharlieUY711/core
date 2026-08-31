@@ -24,6 +24,7 @@ import AdminImport from "./admin/pages/AdminImport";
 import AdminArticulos from "./admin/pages/AdminArticulos";
 import AdminBiblioteca from "./admin/pages/AdminBiblioteca";
 import AdminTiendas from "./admin/pages/AdminTiendas";
+import AdminTienda from "./admin/pages/AdminTienda";
 import AdminAplicaciones from "./admin/pages/AdminAplicaciones";
 import AdminDefiniciones from "./admin/pages/AdminDefiniciones";
 import AdminEditor from "./admin/editor/EditorPage";
@@ -61,6 +62,10 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
       { id: "admin-orders",         path: "orders",        Component: AdminOrders },
       { id: "admin-publicaciones",  path: "publicaciones", Component: AdminPublicaciones },
       { id: "admin-tiendas",        path: "tiendas",       Component: AdminTiendas },
+      /* La configuración completa de UNA tienda. `nueva` es la misma pantalla
+         pidiendo lo mínimo: crear y configurar son el mismo lugar, porque lo
+         que sigue después de crear se hace ahí mismo. */
+      { id: "admin-tienda",         path: "tiendas/:id",   Component: AdminTienda },
       { id: "admin-definiciones",   path: "definiciones",  Component: AdminDefiniciones },
       { id: "admin-aplicaciones",   path: "aplicaciones",  Component: AdminAplicaciones },
       { id: "admin-export",         path: "export",        Component: AdminExport },
