@@ -476,12 +476,12 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
     <tr key={clave} style={{ borderBottom: "1px solid #F3F4F6",
       background: "color-mix(in srgb, var(--brand-madre) 5%, transparent)" }}>
       <td style={{ ...celda, width: ANCHO_CHECK }} />
-      <td style={{ ...celda, width: ANCHO_FLECHA }} />
       {columnas.map(c => (
         <td key={c.id} style={{ ...celda, ...(c.numero ? num : {}) }}>
           {c.editable ? campo(c) : null}
         </td>
       ))}
+      <td style={{ ...celda, width: ANCHO_FLECHA }} />
     </tr>
   );
 
@@ -538,8 +538,6 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                   disabled={!!edicion || cfg.filas.length === 0}
                   title="Elegir todas" style={{ accentColor: ACCENT }} />
               </th>
-              <th style={{ ...th, ...pegado(0, 3), width: ANCHO_FLECHA,
-                ...(cfg.anidada ? { background: "transparent" } : {}) }} />
               {columnas.map(c => (
                 <th key={c.id} style={{ ...th, ...pegado(0, 3),
                   textAlign: c.numero || c.rastro ? "right" : "left",
@@ -548,6 +546,13 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                   {c.label}
                 </th>
               ))}
+              {/* La flecha, al final. Empieza el contenido y termina lo que se
+                  hace con la fila: elegir a la izquierda -es lo primero-, abrir
+                  a la derecha -es lo último-. Metida entre el check y el
+                  nombre, corría el contenido de todas las tablas para adentro
+                  por una columna que casi siempre está vacía. */}
+              <th style={{ ...th, ...pegado(0, 3), width: ANCHO_FLECHA,
+                ...(cfg.anidada ? { background: "transparent" } : {}) }} />
             </tr>
           </thead>
           <tbody>
@@ -598,19 +603,6 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                       <input type="checkbox" checked={elegida} readOnly
                         disabled={!!edicion} style={{ accentColor: ACCENT }} />
                     </td>
-                    <td style={{ ...celda, ...pegadaSiAbierta,
-                      width: ANCHO_FLECHA, color: "var(--gray-400)",
-                      fontSize: "0.7rem" }}
-                      onClick={e => {
-                        if (!puedeAbrir) return;
-                        // Abrir no es elegir: son dos gestos distintos sobre la
-                        // misma fila y confundirlos hace elegir sin querer.
-                        e.stopPropagation();
-                        setAbierta(a => a === f.clave ? null : f.clave);
-                      }}>
-                      {puedeAbrir ? (abierto ? "▾" : "▸") : ""}
-                    </td>
-
                     {columnas.map(c => (
                       <td key={c.id} style={{ ...celda, ...pegadaSiAbierta,
                         ...(c.numero || c.rastro ? num : {}),
@@ -623,6 +615,23 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                           : c.ver ? c.ver(f) : String(f[c.id] ?? "—")}
                       </td>
                     ))}
+
+                    {/* La flecha, al final de la fila: elegir es lo primero que
+                        se hace con ella y abrir es lo último. */}
+                    <td style={{ ...celda, ...pegadaSiAbierta,
+                      width: ANCHO_FLECHA, color: "var(--gray-400)",
+                      fontSize: "0.7rem", textAlign: "right",
+                      cursor: puedeAbrir ? "pointer" : "default" }}
+                      title={puedeAbrir ? (abierto ? "Cerrar" : "Abrir para editar") : undefined}
+                      onClick={e => {
+                        if (!puedeAbrir) return;
+                        // Abrir no es elegir: son dos gestos distintos sobre la
+                        // misma fila y confundirlos hace elegir sin querer.
+                        e.stopPropagation();
+                        setAbierta(a => a === f.clave ? null : f.clave);
+                      }}>
+                      {puedeAbrir ? (abierto ? "▾" : "▸") : ""}
+                    </td>
                   </tr>
 
                   {abierto && (

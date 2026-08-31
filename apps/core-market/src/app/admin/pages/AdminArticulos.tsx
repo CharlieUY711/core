@@ -2176,9 +2176,55 @@ export default function AdminArticulos(
   };
   const puedeGuardar = () => faltaParaGuardar() === "";
 
+  /**
+   * Trae a la Biblioteca lo que esté afuera, y devuelve lo que hay que guardar.
+   *
+   * LA BIBLIOTECA ES LA UNICA FUENTE DE MEDIOS
+   * El buscador de imagenes trae fotos de la web y de los canales, y hasta
+   * ahora esas URLs ajenas se guardaban tal cual en el articulo: la Biblioteca
+   * quedaba vacia aunque el articulo tuviera ocho fotos, y las fotos no eran
+   * nuestras -el dia que ese sitio las mueve, el articulo se queda sin imagen-.
+   *
+   * Lo que ya vive en la Biblioteca no se vuelve a bajar.
+   *
+   * Lo que no se puede traer -un sitio que bloquea la copia- se DICE y se deja
+   * enlazado de afuera. Descartarlo en silencio seria perder fotos que el
+   * usuario acaba de elegir.
+   */
+  const aLaBiblioteca = async (urls: string[]): Promise<string[]> => {
+    if (urls.length === 0) return [];
+    const { data, error } = await supabase.functions.invoke("traer-a-biblioteca",
+      { body: { urls } });
+
+    if (error || data?.error) {
+      notify(`No se pudieron traer los medios a la Biblioteca: ${
+        error?.message ?? data.error}. Quedan enlazados de afuera.`, false);
+      return urls;
+    }
+
+    const medios = (data?.medios ?? []) as
+      { original: string; url: string; motivo: string }[];
+    const fallaron = medios.filter(m => m.motivo);
+    if (fallaron.length) {
+      notify(`${fallaron.length} de ${medios.length} no se pudieron traer a la `
+           + `Biblioteca (${fallaron[0].motivo}). Quedan enlazados de afuera.`, false);
+    }
+    return medios.map(m => m.url);
+  };
+
   const handlePublicar = async () => {
     setLoading(true);
     try {
+      /* Primero los medios: lo que se guarde en el articulo tiene que ser lo
+         que quedo en la Biblioteca, no lo que se habia elegido afuera. */
+      /* Nombres propios y no los del estado: `setImagenes` no cambia
+         `imagenes` hasta el proximo dibujo, asi que guardar leyendo el estado
+         guardaria lo viejo. */
+      const enBiblioteca    = await aLaBiblioteca(imagenes);
+      const videosGuardados = await aLaBiblioteca(videoUrls);
+      setImagenes(enBiblioteca);
+      setVideoUrls(videosGuardados);
+
       /*
        * En modo ficha se guarda SOLO la ficha.
        *
@@ -2192,7 +2238,7 @@ export default function AdminArticulos(
           p_nombre:      nombre.trim(),
           p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
           p_descripcion: descripcion.trim() || null,
-          p_imagen:      imagenes[0] ?? null,
+          p_imagen:      enBiblioteca[0] ?? null,
         });
         if (error) throw error;
         notify("Guardado en la Biblioteca");
@@ -2231,8 +2277,8 @@ export default function AdminArticulos(
              comia estos dos sin decir nada -ni siquiera se podia agregar una
              foto a un articulo ya creado-. */
           p_marca:       marca.trim(),
-          p_images:      imagenes,
-          p_videos:      videoUrls,
+          p_images:      enBiblioteca,
+          p_videos:      videosGuardados,
         });
         if (eUp) throw eUp;
 
@@ -2254,7 +2300,7 @@ export default function AdminArticulos(
             p_marca:       marca.trim(),
             p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
             p_descripcion: descripcion.trim() || null,
-            p_fotos:       imagenes,
+            p_fotos:       enBiblioteca,
           });
           // Que falle no invalida el guardado: el articulo ya se actualizo. Se
           // avisa, no se pierde en la consola.
@@ -2287,8 +2333,8 @@ export default function AdminArticulos(
         p_status:      publicarComo === "draft" ? "draft"
                        : disponibilidad === "agotado" ? "archived" : "active",
         p_attributes:  atributos,
-        p_images:      imagenes,
-        p_videos:      videoUrls,
+        p_images:      enBiblioteca,
+        p_videos:      videosGuardados,
         /* Tambien en la publicacion, no solo en la ficha: `marca` es una
            columna de `catalog_producto_base` y quedaba siempre en null. */
         p_marca:       marca.trim(),
@@ -2314,7 +2360,7 @@ export default function AdminArticulos(
         p_nombre:      nombre.trim(),
         p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
         p_descripcion: descripcion.trim() || null,
-        p_imagen:      imagenes[0] ?? null,
+        p_imagen:      enBiblioteca[0] ?? null,
       });
       if (eB) console.warn("[biblioteca]", eB.message);
 
