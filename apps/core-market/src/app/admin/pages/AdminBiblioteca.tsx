@@ -128,8 +128,14 @@ interface UploadItem {
 type AbrirArticulo = (clave: string, tipo?: "market" | "secondhand") => void;
 type CargarArchivo = (accept: string, cat: "articulo" | "documento" | "otro") => void;
 
-const ACCIONES_DE_SECCION: Record<string,
-  (abrir: AbrirArticulo, cargar: CargarArchivo) => ItemDeBarra[]> = {
+/* `Partial` a proposito, y no `Record` a secas.
+ *
+ * Con `Record<string, F>` TypeScript tipa el indice como F -nunca undefined-,
+ * asi que un `?? []` de respaldo le parece rama muerta y no lo revisa. En
+ * ejecucion "todo" no tiene entrada, caia al respaldo, y se llamaba a un
+ * arreglo. Con `Partial` el compilador exige contemplar la que falta. */
+const ACCIONES_DE_SECCION: Partial<Record<string,
+  (abrir: AbrirArticulo, cargar: CargarArchivo) => ItemDeBarra[]>> = {
 
   articulos: abrir => [
     { label: "Market +", destacado: true, color: "var(--brand-navy)",
@@ -651,7 +657,7 @@ export default function AdminBiblioteca({
            archivo entre todos los demás. */
         opciones: TIPOS_DE_BIBLIOTECA.map(t => ({
           valor: t.id, label: t.label,
-          acciones: (ACCIONES_DE_SECCION[t.id] ?? [])(abrirArticulo, cargarArchivo),
+          acciones: ACCIONES_DE_SECCION[t.id]?.(abrirArticulo, cargarArchivo),
         })),
         onCambio: v => { setTipo(v as TipoDeBiblioteca); setTab("biblioteca"); },
       }}
