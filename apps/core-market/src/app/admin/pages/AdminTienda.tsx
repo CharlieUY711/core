@@ -133,8 +133,13 @@ export default function AdminTienda() {
     }, "Guardado");
   };
 
+  /* La salida, una sola vez: esta pantalla tiene cuatro returns -cargando, sin
+     permiso, no encontrada y la tienda- y en todos se sale al mismo lugar.
+     Escrita en cada uno, el dia que cambie el destino cambian tres. */
+  const VOLVER_A_TIENDAS = { a: "Tiendas", onVolver: () => navegar("/admin/tiendas") };
+
   const acciones: ItemDeBarra[] = [
-    { label: "Volver a Tiendas", onClick: () => navegar("/admin/tiendas") },
+
     ...(tienda ? [
       { label: tienda.activa ? "Desactivar" : "Reactivar",
         color: tienda.activa ? "#EF4444" : "var(--brand-navy)",
@@ -153,7 +158,7 @@ export default function AdminTienda() {
   /* ── Nueva ─────────────────────────────────────────────────────────── */
   if (esNueva) {
     return (
-      <Pantalla p={p} extra={acciones}
+      <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}
         explicacion="Nombre y territorio. Lo demás se configura una vez creada.">
         <Bloque titulo="Nueva tienda"
           nota="Se piden dos cosas: el resto se configura acá mismo apenas exista.">
@@ -207,7 +212,7 @@ export default function AdminTienda() {
 
   /* ── Una que existe ────────────────────────────────────────────────── */
   if (cargando) {
-    return <Pantalla p={p} extra={acciones}>
+    return <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}>
       <div style={{ padding: "3rem", textAlign: "center", color: "var(--gray-400)" }}>
         Cargando…
       </div>
@@ -215,14 +220,14 @@ export default function AdminTienda() {
   }
 
   if (!tienda) {
-    return <Pantalla p={p} extra={acciones}
+    return <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}
       error="No existe esa tienda, o no tenés acceso a ella." >
       <div />
     </Pantalla>;
   }
 
   return (
-    <Pantalla p={p} extra={acciones}
+    <Pantalla p={p} extra={acciones} volver={VOLVER_A_TIENDAS}
       explicacion={`${tienda.codigo} · ${territorios.find(t => t.iso === tienda.pais)?.nombre ?? tienda.pais ?? "sin territorio"}`}
       notificaciones={[
         ...(!tienda.owner_email ? [{ tono: "atencion" as const,

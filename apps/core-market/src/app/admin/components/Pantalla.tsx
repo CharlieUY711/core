@@ -158,6 +158,25 @@ export interface Rango {
   onHasta: (v: string) => void;
 }
 
+/**
+ * Cómo se sale de donde uno está.
+ *
+ * TODA VISTA TIENE QUE PODER VOLVER
+ * Se abre un formulario, se despliega una fila, se entra a Importar — y en
+ * varias de esas no había forma de deshacerlo: la única salida era el menú
+ * lateral, que no vuelve al paso anterior sino que se va a otra cosa y pierde
+ * lo que había puesto.
+ *
+ * Va PRIMERO en la barra y siempre en el mismo lugar. Sólo aparece cuando hay
+ * de dónde volver: un botón "Volver" permanente en una pantalla que ya está en
+ * su estado inicial no dice a dónde iría.
+ */
+export interface Volver {
+  /** Qué se deshace. Se muestra: "← Volver a la lista". */
+  a: string;
+  onVolver: () => void;
+}
+
 export interface Secciones {
   valor: string;
   opciones: {
@@ -178,10 +197,12 @@ export interface Secciones {
 }
 
 export function Pantalla({
-  p, secciones, menu = [], extra = [], vista, columnas, buscador, rango, error,
+  p, volver, secciones, menu = [], extra = [], vista, columnas, buscador, rango, error,
   explicacion, notificaciones = [], aviso: avisoFijo, children,
 }: {
   p: EstadoDePantalla;
+  /** Cómo se sale de donde uno está. Va primero en la barra. */
+  volver?: Volver;
   /** De qué se trata la vista. Va a la barra de arriba, no acá. */
   explicacion?: string;
   /** Lo que hay que mirar. Se cuenta en la campanita de la barra. */
@@ -240,6 +261,13 @@ export function Pantalla({
       )}
 
       <BarraDeAcciones acciones={[
+        /* Volver, primero y separado: es la salida, y la salida se busca en el
+           mismo lugar en todas las pantallas. */
+        ...(volver ? [
+          { label: `← Volver a ${volver.a}`, color: "var(--mute)",
+            onClick: volver.onVolver },
+          "separador" as const,
+        ] : []),
         ...(secciones ? secciones.opciones.map(o => ({
           label: o.label,
           color: ACCENT,

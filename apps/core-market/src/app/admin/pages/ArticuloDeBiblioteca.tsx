@@ -64,7 +64,9 @@ export default function ArticuloDeBiblioteca() {
         ? "El artículo: lo que la tienda sabe del producto. Dónde se ofrece se decide en Publicaciones."
         : "Un artículo nuevo. Al guardarlo queda en la Biblioteca; dónde se ofrece se decide en Publicaciones."}
       error={error}
-      extra={[{ label: "← Volver a Biblioteca", onClick: volver }]}>
+      /* La salida va en su lugar fijo, no entre las acciones: volver no es algo
+         que la vista haga, es cómo se sale de ella. */
+      volver={{ a: "Biblioteca", onVolver: volver }}>
 
       {cargando ? (
         <div style={AVISO}>Cargando el artículo…</div>

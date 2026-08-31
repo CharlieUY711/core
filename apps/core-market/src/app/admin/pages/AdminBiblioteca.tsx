@@ -249,6 +249,17 @@ export default function AdminBiblioteca({
     setArticuloAbierto(null); setResumen(null); setAcciones(null);
   };
 
+  /**
+   * Volver a la lista, sea de donde sea.
+   *
+   * Un artículo abierto, la pantalla de carga, Importar, Exportar: todo eso se
+   * entra desde la barra y hasta ahora no se salía por la barra. La única
+   * salida era el menú lateral, que no vuelve al paso anterior sino que se va a
+   * otra cosa —y con un artículo a medio escribir, eso lo pierde—.
+   */
+  const enLaLista = tab === "biblioteca" && !articuloAbierto;
+  const volverALaLista = () => { cerrarArticulo(); setTab("biblioteca"); };
+
   /*
    * Abrir un artículo obliga a la vista Lista: el formulario sale DEBAJO de su
    * fila, y en una grilla de íconos no hay fila que desplegar. Sin esto, abrir
@@ -636,6 +647,10 @@ export default function AdminBiblioteca({
        error y el ancho los define `Pantalla`. Acá estaban escritos a mano —y
        en Tiendas, y en el Vault—, así que las tres podían divergir. */
     <Pantalla p={p}
+      /* Sólo cuando hay de dónde volver: en la lista, un "Volver" permanente no
+         diría a dónde iría. */
+      volver={enLaLista ? undefined : { a: "la lista", onVolver: volverALaLista }}
+
       /* Los tipos se declaran UNA vez: `Pantalla` los dibuja como botones del
          menú y como selector adentro del buscador. No son dos controles, es el
          mismo en dos lugares.
@@ -659,7 +674,11 @@ export default function AdminBiblioteca({
           valor: t.id, label: t.label,
           acciones: ACCIONES_DE_SECCION[t.id]?.(abrirArticulo, cargarArchivo),
         })),
-        onCambio: v => { setTipo(v as TipoDeBiblioteca); setTab("biblioteca"); },
+        /* Apretar una sección devuelve a SU LISTA, tambien si ya estaba
+           elegida: es la forma de deshacer lo que se desplegó. Antes, con el
+           formulario abierto, apretar "Artículos" no hacía nada visible y no
+           quedaba manera de cerrarlo. */
+        onCambio: v => { setTipo(v as TipoDeBiblioteca); volverALaLista(); },
       }}
 
       /* Lo que hace la Biblioteca y no son las cuatro acciones de la tabla.
