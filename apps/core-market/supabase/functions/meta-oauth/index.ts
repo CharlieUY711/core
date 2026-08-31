@@ -173,7 +173,7 @@ async function datosDeLaApp(supabase: any) {
   const { data } = await supabase.from(TABLE)
     .select('name, value')
     .eq('platform', 'Meta').eq('solo_servidor', true)
-    .in('name', ['META_APP_ID', 'META_APP_SECRET'])
+    .in('name', ['META_APP_ID', 'META_APP_SECRET', 'META_LOGIN_CONFIG_ID'])
 
   const v = Object.fromEntries(
     (data ?? []).map((r: { name: string; value: string }) => [r.name, r.value]))
@@ -187,7 +187,16 @@ async function datosDeLaApp(supabase: any) {
       : !v.META_APP_ID ? 'el identificador' : 'la clave secreta'
     throw new Error(`Falta ${cuales} de la app de Meta.`)
   }
-  return revisar(v.META_APP_ID, v.META_APP_SECRET)
+  /*
+   * La configuración de Facebook Login for Business, si existe.
+   *
+   * Es opcional a propósito: sin ella se usa el flujo clásico con `scope`, que
+   * es lo que funciona en una app recién creada. Cuando se arma la
+   * configuración en Meta, se carga el id acá y el mismo código pasa a usarla
+   * sin tocar una línea.
+   */
+  return { ...revisar(v.META_APP_ID, v.META_APP_SECRET),
+           configId: v.META_LOGIN_CONFIG_ID ?? null }
 }
 
 function revisar(appId: string, appSecret: string) {
@@ -220,6 +229,40 @@ async function graph(path: string, token: string, params: Record<string, string>
 /** Igual que `graph`, pero sin tirar: para lo que puede no estar y no importa. */
 async function graphOpcional(path: string, token: string, params: Record<string, string> = {}) {
   try { return await graph(path, token, params) } catch { return null }
+}
+
+/**
+ * Las credenciales que salen de una página: la página y su Instagram.
+ *
+ * Existe como función porque se usa en dos momentos —al conectar, si hay una
+ * sola página, y al elegir, si hay varias— y son exactamente las mismas
+ * credenciales. Escrito dos veces, el día que cambie una se cambia una sola.
+ */
+function credencialesDe(pagina: {
+  id: string; access_token: string
+  instagram_business_account?: { id?: string; username?: string }
+}): { escritas: Entrada[]; resueltas: string[] } {
+  const escritas: Entrada[] = [
+    { platform: 'Facebook', name: 'FACEBOOK_PAGE_ID',           value: pagina.id },
+    { platform: 'Facebook', name: 'FACEBOOK_PAGE_ACCESS_TOKEN', value: pagina.access_token },
+  ]
+  const resueltas = ['Facebook']
+
+  /* Instagram cuelga de la PÁGINA, no del usuario. Si la cuenta no es Business,
+     o no está vinculada a esta página, esto viene vacío: no es un error, es que
+     falta hacerlo del lado de Instagram. */
+  const ig = pagina.instagram_business_account
+  if (ig?.id) {
+    escritas.push(
+      { platform: 'Instagram', name: 'INSTAGRAM_BUSINESS_ID', value: ig.id },
+      /* El token de la página, a propósito: la cuenta Business se consulta por
+         el Graph de Facebook con el token de la página que la tiene vinculada. */
+      { platform: 'Instagram', name: 'INSTAGRAM_ACCESS_TOKEN', value: pagina.access_token },
+      { platform: 'Instagram', name: 'INSTAGRAM_IG_USER_ID',   value: ig.id },
+    )
+    resueltas.push('Instagram')
+  }
+  return { escritas, resueltas }
 }
 
 interface Entrada {
@@ -356,8 +399,11 @@ Deno.serve(async (req: Request) => {
            mal, el error es nuestro y con nombre; si no, la única señal sería la
            pantalla genérica de Facebook, ya fuera del panel. */
         let appId: string
+        let configId: string | null = null
         try {
-          appId = (await datosDeLaApp(supabase)).appId
+          const d = await datosDeLaApp(supabase)
+          appId = d.appId
+          configId = d.configId
         } catch (e) {
           return fallar(e instanceof Error ? e.message : String(e))
         }
@@ -381,8 +427,30 @@ Deno.serve(async (req: Request) => {
         auth.searchParams.set('client_id',     appId)
         auth.searchParams.set('redirect_uri',  redirectUri)
         auth.searchParams.set('state',         state)
-        auth.searchParams.set('scope',         permisosDe(url.searchParams.get('que') ?? 'meta'))
         auth.searchParams.set('response_type', 'code')
+
+        /*
+         * DOS FLUJOS, Y LO DECIDE UN DATO.
+         *
+         * Facebook Login for Business no lleva `scope`: los permisos viven
+         * adentro de una CONFIGURACIÓN que se arma en Meta y se referencia por
+         * id. Mandarle `scope` a una app que espera `config_id` es lo que hace
+         * que conteste que falta acceso avanzado.
+         *
+         * Si hay configuración cargada se usa; si no, el flujo clásico. Así el
+         * mismo código sirve antes y después de crearla.
+         *
+         * Con `config_id` se pierde poder pedir sólo Instagram o sólo WhatsApp
+         * —los permisos son los de la configuración, no los de la URL—, y por
+         * eso los cuatro botones siguen teniendo sentido sólo en el flujo
+         * clásico. Es una consecuencia de cómo funciona Meta, no una decisión
+         * nuestra, y conviene saberla antes de crear la configuración.
+         */
+        if (configId) {
+          auth.searchParams.set('config_id', configId)
+        } else {
+          auth.searchParams.set('scope', permisosDe(url.searchParams.get('que') ?? 'meta'))
+        }
         return Response.redirect(auth.toString(), 302)
       }
 
@@ -462,32 +530,25 @@ Deno.serve(async (req: Request) => {
         const paginas = await graphOpcional('me/accounts', tokenLargo, {
           fields: 'id,name,access_token,instagram_business_account{id,username}',
         })
-        const pagina = paginas?.data?.[0] ?? null
+        const cuantas = paginas?.data?.length ?? 0
 
-        if (pagina) {
-          escritas.push(
-            { platform: 'Facebook', name: 'FACEBOOK_PAGE_ID',           value: pagina.id },
-            { platform: 'Facebook', name: 'FACEBOOK_PAGE_ACCESS_TOKEN', value: pagina.access_token },
-          )
-          resueltas.push('Facebook')
-
-          /* 4 — Instagram cuelga de la página, no del usuario. Si la cuenta no
-             es Business, o no está vinculada a la página, esto viene vacío: no
-             es un error, es que falta hacerlo del lado de Instagram. */
-          const ig = pagina.instagram_business_account
-          if (ig?.id) {
-            escritas.push(
-              { platform: 'Instagram', name: 'INSTAGRAM_BUSINESS_ID', value: ig.id },
-              /* El token de la página, a propósito: la cuenta Business se
-                 consulta por el Graph de Facebook con el token de la página
-                 que la tiene vinculada. */
-              { platform: 'Instagram', name: 'INSTAGRAM_ACCESS_TOKEN', value: pagina.access_token },
-            )
-            if (ig.username) {
-              escritas.push({ platform: 'Instagram', name: 'INSTAGRAM_IG_USER_ID', value: ig.id })
-            }
-            resueltas.push('Instagram')
-          }
+        /*
+         * CON VARIAS PÁGINAS NO ELEGIMOS NOSOTROS.
+         *
+         * Antes se tomaba la primera. Alguien que administra dos quedaba
+         * conectado a una al azar y no se enteraba: publicaba en la que no
+         * quería, y no había nada en la pantalla que lo explicara.
+         *
+         * Con UNA sola sí se conecta directo: elegir entre una opción no es
+         * elegir, es un paso de más.
+         */
+        let elegir = false
+        if (cuantas === 1) {
+          const r = credencialesDe(paginas.data[0])
+          escritas.push(...r.escritas)
+          resueltas.push(...r.resueltas)
+        } else if (cuantas > 1) {
+          elegir = true
         }
 
         /* 5 — WhatsApp cuelga del negocio, que es otra rama. Se recorre porque
@@ -528,6 +589,10 @@ Deno.serve(async (req: Request) => {
         return volverAlOrigen({
           meta_connected: resueltas.join(',') || 'ninguna',
           meta_entradas:  String(escritas.length),
+          /* Que hay que elegir se dice acá y no se descubre después: si la
+             pantalla tuviera que deducirlo, habría un momento en que dice
+             "conectado" y todavía no publica en ningún lado. */
+          ...(elegir ? { meta_elegir_pagina: String(cuantas) } : {}),
         })
       }
 
@@ -638,6 +703,27 @@ Deno.serve(async (req: Request) => {
          * Tampoco se leen por API, así que van en gris. Decirlas en verde sería
          * afirmar algo que no comprobamos; en rojo, acusar sin saber.
          */
+        /* Cuál de los dos flujos se está usando. Sin decirlo, "falta acceso
+           avanzado" y "falta la configuración" se ven exactamente igual desde
+           afuera: la ventana de Facebook no abre y no se sabe por cuál de las
+           dos. */
+        {
+          const { data: cfg } = await supabase.from(TABLE)
+            .select('value').eq('platform', 'Meta').eq('solo_servidor', true)
+            .eq('name', 'META_LOGIN_CONFIG_ID').maybeSingle()
+
+          puntos.push({
+            id: 'flujo', de: 'plataforma',
+            titulo: cfg?.value
+              ? 'Se conecta con una configuración de Login for Business'
+              : 'Se conecta con el flujo clásico de Facebook Login',
+            estado: 'ok',
+            detalle: cfg?.value
+              ? 'Los permisos salen de esa configuración, no de cada botón.'
+              : 'Los permisos van en cada pedido. Si Meta pide una configuración, se carga META_LOGIN_CONFIG_ID en el Vault.',
+          })
+        }
+
         puntos.push({
           id: 'avanzado', de: 'plataforma',
           titulo: 'Los permisos tienen acceso avanzado',
@@ -726,6 +812,87 @@ Deno.serve(async (req: Request) => {
        * Se dice también de DÓNDE sale. Con dos fuentes posibles, saber cuál
        * ganó es la mitad del problema.
        * ─────────────────────────────────────────────────────────────────── */
+      /* ───────────────────────────────────────────────────────────────────
+       * paginas — cuáles administra, y cuál está conectada
+       * ─────────────────────────────────────────────────────────────────── */
+      case 'paginas': {
+        const cuerpo = await req.json().catch(() => ({}))
+        const token = cuerpo.token ?? url.searchParams.get('token')
+        if (!token) return json({ error: 'Falta el token de sesión.' }, 401)
+        const { data: quien, error: authError } = await supabase.auth.getUser(token)
+        if (authError || !quien?.user) return json({ error: 'La sesión no es válida.' }, 401)
+
+        const { data: guardado } = await supabase.from(TABLE)
+          .select('value').eq('user_id', quien.user.id)
+          .eq('platform', 'Meta').eq('name', 'META_LONG_LIVED_TOKEN')
+          .maybeSingle()
+
+        if (!guardado?.value) {
+          return json({ ok: true, paginas: [], conectada: null, sinConectar: true })
+        }
+
+        const { data: actual } = await supabase.from(TABLE)
+          .select('value').eq('user_id', quien.user.id)
+          .eq('platform', 'Facebook').eq('name', 'FACEBOOK_PAGE_ID')
+          .maybeSingle()
+
+        const paginas = await graphOpcional('me/accounts', guardado.value as string, {
+          fields: 'id,name,instagram_business_account{id,username}',
+        })
+
+        return json({
+          ok: true,
+          conectada: actual?.value ?? null,
+          /* Sin el token de cada página: no hace falta para elegir, y una
+             pantalla que no lo necesita no tiene por qué recibirlo. */
+          paginas: (paginas?.data ?? []).map((p: {
+            id: string; name: string
+            instagram_business_account?: { username?: string }
+          }) => ({
+            id: p.id, nombre: p.name,
+            instagram: p.instagram_business_account?.username ?? null,
+          })),
+        })
+      }
+
+      /* ───────────────────────────────────────────────────────────────────
+       * elegir_pagina — conectar la que la persona eligió
+       * ─────────────────────────────────────────────────────────────────── */
+      case 'elegir_pagina': {
+        const cuerpo = await req.json().catch(() => ({}))
+        const token = cuerpo.token
+        const pageId = cuerpo.page_id
+        if (!token || !pageId) return json({ error: 'Falta el token o la página.' }, 400)
+
+        const { data: quien, error: authError } = await supabase.auth.getUser(token)
+        if (authError || !quien?.user) return json({ error: 'La sesión no es válida.' }, 401)
+
+        const { data: guardado } = await supabase.from(TABLE)
+          .select('value').eq('user_id', quien.user.id)
+          .eq('platform', 'Meta').eq('name', 'META_LONG_LIVED_TOKEN')
+          .maybeSingle()
+        if (!guardado?.value) {
+          return json({ error: 'No hay una conexión con Meta. Conectá primero.' }, 400)
+        }
+
+        /* Se vuelven a pedir las páginas en vez de confiar en lo que manda la
+           pantalla: así el token de la página sale de Meta y no del navegador,
+           y de paso se comprueba que esa persona administre ESA página. */
+        const paginas = await graphOpcional('me/accounts', guardado.value as string, {
+          fields: 'id,name,access_token,instagram_business_account{id,username}',
+        })
+        const pagina = (paginas?.data ?? []).find((p: { id: string }) => p.id === pageId)
+        if (!pagina) {
+          return json({ error: 'Esa página no está entre las que administrás.' }, 403)
+        }
+
+        const r = credencialesDe(pagina)
+        for (const e of r.escritas) {
+          await guardar(supabase, quien.user.id, null, e)
+        }
+        return json({ ok: true, pagina: pagina.name, resueltas: r.resueltas })
+      }
+
       case 'url': {
         return json({
           ok: true,
@@ -735,7 +902,7 @@ Deno.serve(async (req: Request) => {
       }
 
       default:
-        return json({ error: `Acción desconocida: "${action}". Son connect, callback, disconnect, diagnostico y url.` }, 400)
+        return json({ error: `Acción desconocida: "${action}". Son connect, callback, disconnect, diagnostico, paginas, elegir_pagina y url.` }, 400)
     }
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : String(err)

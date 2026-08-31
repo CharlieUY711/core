@@ -86,6 +86,18 @@ export const REQUERIDAS: CredencialRequerida[] = [
     para: "Prueba que la conexión viene de nosotros. No sale nunca al navegador.",
   },
 
+  {
+    /* Opcional. Sin ella se usa el flujo clásico con `scope`, que es lo que
+       funciona en una app recién creada. Con ella, Facebook Login for Business:
+       los permisos salen de la configuración y no de cada pedido. */
+    name: "META_LOGIN_CONFIG_ID", seBusca: "nombre", platform: "Meta",
+    tipo: "api_key", soloServidor: true,
+    etiqueta: "Configuración de Login for Business (opcional)",
+    para: "Sólo si Meta pide una configuración. Los permisos salen de ella, no de cada botón.",
+    revisar: v => /^\d+$/.test(v.trim()) ? null
+      : "El identificador de una configuración son sólo números.",
+  },
+
   /* ── Meta: lo que escribe el botón ─────────────────────────────────── */
   { name: "META_LONG_LIVED_TOKEN", seBusca: "nombre", platform: "Meta", tipo: "oauth", porBoton: true,
     etiqueta: "Token de acceso", para: "Lo escribe Conectar. Dura sesenta días." },
