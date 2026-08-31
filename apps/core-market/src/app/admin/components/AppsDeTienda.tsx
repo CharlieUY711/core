@@ -35,7 +35,15 @@ interface AppDeTienda {
   obligatoria: boolean;
 }
 
-const TIPO = { herramienta: "Herramienta", app: "App" } as Record<string, string>;
+/* Los cuatro. Una CAPACIDAD no es una herramienta: no es un servicio, es
+   permiso para gastar el que ya existe — y esa diferencia es la que importa
+   cuando se factura. */
+const TIPO: Record<string, string> = {
+  funcionalidad: "Funcionalidad",
+  capacidad:     "Capacidad",
+  herramienta:   "Herramienta",
+  app:           "App",
+};
 
 export function AppsDeTienda({ storeId, avisar }: {
   storeId: string;
@@ -65,7 +73,7 @@ export function AppsDeTienda({ storeId, avisar }: {
   };
 
   const columnas: Columna[] = [
-    { id: "nombre", label: "Herramienta o app", ancho: 150 },
+    { id: "nombre", label: "Qué", ancho: 170 },
     { id: "para",   label: "Para qué" },
     { id: "tipo",   label: "Tipo", ancho: 90 },
     { id: "necesaria", label: "", ancho: 100,
@@ -115,10 +123,12 @@ export function AppsDeTienda({ storeId, avisar }: {
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       <Tabla {...nivel} />
       <div style={{ fontSize: "0.74rem", color: "var(--gray-400)", lineHeight: 1.5 }}>
-        Las <b>funcionalidades</b> —Biblioteca, Pedidos, Perfil, API Vault, CORE
-        Editor— no están acá: son parte del producto y las tiene toda tienda.
-        {" "}Las marcadas <b>SIEMPRE</b> tampoco se apagan: sin cotización, por
-        ejemplo, un precio en otra moneda no se puede convertir.
+        <b>Funcionalidad</b>: una pantalla del producto, la tiene toda tienda.
+        {" "}<b>Capacidad</b>: lo que consume servicios que se cobran distinto.
+        {" "}<b>Herramienta</b>: un servicio que trabaja adentro de otra pantalla.
+        {" "}<b>App</b>: un sistema de terceros con tu cuenta del otro lado.
+        {" "}Lo marcado <b>SIEMPRE</b> no se apaga: sin cotización, por ejemplo,
+        un precio en otra moneda no se puede convertir.
       </div>
     </div>
   );

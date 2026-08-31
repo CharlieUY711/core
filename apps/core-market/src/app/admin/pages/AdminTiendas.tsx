@@ -300,11 +300,10 @@ function ConfigurarTienda({ s, rpc, avisar }: {
         <MiembrosDeTienda storeId={s.id} avisar={avisar} />
       </Bloque>
 
-      {/* Qué puede conectar y qué consume. NO es lo mismo que Capacidades, que
-          es qué se le cobra distinto: se parecen lo suficiente como para
-          confundirlas y por eso están separadas y dichas con otras palabras. */}
-      <Bloque titulo="Herramientas y apps"
-        nota="Qué puede conectar esta tienda. Las funcionalidades no están acá: son parte del producto.">
+      {/* TODO lo que la tienda tiene habilitado, en una lista: funcionalidades,
+          capacidades, herramientas y apps. */}
+      <Bloque titulo="Qué tiene habilitado"
+        nota="Todo junto: las pantallas del producto, lo que consume servicios que se cobran, y lo que se conecta.">
         <AppsDeTienda storeId={s.id} avisar={avisar} />
       </Bloque>
 
@@ -340,28 +339,10 @@ function ConfigurarTienda({ s, rpc, avisar }: {
         }))} />
       </Bloque>
 
-      <Bloque titulo="Capacidades"
-        nota="Lo que consume búsquedas y servicios externos. Se cobra distinto.">
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 620 }}>
-          {CAPACIDADES.map(c => {
-            const puesta = s.capacidades?.includes(c.id);
-            return (
-              <label key={c.id} style={{ display: "flex", gap: 9, alignItems: "flex-start",
-                cursor: "pointer", padding: "0.4rem 0.5rem", borderRadius: 8,
-                border: `1.5px solid ${puesta ? ACCENT : "var(--border)"}`,
-                background: puesta
-                  ? "color-mix(in srgb, var(--brand-madre) 6%, transparent)" : "#fff" }}>
-                <input type="checkbox" checked={!!puesta} style={{ accentColor: ACCENT, marginTop: 2 }}
-                  onChange={() => alternar("capacidades", c.id)} />
-                <span>
-                  <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#374151" }}>{c.label}</span>
-                  <span style={{ display: "block", fontSize: "0.74rem", color: "var(--mute)" }}>{c.detalle}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </Bloque>
+      {/* El bloque de "Capacidades" estaba acá, aparte, con sus dos casillas.
+          Se fue: las capacidades ahora son filas de la tabla de arriba, con
+          todo lo demás. Dos lugares que respondían «qué tiene habilitado esta
+          tienda» obligaban a mirar en dos lados y a saber de antemano cuál. */}
     </div>
   );
 }
