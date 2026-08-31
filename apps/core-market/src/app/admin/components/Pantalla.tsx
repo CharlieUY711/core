@@ -160,7 +160,20 @@ export interface Rango {
 
 export interface Secciones {
   valor: string;
-  opciones: { valor: string; label: string }[];
+  opciones: {
+    valor: string; label: string;
+    /**
+     * Lo que se puede agregar en ESTA sección, pegado a ella.
+     *
+     * La sección dice qué se está mirando; estos botones dicen qué se puede
+     * sumar de eso. Van juntos porque son la misma idea leída en dos pasos, y
+     * separados obligarían a mirar dos lugares para entender uno.
+     *
+     * Sólo se dibujan los de la sección activa: los de las otras hablarían de
+     * algo que no se está mirando.
+     */
+    acciones?: ItemDeBarra[];
+  }[];
   onCambio: (v: string) => void;
 }
 
@@ -233,6 +246,13 @@ export function Pantalla({
           activa: secciones.valor === o.valor,
           onClick: () => secciones.onCambio(o.valor),
         })) : []),
+        /* Y lo que esa sección deja agregar, a continuación y separado: se lee
+           "estoy en Artículos, y acá agrego artículos". */
+        ...(() => {
+          const propias = secciones?.opciones
+            .find(o => o.valor === secciones.valor)?.acciones ?? [];
+          return propias.length ? ["separador" as const, ...propias] : [];
+        })(),
         ...menu,
       ]} derecha={<>
         {/* La campanita PRIMERA, contra el resto: así los cuatro botones nunca

@@ -81,6 +81,16 @@ export interface Publicacion {
    * edicion habian quedado en Publicaciones, que es al reves de lo acordado.
    */
   ficha_id: string | null;
+  /**
+   * Marca y medios del producto.
+   *
+   * Estaban en la base y ninguna consulta los devolvia: las fotos se guardaban
+   * bien y al reabrir el articulo el formulario las mostraba vacias, que invita
+   * a cargarlas de nuevo encima de las que ya estaban.
+   */
+  marca: string | null;
+  fotos_base: string[] | null;
+  video: string[] | null;
 }
 
 /**

@@ -30,14 +30,26 @@ const AVISO: React.CSSProperties = {
 export interface ResumenDeArticulo {
   nombre: string; precio: number; moneda: string; stock: number;
   imagen: string | null; estado: string; canales: string[]; tipo: string;
+  /** Lo que la Biblioteca muestra en "Detalle": marca · familia. */
+  marca: string; familia: string | null;
 }
 
-export function ArticuloEnLinea({ fichaId, tipo, onResumen, onCerrar, onGuardado }: {
+export interface AccionesDelArticulo {
+  grabar: () => void;
+  /** Qué falta para poder grabar. Vacío si no falta nada. */
+  falta: string;
+  guardando: boolean;
+  etiqueta: string;
+}
+
+export function ArticuloEnLinea({ fichaId, tipo, onResumen, onAcciones, onCerrar, onGuardado }: {
   /** La ficha que se está editando, o `undefined` para un alta. */
   fichaId?: string;
   tipo?: "market" | "secondhand";
   /** Lo que se lleva cargado, para que la fila de arriba se vaya completando. */
   onResumen?: (r: ResumenDeArticulo) => void;
+  /** Lo que se puede hacer, para que el botón viva en la barra de la pantalla. */
+  onAcciones?: (a: AccionesDelArticulo) => void;
   onCerrar: () => void;
   onGuardado: () => void;
 }) {
@@ -59,6 +71,7 @@ export function ArticuloEnLinea({ fichaId, tipo, onResumen, onCerrar, onGuardado
         articulo={articulo}
         tipoInicial={tipo ?? "market"}
         onResumen={onResumen}
+        onAcciones={onAcciones}
         onCancel={onCerrar}
         onFinish={onGuardado}
       />

@@ -663,7 +663,7 @@ function LineaCondicion({ opciones, valor, onChange, subValor, onSubValor }: {
 }
 
 export default function AdminArticulos(
-  { onFinish, onCancel, tipoInicial, onResumen, articulo, modo = "articulo" }:
+  { onFinish, onCancel, tipoInicial, onResumen, onAcciones, articulo, modo = "articulo" }:
   {
     onFinish?: () => void;
     onCancel?: () => void;
@@ -694,9 +694,31 @@ export default function AdminArticulos(
      *   "ficha"    — sólo lo que el producto ES, para la Biblioteca.
      */
     modo?: "articulo" | "ficha";
+    /**
+     * Lo que se puede hacer con este formulario, para que lo dibuje la barra de
+     * la pantalla y no el formulario.
+     *
+     * Los botones del panel viven en la barra de arriba, siempre en el mismo
+     * lugar. Este formulario tenia el suyo abajo del todo, que es donde nadie
+     * lo busca —y en la fila desplegada de la Biblioteca queda a varias
+     * pantallas de scroll del titulo—.
+     *
+     * Con esto declarado, el formulario deja de dibujar su propio pie: dos
+     * botones que guardan lo mismo son dos, y uno de los dos sobra.
+     */
+    onAcciones?: (a: {
+      grabar: () => void;
+      /** Qué falta para poder grabar. Vacío si no falta nada. */
+      falta: string;
+      guardando: boolean;
+      /** "Publicar artículo", "Guardar cambios", "Guardar borrador". */
+      etiqueta: string;
+    }) => void;
     onResumen?: (r: {
       nombre: string; precio: number; moneda: string; stock: number;
       imagen: string | null; estado: string; canales: string[]; tipo: string;
+      /** Lo que la Biblioteca muestra en "Detalle": marca · familia. */
+      marca: string; familia: string | null;
     }) => void;
   } = {}
 ) {
@@ -1047,6 +1069,9 @@ export default function AdminArticulos(
     sembrado.current = semilla;
 
     setNombre(articulo.nombre ?? "");
+    /* La marca faltaba: se cargaba, se guardaba, y al reabrir el campo estaba
+       vacio como si nunca se hubiera escrito. */
+    setMarca(articulo.marca ?? "");
     setDescripcion(articulo.descripcion ?? "");
     setPrecio(articulo.precio != null ? String(articulo.precio) : "");
     setPrecioOrig(articulo.precio_original != null ? String(articulo.precio_original) : "");
@@ -2117,8 +2142,29 @@ export default function AdminArticulos(
       estado: publicarComo === "draft" ? "draft"
             : disponibilidad === "agotado" ? "archived" : "active",
       canales, tipo,
+      /* Marca y familia: son la columna "Detalle" de la Biblioteca. Sin esto la
+         fila que se va completando no podia decir lo mismo que las de abajo, y
+         una fila que se lee distinto que sus vecinas se lee dos veces. */
+      marca,
+      familia: cats.find(c => c.id === catId)?.nombre
+            ?? deptos.find(d => d.id === deptoId)?.nombre ?? null,
     });
-  }, [nombre, precio, moneda, stock, imagenes, publicarComo, disponibilidad, canales, tipo]);
+  }, [nombre, precio, moneda, stock, imagenes, publicarComo, disponibilidad,
+      canales, tipo, marca, catId, deptoId, cats, deptos]);
+
+  /* Se avisa a quien monta el formulario, igual que el resumen: la barra de la
+     pantalla es la que dibuja el boton, y para eso tiene que saber si se puede
+     grabar y que falta si no. */
+  useEffect(() => {
+    onAcciones?.({
+      grabar: () => { void handlePublicar(); },
+      falta: faltaParaGuardar(),
+      guardando: loading,
+      etiqueta: loading ? "Guardando…"
+              : articulo?.id ? "Guardar cambios"
+              : publicarComo === "draft" ? "Guardar borrador" : "Publicar artículo",
+    });
+  });
 
   const faltaParaGuardar = (): string => {
     if (!nombre.trim())      return "Falta el nombre del artículo";
@@ -2181,8 +2227,39 @@ export default function AdminArticulos(
           p_status:      publicarComo === "draft" ? "draft"
                          : disponibilidad === "agotado" ? "archived" : "active",
           p_tipo:        tipo === "secondhand" ? "secondhand" : "market",
+          /* La marca y los medios FALTABAN. Editar guardaba todo lo demas y se
+             comia estos dos sin decir nada -ni siquiera se podia agregar una
+             foto a un articulo ya creado-. */
+          p_marca:       marca.trim(),
+          p_images:      imagenes,
+          p_videos:      videoUrls,
         });
         if (eUp) throw eUp;
+
+        /*
+         * Y la ficha de la Biblioteca, que es la FUENTE.
+         *
+         * El alta la guardaba; editar no la tocaba. Con eso, corregir la marca
+         * o el titulo de un articulo dejaba la Biblioteca diciendo lo viejo, y
+         * la Biblioteca es de donde sale todo lo demas.
+         *
+         * Se actualiza POR ID y no con `guardar_ficha_biblioteca`: esa hace
+         * upsert por (marca, nombre), asi que cambiar la marca habria creado
+         * una ficha nueva en vez de corregir la que estaba.
+         */
+        if (articulo.ficha_id) {
+          const { error: eF } = await supabase.rpc("actualizar_ficha_biblioteca", {
+            p_id:          articulo.ficha_id,
+            p_nombre:      nombre.trim(),
+            p_marca:       marca.trim(),
+            p_familia:     cats.find(c => c.id === catId)?.nombre ?? null,
+            p_descripcion: descripcion.trim() || null,
+            p_fotos:       imagenes,
+          });
+          // Que falle no invalida el guardado: el articulo ya se actualizo. Se
+          // avisa, no se pierde en la consola.
+          if (eF) notify(`El artículo se guardó, pero la Biblioteca no: ${eF.message}`, false);
+        }
         // La tasa va aparte: no es parte de dar de alta un articulo sino una
         // decision que se toma pocas veces, y meterla en una RPC que ya recibe
         // ocho parametros no la hacia mas clara.
@@ -2212,6 +2289,9 @@ export default function AdminArticulos(
         p_attributes:  atributos,
         p_images:      imagenes,
         p_videos:      videoUrls,
+        /* Tambien en la publicacion, no solo en la ficha: `marca` es una
+           columna de `catalog_producto_base` y quedaba siempre en null. */
+        p_marca:       marca.trim(),
       });
       if (error) throw error;
 
@@ -3606,7 +3686,11 @@ export default function AdminArticulos(
           )}
         </div>
 
-        <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
+        {/* Sin `onAcciones`, el formulario dibuja su propio pie: es el caso de
+            quien lo monta sin barra. Con `onAcciones`, el boton esta arriba y
+            repetirlo aca serian dos botones que hacen lo mismo. */}
+        <div style={{ display: onAcciones ? "none" : "flex",
+          gap:"0.75rem", alignItems:"center" }}>
           {/* Lo que falta se dice antes de apretar, no despues. */}
           {!puedeGuardar() && (
             <span style={{ fontSize:"0.8rem", color:"var(--gray-400)" }}>

@@ -58,6 +58,21 @@ describe("la fila desplegada", () => {
     expect(html).not.toContain("detalle de nueva");
   });
 
+  it("`abre` decide cuáles llevan flecha: la que no abre no la muestra", () => {
+    // La Biblioteca mezcla artículos con archivos, y sólo el artículo se edita.
+    const html = dibujar({ abre: (f: { clave: string }) => f.clave === "nueva" });
+    expect(html).toContain("▸");            // la fila que abre
+    expect(html.match(/▸/g)?.length).toBe(1); // y sólo esa
+  });
+
+  it("`abre` false tampoco despliega, aunque la pantalla la marque abierta", () => {
+    const html = dibujar({
+      abierta: "1", onAbierta: () => {},
+      abre: (f: { clave: string }) => f.clave === "nueva",
+    });
+    expect(html).not.toContain("detalle de 1");
+  });
+
   it("sin `detalle` no hay nada que abrir, aunque la pantalla lo pida", () => {
     const html = dibujar({ abierta: "nueva", onAbierta: () => {}, detalle: undefined });
     expect(html).not.toContain("detalle de");

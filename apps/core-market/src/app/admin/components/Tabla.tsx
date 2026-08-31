@@ -112,6 +112,16 @@ interface Nivel {
   /** Qué se ve al abrir la fila. Sin esto, la fila no se abre. */
   detalle?: (fila: Fila) => React.ReactNode;
   /**
+   * Cuáles de las filas abren, cuando no abren todas.
+   *
+   * Por defecto abren todas las de una tabla que declara `detalle`. Pero hay
+   * listas con cosas de distinta naturaleza —la Biblioteca tiene artículos y
+   * archivos, y sólo el artículo se edita— y ahí la flecha tiene que estar
+   * únicamente donde algo pasa: una flecha que no hace nada se aprieta igual, y
+   * lo que enseña es que la tabla no responde.
+   */
+  abre?: (fila: Fila) => boolean;
+  /**
    * Qué fila está abierta, cuando lo decide la pantalla y no la tabla.
    *
    * Por defecto lo decide la tabla: se aprieta la flecha y se abre. Pero hay
@@ -545,7 +555,11 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
               if (enEdicionAca && edicion!.clave === f.clave) return filaEnEdicion(f.clave);
 
               const elegida = mias.has(f.clave);
-              const abierto = abierta === f.clave;
+              /* `detalle` dice QUÉ se ve al abrir; `abre` dice CUÁLES abren.
+                 Sin lo segundo la flecha salía en todas las filas de una tabla
+                 que declara detalle, aunque esa fila no tuviera ninguno. */
+              const puedeAbrir = !!cfg.detalle && (cfg.abre?.(f) ?? true);
+              const abierto = puedeAbrir && abierta === f.clave;
               const apagada = cfg.inactiva?.(f) ?? false;
 
               /*
@@ -588,13 +602,13 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                       width: ANCHO_FLECHA, color: "var(--gray-400)",
                       fontSize: "0.7rem" }}
                       onClick={e => {
-                        if (!cfg.detalle) return;
+                        if (!puedeAbrir) return;
                         // Abrir no es elegir: son dos gestos distintos sobre la
                         // misma fila y confundirlos hace elegir sin querer.
                         e.stopPropagation();
                         setAbierta(a => a === f.clave ? null : f.clave);
                       }}>
-                      {cfg.detalle ? (abierto ? "▾" : "▸") : ""}
+                      {puedeAbrir ? (abierto ? "▾" : "▸") : ""}
                     </td>
 
                     {columnas.map(c => (
@@ -611,7 +625,7 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                     ))}
                   </tr>
 
-                  {abierto && cfg.detalle && (
+                  {abierto && (
                     <tr>
                       {/* Sangría sólo a la izquierda: a la derecha va a ras,
                           para que las columnas de adentro caigan debajo de las
@@ -620,7 +634,7 @@ export function Tabla({ id, cfg, control }: ReturnType<ControlDeTablas["nivel"]>
                         style={{ padding: "0.35rem 0 0.6rem 1.9rem",
                           background: "var(--gray-50)",
                           borderBottom: "1px solid #F3F4F6" }}>
-                        {cfg.detalle(f)}
+                        {cfg.detalle!(f)}
                       </td>
                     </tr>
                   )}

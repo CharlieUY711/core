@@ -21,6 +21,7 @@ export const canalActivo = (p:Publicacion, channel:string) =>
 export interface Art {
   id:string; nombre:string; tipo:"market"|"secondhand"; status:string;
   precio:number; moneda:string; imagen_principal?:string; imagenes?:any[];
+  marca?:string|null;
   videos?:any[]; stock:number; condicion?:string; departamento_id?:string;
   departamento_nombre?:string; categoria_id?:string; categoria_nombre?:string;
   atributos?:Record<string,any>; descripcion?:string;
@@ -58,6 +59,12 @@ export function toArt(p:Publicacion):Art {
     id:          p.variant_id,
     item_id:     p.item_id,
     ficha_id:    p.ficha_id ?? null,
+    /* Marca y medios: el formulario los siembra desde aca. Sin esto se
+       guardaban y no volvian, que se ve igual que si no se guardaran. */
+    marca:       p.marca ?? null,
+    imagenes:    p.fotos_base ?? [],
+    imagen_principal: p.fotos_base?.[0],
+    videos:      p.video ?? [],
     nombre:      p.title,
     descripcion: p.description ?? undefined,
     sku:         p.sku ?? undefined,
