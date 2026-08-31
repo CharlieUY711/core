@@ -1070,8 +1070,17 @@ export default function AdminArticulos(
 
     setNombre(articulo.nombre ?? "");
     /* La marca faltaba: se cargaba, se guardaba, y al reabrir el campo estaba
-       vacio como si nunca se hubiera escrito. */
+       vacio como si nunca se hubiera escrito. Y con ella el logo, que ademas ni
+       siquiera se enviaba. */
     setMarca(articulo.marca ?? "");
+    setLogoUrl(articulo.marca_logo ?? null);
+    setMarcaDominio(articulo.marca_dominio ?? null);
+    /* Con logo guardado, la marca ya esta resuelta: si quedara en "buscando",
+       el formulario volveria a ofrecer elegirla como si no se hubiera elegido. */
+    if (articulo.marca_logo || articulo.marca) {
+      setMarcaModo("sugerida");
+      setMarcaConfirmada(true);
+    }
     setDescripcion(articulo.descripcion ?? "");
     setPrecio(articulo.precio != null ? String(articulo.precio) : "");
     setPrecioOrig(articulo.precio_original != null ? String(articulo.precio_original) : "");
@@ -2277,6 +2286,10 @@ export default function AdminArticulos(
              comia estos dos sin decir nada -ni siquiera se podia agregar una
              foto a un articulo ya creado-. */
           p_marca:       marca.trim(),
+          /* El que se ve es el que se guarda: el subido a mano gana sobre el
+             encontrado, y uno que no cargo no se guarda como si sirviera. */
+          p_marca_logo:  logoPersonalizado || (logoUrl && !logoError ? logoUrl : ""),
+          p_marca_dominio: marcaDominio ?? "",
           p_images:      enBiblioteca,
           p_videos:      videosGuardados,
         });
@@ -2338,6 +2351,8 @@ export default function AdminArticulos(
         /* Tambien en la publicacion, no solo en la ficha: `marca` es una
            columna de `catalog_producto_base` y quedaba siempre en null. */
         p_marca:       marca.trim(),
+        p_marca_logo:  logoPersonalizado || (logoUrl && !logoError ? logoUrl : null),
+        p_marca_dominio: marcaDominio,
       });
       if (error) throw error;
 

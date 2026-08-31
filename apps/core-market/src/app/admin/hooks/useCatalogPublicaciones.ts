@@ -91,6 +91,9 @@ export interface Publicacion {
   marca: string | null;
   fotos_base: string[] | null;
   video: string[] | null;
+  /** El logo de la marca y su sitio. Se elegian en el formulario y se perdian. */
+  marca_logo: string | null;
+  marca_dominio: string | null;
 }
 
 /**
