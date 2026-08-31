@@ -72,6 +72,15 @@ export interface Publicacion {
   origen: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * La ficha de Biblioteca de la que sale esta publicacion.
+   *
+   * Existe en la base desde `biblioteca_es_la_fuente` y lo llena un trigger,
+   * pero ninguna consulta lo devolvia: con el vinculo invisible, la Biblioteca
+   * tenia el id de la ficha y no podia llegar al articulo. Por eso el alta y la
+   * edicion habian quedado en Publicaciones, que es al reves de lo acordado.
+   */
+  ficha_id: string | null;
 }
 
 /**
@@ -85,6 +94,22 @@ export async function fetchPublicaciones(currency = "UYU"): Promise<Publicacion[
   });
   if (error) throw new Error(error.message);
   return (data as Publicacion[]) ?? [];
+}
+
+/**
+ * La publicacion que sale de una ficha de Biblioteca, o null si esa ficha
+ * todavia no se vende.
+ *
+ * Se resuelve con la misma consulta y no con una nueva: `catalog_publicaciones`
+ * ya aplica el aislamiento por tienda via RLS, y una segunda consulta seria un
+ * segundo lugar donde decidir que publicaciones ve cada quien -y el que se
+ * olvida siempre es el segundo-.
+ */
+export async function publicacionDeFicha(
+  fichaId: string, currency = "UYU",
+): Promise<Publicacion | null> {
+  const todas = await fetchPublicaciones(currency);
+  return todas.find(p => p.ficha_id === fichaId) ?? null;
 }
 
 export function useCatalogPublicaciones(currency = "UYU") {

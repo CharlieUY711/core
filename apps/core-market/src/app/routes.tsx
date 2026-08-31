@@ -21,8 +21,8 @@ import AdminExport from "./admin/pages/AdminExport";
 import AdminPublicaciones from "./admin/pages/AdminPublicaciones";
 import AdminProfile from "./admin/pages/AdminProfile";
 import AdminImport from "./admin/pages/AdminImport";
-import AdminArticulos from "./admin/pages/AdminArticulos";
 import AdminBiblioteca from "./admin/pages/AdminBiblioteca";
+import ArticuloDeBiblioteca from "./admin/pages/ArticuloDeBiblioteca";
 import AdminTiendas from "./admin/pages/AdminTiendas";
 import AdminTienda from "./admin/pages/AdminTienda";
 import AdminPersonas from "./admin/pages/AdminPersonas";
@@ -76,7 +76,11 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
       // 👉 NUEVA RUTA DE CARGA MASIVA
 
       { id: "admin-profile",        path: "profile",       Component: AdminProfile },
-      { id: "admin-publicacion-nueva", path: "publicaciones/nueva", Component: AdminArticulos },
+      /* El articulo se carga y se edita en Biblioteca, que es la fuente: una
+         publicacion es una ficha a la que se le puso precio y canal. El `:id`
+         es el de la FICHA; el envoltorio resuelve su publicacion. */
+      { id: "admin-articulo-nuevo",  path: "biblioteca/articulo",     Component: ArticuloDeBiblioteca },
+      { id: "admin-articulo",        path: "biblioteca/articulo/:id", Component: ArticuloDeBiblioteca },
       { id: "admin-biblioteca",     path: "biblioteca",    Component: AdminBiblioteca },
       { id: "admin-tool-editor", path: "tool-editor", Component: AdminToolEditor },
       { id: "admin-editor",         path: "editor",        Component: AdminEditor },

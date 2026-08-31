@@ -72,7 +72,7 @@ export default function MisPublicacionesPage() {
       <header style={{ background: "color-mix(in srgb, var(--color-success) 70%, white)", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link to="/" style={{ textDecoration: "none", color: "#fff", fontWeight: 600 }}>← Volver</Link>
         <h1 style={{ margin: 0, color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>Mis publicaciones</h1>
-        <Link to="/admin/publicaciones/nueva" style={{ padding: "0.5rem 1rem", background: "#fff", color: "color-mix(in srgb, var(--color-success) 70%, white)", borderRadius: "8px", fontWeight: 700, textDecoration: "none" }}>
+        <Link to="/admin/biblioteca/articulo" style={{ padding: "0.5rem 1rem", background: "#fff", color: "color-mix(in srgb, var(--color-success) 70%, white)", borderRadius: "8px", fontWeight: 700, textDecoration: "none" }}>
           + Nueva publicación
         </Link>
       </header>

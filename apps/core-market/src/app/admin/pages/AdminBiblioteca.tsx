@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useShop } from "../components/AdminLayout";
 import { supabase } from "../../../utils/supabase/client";
 import { MediaItem } from "../../hooks/useMediaLibrary";
@@ -126,6 +126,7 @@ export default function AdminBiblioteca({
      error y el ancho los define `Pantalla`. Acá estaban escritos a mano. */
   const p = usePantalla();
   const { tablas } = p;
+  const navegar = useNavigate();
 
   const [tab,        setTab]        = useState<
     "biblioteca" | "subir" | "taxonomia" | "importar" | "exportar">("biblioteca");
@@ -142,9 +143,10 @@ export default function AdminBiblioteca({
   const [presentacion, setPresentacion] = useState<Vista>("grandes");
   const [cols,       setCols]       = useState<Set<string>>(
     new Set(COLUMNAS_BIBLIOTECA.map(c => c.id)));
+  /* Sólo las fichas COMPARTIDAS abren esta tarjeta: las propias son el
+     artículo de la tienda y abren el editor. Por eso ya no hay formulario ni
+     estado de guardado acá — se editaban en dos lados. */
   const [ficha,      setFicha]      = useState<FichaDeBiblioteca | null>(null);
-  const [fichaForm,  setFichaForm]  = useState<Record<string, string>>({});
-  const [guardandoFicha, setGuardandoFicha] = useState(false);
   /*
    * La selección NO vive acá: la presta el control de la tabla.
    *
@@ -339,38 +341,23 @@ export default function AdminBiblioteca({
     tablas.alternar(NIVEL, el.id);
   };
 
+  /**
+   * Abrir un elemento de la Biblioteca.
+   *
+   * UN ARCHIVO se previsualiza. UNA FICHA depende de quien sea:
+   *
+   *   propia      -> es EL articulo de la tienda, y se abre el editor completo.
+   *                  Antes se abria un panel de cuatro campos: un segundo
+   *                  formulario sobre lo mismo, que iba a quedar atras del
+   *                  primero como ya paso con el editor de pestañas.
+   *   compartida  -> es de la plataforma. La tienda no la edita: se muestra la
+   *                  tarjeta de solo lectura, que es lo unico que aplica.
+   */
   const abrir = (el: ElementoDeBiblioteca) => {
     if (el.media) { setPreview(el.media); return; }
     if (!el.ficha) return;
+    if (el.ficha.propia) { navegar(`/admin/biblioteca/articulo/${el.ficha.id}`); return; }
     setFicha(el.ficha);
-    // El formulario arranca con lo que hay. Un campo vacio es un campo vacio,
-    // no un null: `null` significa "no lo mande" para la funcion que guarda, y
-    // asi vaciar la descripcion no la borraria nunca.
-    setFichaForm({
-      nombre:      el.ficha.nombre ?? "",
-      marca:       el.ficha.marca ?? "",
-      familia:     el.ficha.familia ?? "",
-      descripcion: el.ficha.descripcion ?? "",
-    });
-  };
-
-  const guardarFicha = async () => {
-    if (!ficha) return;
-    setGuardandoFicha(true);
-    const { error } = await supabase.rpc("actualizar_ficha_biblioteca", {
-      p_id:          ficha.id,
-      p_nombre:      fichaForm.nombre,
-      p_marca:       fichaForm.marca,
-      p_familia:     fichaForm.familia,
-      p_descripcion: fichaForm.descripcion,
-    });
-    setGuardandoFicha(false);
-    // El mensaje de la funcion explica el caso -ficha de la plataforma, titulo
-    // repetido- asi que se muestra tal cual en vez de un "no se pudo guardar".
-    if (error) { notify(error.message, false); return; }
-    setFicha(null);
-    reload();
-    notify("Artículo guardado");
   };
 
   /* La confirmación la hace la tabla, con el nombre de lo que se va a borrar.
@@ -447,9 +434,18 @@ export default function AdminBiblioteca({
     })),
     /* Cargar no cabe en una fila: un archivo se elige, se clasifica y se
        etiqueta. Por eso "Agregar" abre la pantalla de carga en vez de abrir
-       un renglón vacío — pero está en el mismo lugar que en todas. */
-    onAgregar: () => setTab("subir"),
+       un renglón vacío — pero está en el mismo lugar que en todas.
+
+       Y en la sección Artículos agrega un ARTÍCULO, que es lo que se está
+       mirando. La sección ya dice de qué se habla: preguntarlo otra vez con un
+       menú sería el segundo lugar donde se decide lo mismo. */
+    onAgregar: () => tipo === "articulos"
+      ? navegar("/admin/biblioteca/articulo")
+      : setTab("subir"),
     onEditar:  f => abrir(f.el as ElementoDeBiblioteca),
+    /* Doble clic, como en todas las tablas: el clic simple sigue eligiendo,
+       que es de lo que dependen las acciones masivas. */
+    onAbrir:   f => abrir(f.el as ElementoDeBiblioteca),
     onBorrar:  async fs => eliminar(fs.map(f => f.el as ElementoDeBiblioteca)),
     nombreDe:  f => String(f.nombre),
   });
@@ -760,35 +756,7 @@ export default function AdminBiblioteca({
               )}
 
               <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-                {ficha.propia ? (
-                  <>
-                    {([
-                      ["nombre",      "Título"],
-                      ["marca",       "Marca"],
-                      ["familia",     "Familia"],
-                      ["descripcion", "Descripción"],
-                    ] as const).map(([campo, label]) => (
-                      <label key={campo} style={{ display:"flex", flexDirection:"column", gap:2 }}>
-                        <span style={{ fontSize:"0.7rem", fontWeight:700, color:"var(--mute)" }}>{label}</span>
-                        {campo === "descripcion" ? (
-                          <textarea rows={3} value={fichaForm[campo] ?? ""}
-                            onChange={e => setFichaForm(f => ({ ...f, [campo]: e.target.value }))}
-                            style={{ ...inp, resize:"vertical", fontFamily:"inherit" }} />
-                        ) : (
-                          <input value={fichaForm[campo] ?? ""}
-                            onChange={e => setFichaForm(f => ({ ...f, [campo]: e.target.value }))}
-                            style={inp} />
-                        )}
-                      </label>
-                    ))}
-
-                    {/* El título es la identidad del artículo, así que hay que
-                        decir qué pasa al cambiarlo antes de que pase. */}
-                    <div style={{ fontSize:"0.72rem", color:"var(--mute)" }}>
-                      Cambiar el título cambia el artículo. Dos títulos son dos artículos.
-                    </div>
-                  </>
-                ) : (
+                {(
                   <div style={{ fontSize:"0.82rem", color:"#374151", display:"flex",
                     flexDirection:"column", gap:"0.35rem" }}>
                     <div><b>Marca:</b> {ficha.marca || "—"}</div>
@@ -815,17 +783,12 @@ export default function AdminBiblioteca({
               </div>
             </div>
 
-            {ficha.propia && (
-              <div style={{ display:"flex", justifyContent:"flex-end", gap:8,
-                padding:"0.7rem 1rem", borderTop:"1px solid var(--border)" }}>
-                <BarraDeAccionesSuelta acciones={[
-                  { label:"Cancelar", color:"var(--mute)", onClick:()=>setFicha(null) },
-                  { label: guardandoFicha ? "Guardando…" : "Guardar",
-                    destacado:true, color:ACCENT, desactivada:guardandoFicha,
-                    onClick:guardarFicha },
-                ]} />
-              </div>
-            )}
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8,
+              padding:"0.7rem 1rem", borderTop:"1px solid var(--border)" }}>
+              <BarraDeAccionesSuelta acciones={[
+                { label:"Cerrar", color:"var(--mute)", onClick:()=>setFicha(null) },
+              ]} />
+            </div>
           </div>
         </div>
       )}

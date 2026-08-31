@@ -125,9 +125,10 @@ const DESTINOS = [
 
 /**
  * Alta de publicaciones. Se usa de dos formas:
- *  - como ruta propia (/admin/publicaciones/nueva), enlazable
- *  - embebido dentro de Publicaciones, pasando onFinish/onCancel para no
- *    sacar al usuario de la pantalla donde esta trabajando
+ * Lo monta `ArticuloDeBiblioteca`, que resuelve el articulo antes: el alta y la
+ * edicion viven en Biblioteca, que es la fuente -una publicacion es una ficha a
+ * la que se le puso precio y canal-. Publicaciones ya no lo embebe: alli se
+ * decide DONDE se ofrece, no que ES.
  * El tipo (Market / Second Hand) ya no se elige acá adentro: lo define quien
  * abre el formulario (los botones "Market +" / "Second +" de la toolbar de
  * Publicaciones) vía tipoInicial, así que se arranca directo en Información.
@@ -1035,8 +1036,15 @@ export default function AdminArticulos(
    */
   const sembrado = useRef<string | null>(null);
   useEffect(() => {
-    if (!articulo || sembrado.current === articulo.id) return;
-    sembrado.current = articulo.id;
+    /*
+     * La Biblioteca puede abrir un alta CON datos: una ficha que todavia no se
+     * vende trae nombre y descripcion, y no hay que hacerlos escribir de nuevo.
+     * Ese articulo no tiene `id` -es un alta-, asi que la marca de sembrado no
+     * puede ser el id: se usa un valor estable que igual siembra una sola vez.
+     */
+    const semilla = articulo ? (articulo.id ?? "sin-publicar") : null;
+    if (!articulo || sembrado.current === semilla) return;
+    sembrado.current = semilla;
 
     setNombre(articulo.nombre ?? "");
     setDescripcion(articulo.descripcion ?? "");

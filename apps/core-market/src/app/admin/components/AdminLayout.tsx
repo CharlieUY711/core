@@ -122,6 +122,10 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
     por_defecto: boolean; es_plataforma: boolean }[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [cambiando, setCambiando] = useState(false);
+  /* Por qué no se pudo cambiar de tienda. Antes esto iba sólo a `console.warn`:
+     el usuario veía "Cambiando…" y después nada, sin saber que había fallado ni
+     por qué. Un cambio que no pasa tiene que decirlo donde se pidió. */
+  const [fallo, setFallo] = useState<string | null>(null);
   const navegar = useNavigate();
 
   useEffect(() => {
@@ -139,11 +143,28 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
 
   const cambiarTienda = async (id: string) => {
     setCambiando(true);
+    setFallo(null);
     const { error } = await supabase.rpc("cambiar_tienda_activa", { p_store_id: id });
-    if (error) { setCambiando(false); console.warn("[tiendas]", error.message); return; }
-    // El claim `store_id` se escribe al emitir el token. Sin renovar la sesion
-    // el cambio no llega a ninguna consulta.
-    await supabase.auth.refreshSession();
+    if (error) {
+      setCambiando(false);
+      // El mensaje de la función explica el caso -no sos miembro, la tienda
+      // está inactiva- así que se muestra tal cual.
+      setFallo(error.message);
+      setAbierto(true);
+      return;
+    }
+    /* El claim `store_id` se escribe al emitir el token. Sin renovar la sesion
+       el cambio no llega a ninguna consulta.
+
+       Y si renovar falla, recargar dejaria al usuario en la tienda vieja sin
+       ninguna señal: la fila cambio en la base pero el token no. */
+    const { error: eSesion } = await supabase.auth.refreshSession();
+    if (eSesion) {
+      setCambiando(false);
+      setFallo(`La tienda cambió pero no se pudo renovar la sesión: ${eSesion.message}`);
+      setAbierto(true);
+      return;
+    }
     window.location.reload();
   };
 
@@ -208,6 +229,13 @@ function UserAvatar({ user, isAdmin }: { user: any; isAdmin: boolean }) {
                 position: "absolute", left: 0, top: "100%", zIndex: 400,
                 background: "#fff", border: "1px solid var(--border)", borderRadius: 9,
                 boxShadow: "0 8px 24px rgba(0,0,0,.2)", minWidth: 190, padding: 4 }}>
+                {fallo && (
+                  <div style={{ padding: "0.45rem 0.6rem", marginBottom: 4, borderRadius: 6,
+                    background: "rgba(220,38,38,.1)", color: "#B91C1C", fontWeight: 600,
+                    fontSize: "0.72rem", maxWidth: 240 }}>
+                    {fallo}
+                  </div>
+                )}
                 {tiendas.map(t => (
                   <button key={t.id} onClick={() => { setAbierto(false); void cambiarTienda(t.id); }}
                     style={{ display: "block", width: "100%", textAlign: "left",

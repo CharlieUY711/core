@@ -387,7 +387,7 @@ export default function AdminPublicaciones() {
               transition:"all .12s",
             }}>Second Hand</button>
           </div>
-          <button onClick={() => navigate("/admin/publicaciones/nueva")} style={{
+          <button onClick={() => navigate("/admin/biblioteca/articulo")} style={{
             padding:"0.6rem 1.25rem", background:color, color:"#fff",
             border:"none", borderRadius:10, fontWeight:700, fontSize:"0.875rem",
             cursor:"pointer", transition:"background .15s",
@@ -473,7 +473,7 @@ export default function AdminPublicaciones() {
           <div style={{ textAlign:"center", padding:"3rem" }}>
             <div style={{ fontSize:"3rem" }}>📦</div>
             <div style={{ fontWeight:700, color:"#374151", marginTop:"0.5rem" }}>Sin publicaciones</div>
-            <button onClick={() => navigate("/admin/publicaciones/nueva")} style={{
+            <button onClick={() => navigate("/admin/biblioteca/articulo")} style={{
               marginTop:"1rem", padding:"0.6rem 1.25rem", background:color, color:"#fff",
               border:"none", borderRadius:8, fontWeight:700, cursor:"pointer",
             }}>+ Nuevo artículo</button>
@@ -691,7 +691,7 @@ export default function AdminPublicaciones() {
                                     <div>
                                       <div style={tit}>Acciones</div>
                                       <div style={{ ...grid3, marginBottom:"5px" }}>
-                                        <button onClick={()=>navigate("/admin/publicaciones/nueva")}
+                                        <button onClick={()=>navigate("/admin/biblioteca/articulo")}
                                           style={btn(color,"#fff",color)}>Nuevo</button>
                                         <button onClick={()=>clonar(a)}
                                           style={btn("#fff",color,color)}>Clonar</button>

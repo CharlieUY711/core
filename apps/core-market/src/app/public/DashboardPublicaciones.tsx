@@ -55,7 +55,7 @@ export default function DashboardPublicaciones() {
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#222" }}>Mis publicaciones</h2>
-        <a href="/admin/publicaciones/nueva" style={{ padding: "0.5rem 1rem", background: "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", borderRadius: "8px", fontWeight: 700, textDecoration: "none" }}>
+        <a href="/admin/biblioteca/articulo" style={{ padding: "0.5rem 1rem", background: "color-mix(in srgb, var(--color-success) 70%, white)", color: "#fff", borderRadius: "8px", fontWeight: 700, textDecoration: "none" }}>
           + Nueva
         </a>
       </div>

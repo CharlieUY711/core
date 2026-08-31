@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
 import { useShop } from "../components/AdminLayout";
 import { fetchPublicaciones, type Publicacion } from "../hooks/useCatalogPublicaciones";
@@ -6,8 +7,8 @@ import { BloqueMetricas } from "../components/ficha/BloquesFicha";
 import { NUMERICO } from "../ui/numeros";
 import { sincronizarCanal, verificarCanal, canalesDisponibles, corregirCampo,
          type ProblemaPublicacion } from "../utils/canalesSync";
-import AdminArticulos from "./AdminArticulos";
 import { BarraDeAcciones, BarraDeAccionesSuelta } from "../components/BarraDeAcciones";
+import { Art, toArt, canalActivoEn } from "../ui/articulo";
 
 const ACCENT = "var(--brand-madre)";
 const GREEN  = "var(--color-success)";
@@ -99,80 +100,6 @@ const estadoDeCanal = (p: Publicacion | undefined, channel: string): EstadoCanal
   return "espera";
 };
 
-/** Igual que canalActivo pero sobre la forma plana que usa la tabla. */
-const canalActivoEn = (a:{canales?:any[]}, channel:string) =>
-  (a.canales ?? []).some((c:any)=>c.channel===channel && c.status!=="delisted");
-
-/** Un canal cuenta como activo salvo que se lo haya dado de baja. */
-const canalActivo = (p:Publicacion, channel:string) =>
-  p.channels.some(c => c.channel === channel && c.status !== "delisted");
-
-interface Art {
-  id:string; nombre:string; tipo:"market"|"secondhand"; status:string;
-  precio:number; moneda:string; imagen_principal?:string; imagenes?:any[];
-  videos?:any[]; stock:number; condicion?:string; departamento_id?:string;
-  departamento_nombre?:string; categoria_id?:string; categoria_nombre?:string;
-  atributos?:Record<string,any>; descripcion?:string;
-  rating_promedio?:number; rating_count?:number;
-  impresiones?:number; clicks?:number; ranking_score?:number;
-  created_at:string; published_at?:string; deleted_at?:string;
-  baja_prevista?:string; precio_original?:number; sku?:string;
-  stock_ilimitado?:boolean; envio_tipo?:string; envio_gratis?:boolean;
-  /* garantia/tipo_envio/peso/dimensiones/material/origen son columnas reales de
-     catalog_producto_base. Antes habia aca `peso_kg`, `garantia_tipo` y
-     `garantia_meses`, que no existen en ninguna tabla: el editor viejo los
-     mostraba y se perdian al recargar. */
-  garantia?:string|null; tipo_envio?:string|null; peso?:string|null;
-  dimensiones?:string|null; material?:string|null; origen?:string|null;
-  sync_ml?:boolean; sync_meta?:boolean; sync_wa?:boolean; sync_web?:boolean;
-  // Añadidos por la migración a catalog_*: `id` es el variant_id, y estos dos
-  // conservan lo que la forma plana de Art no puede representar.
-  item_id?:string; canales?:Publicacion["channels"];
-  // Lo que sabemos del producto, guardado. Ver la migracion 001900.
-  ficha?:Record<string,any>|null; fichaFuente?:string|null; fichaAt?:string|null;
-  sync_market?:boolean; sync_second?:boolean;
-}
-
-/**
- * catalog_* -> la forma que la tabla ya sabe dibujar.
- *
- * `tipo` deja de ser una columna y pasa a ser lo que siempre debió ser: la
- * presencia de un listing en el canal 'market' o 'secondhand'.
- */
-function toArt(p:Publicacion):Art {
-  return {
-    id:          p.variant_id,
-    item_id:     p.item_id,
-    nombre:      p.title,
-    descripcion: p.description ?? undefined,
-    sku:         p.sku ?? undefined,
-    // Un articulo es de Market o de Second Hand; cualquier otra cosa que
-    // devuelva la base se trata como Market, que es el caso normal.
-    tipo:        p.tipo === "secondhand" ? "secondhand" : "market",
-    status:      p.item_status,
-    precio:      p.master_price ?? 0,
-    moneda:      p.master_currency,
-    stock:       p.total_available,
-    created_at:  p.created_at,
-    published_at:p.item_status === "active" ? p.updated_at : undefined,
-    canales:     p.channels,
-    ficha:       (p as any).ficha ?? null,
-    fichaFuente: (p as any).ficha_fuente ?? null,
-    fichaAt:     (p as any).ficha_at ?? null,
-    garantia:    (p as any).garantia    ?? null,
-    tipo_envio:  (p as any).tipo_envio  ?? null,
-    peso:        (p as any).peso        ?? null,
-    dimensiones: (p as any).dimensiones ?? null,
-    material:    (p as any).material    ?? null,
-    origen:      (p as any).origen      ?? null,
-    sync_market: p.tipo === "market",
-    sync_second: p.tipo === "secondhand",
-    sync_ml:     canalActivo(p,"mercadolibre"),
-    sync_meta:   canalActivo(p,"meta"),
-    sync_wa:     canalActivo(p,"whatsapp"),
-    sync_web:    canalActivo(p,"web"),
-  };
-}
 
 // Valores reales del enum catalog_item_status: draft | active | archived |
 // discontinued. `paused` e `inactive` quedan por compatibilidad de render con
@@ -347,13 +274,10 @@ function PreciosEditor({form,setForm,color,lbl,inp}:{form:any;setForm:(f:any)=>v
 
 export default function AdminPublicaciones() {
   const {isSH, setTopStats} = useShop();
-  // El alta se muestra dentro de esta misma pantalla: el usuario no pierde
-  // de vista su lista ni los filtros que tenia puestos.
-  const [showWizard,setShowWizard]=useState(false);
-  // Qué toolbar-button abrió el alta: define en qué canal arranca el wizard
-  // (Market / Second Hand). "Market +" y "Second +" funcionan siempre, sin
-  // depender de que haya filas seleccionadas.
-  const [wizardTipo,setWizardTipo]=useState<"market"|"secondhand">("market");
+  const navegar = useNavigate();
+  // El alta ya no vive aca: un articulo se carga en Biblioteca, que es la
+  // fuente. "Market +" y "Second +" llevan alla, y siguen funcionando siempre,
+  // sin depender de que haya filas seleccionadas.
 
   /**
    * Lo que el formulario esta escribiendo, en vivo.
@@ -805,9 +729,8 @@ export default function AdminPublicaciones() {
    * el filtro y el orden siguen intactos y al cerrar la lista vuelve como
    * estaba.
    */
-  const visibles = showWizard ? []
-                 : exp ? filtered.filter(a => a.id === exp)
-                 : filtered;
+  const visibles = exp ? filtered.filter(a => a.id === exp)
+                       : filtered;
 
   const renderPanel=(a:Art|null,isNew=false)=>(
     <tr key={(a?.id||"new")+"-p"}>
@@ -971,21 +894,36 @@ export default function AdminPublicaciones() {
                   en dos lugares los habria dejado diciendo distinto. */}
 
             {/*
-              El mismo formulario que el alta, con el articulo cargado.
-              Antes esto era un editor de pestañas propio: otra implementacion
-              de lo mismo, que quedo atras de cada mejora hecha del lado del
-              alta -el monitor de avisos, la condicion en una linea, las
-              etiquetas adentro de los campos-. Uno solo no puede divergir.
+              EL ARTICULO NO SE EDITA ACA.
+
+              Se edita en Biblioteca, que es la fuente: una publicacion es una
+              ficha a la que se le puso precio y canal -lo dice la migracion
+              `biblioteca_es_la_fuente`, y la base lo cumple con un trigger-.
+              Esta pantalla decide DONDE se ofrece; que ES el articulo se decide
+              donde vive.
+
+              Antes el formulario completo estaba montado aca. Con eso la
+              Biblioteca listaba articulos que no podia abrir, y habia dos
+              lugares para lo mismo segun por donde se hubiera entrado.
             */}
             {a && (
-              <AdminArticulos
-                key={a.id}
-                articulo={a}
-                onResumen={setResumen}
-                tipoInicial={(a as any).tipo === "secondhand" ? "secondhand" : "market"}
-                onCancel={()=>{setExp(null);setResumen(null);}}
-                onFinish={()=>{setExp(null);setResumen(null);reload();}}
-              />
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
+                padding:"0.7rem 0.9rem",marginBottom:"0.9rem",borderRadius:9,
+                background:"var(--gray-50,#F9FAFB)",border:"1px solid var(--border)"}}>
+                <span style={{fontSize:"0.8rem",color:"#374151"}}>
+                  Acá se define dónde se ofrece. Lo que el artículo <b>es</b> —título,
+                  fotos, precio, stock, categoría— se edita en Biblioteca.
+                </span>
+                <button
+                  onClick={()=>navegar(a.ficha_id
+                    ? `/admin/biblioteca/articulo/${a.ficha_id}`
+                    : "/admin/biblioteca")}
+                  style={{marginLeft:"auto",padding:"0.35rem 0.8rem",fontSize:"0.78rem",
+                    fontWeight:700,border:`1px solid ${BLUE}`,borderRadius:7,
+                    background:"#fff",color:BLUE,cursor:"pointer"}}>
+                  Editar el artículo en Biblioteca
+                </button>
+              </div>
             )}
 
             {/* Canales y metricas, debajo del formulario y por ahora nada mas.
@@ -1051,14 +989,13 @@ export default function AdminPublicaciones() {
             copiaba —o no— y el panel dejaba de parecer un solo producto. */}
         <BarraDeAcciones
           acciones={[
-            /* Market + / Second + reemplazan a "Nuevo": llevan directo al alta
-               de un artículo en el canal correspondiente. Sin `desactivada`:
-               deben funcionar siempre, sin depender de que haya filas
-               elegidas. */
+            /* Market + / Second + llevan al alta, que vive en Biblioteca: un
+               artículo se carga donde se guarda. Sin `desactivada`: deben
+               funcionar siempre, sin depender de que haya filas elegidas. */
             { label:"Market +", destacado:true, color:BLUE,
-              onClick:()=>{setWizardTipo("market");setShowWizard(true);setExp(null);setResumen(null);} },
+              onClick:()=>navegar("/admin/biblioteca/articulo?tipo=market") },
             { label:"Second +", destacado:true, color:GREEN,
-              onClick:()=>{setWizardTipo("secondhand");setShowWizard(true);setExp(null);setResumen(null);} },
+              onClick:()=>navegar("/admin/biblioteca/articulo?tipo=secondhand") },
             "separador",
             { label:"Publicar", color:GREEN, desactivada:!has,
               motivo:"Elegí al menos una publicación",
@@ -1085,10 +1022,10 @@ export default function AdminPublicaciones() {
             /* Volver: sólo con la ficha abierta. Va en la barra y no dentro del
                formulario porque es una acción sobre la pantalla, no sobre el
                artículo. */
-            ...((showWizard||exp) ? [
+            ...(exp ? [
               "separador" as const,
               { label:"← Volver", color:"var(--mute)",
-                onClick:()=>{setShowWizard(false);setExp(null);setResumen(null);} },
+                onClick:()=>{setExp(null);setResumen(null);} },
             ] : []),
           ]}
           derecha={<>
@@ -1223,89 +1160,12 @@ export default function AdminPublicaciones() {
                 </tr>
               </thead>
               <tbody>
-                {/* El alta va como una fila mas: la tabla no cambia de forma
-                    para recibirla, y al terminar la fila real ocupa su lugar. */}
-                {showWizard&&(
-                  <>
-                    {/* El renglon del articulo que se esta dando de alta, arriba
-                        del formulario y completandose mientras se escribe.
-
-                        Es la misma fila que va a quedar: mismas columnas, mismo
-                        formato de precio, misma foto de portada. Por eso se ve
-                        el titulo cortandose antes de guardar, y no despues.
-
-                        Lo que todavia no se escribio se muestra con una raya
-                        gris, no en blanco: un hueco no dice si falta o si no
-                        aplica. */}
-                    {/*
-                      Queda pegado abajo del encabezado mientras se scrollea el
-                      formulario. Es la fila del articulo que se esta cargando:
-                      perderla de vista al bajar deja el formulario sin decir
-                      sobre que se esta trabajando.
-
-                      El sticky va en cada celda y no en el <tr>: un tr no
-                      acepta position sticky en la mayoria de los navegadores.
-                    */}
-                    <tr style={{
-                      background:"#fff",
-                      borderLeft:`3px solid ${color}`,
-                      // Punteado hasta que exista de verdad: es una fila que
-                      // todavia no esta guardada, y tiene que verse asi.
-                      outline:`1px dashed ${color}55`, outlineOffset:-1,
-                    }}>
-                      <td style={{...td,...pegado}}/>
-                      <td style={{...td,...pegado}}>
-                        <div style={{width:38,height:38,borderRadius:6,overflow:"hidden",background:"#F3F4F6"}}>
-                          {resumen?.imagen
-                            ?<img src={resumen.imagen} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                            :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",
-                              justifyContent:"center",fontSize:"1.1rem",opacity:.5}}>
-                              {wizardTipo==="secondhand"?"♻️":"🛍"}
-                            </div>}
-                        </div>
-                      </td>
-                      <td style={{...td,...pegado,maxWidth:200}}>
-                        <div style={{fontWeight:600,color:resumen?.nombre?"#111":"var(--gray-400)",
-                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                          {resumen?.nombre||"Sin título todavía"}
-                        </div>
-                      </td>
-                      <td style={{...td,...pegado,fontWeight:700,...NUMERICO,
-                        color:resumen?.precio?color:"var(--gray-400)"}}>
-                        {resumen?.precio?fmtP(resumen.precio,resumen.moneda):"—"}
-                      </td>
-                      <td style={{...td,...pegado,...NUMERICO,color:"var(--gray-400)"}}>
-                        {resumen?.stock??"—"}
-                      </td>
-                      <td style={{...td,...pegado}}>
-                        <span style={{fontSize:"11px",padding:"2px 8px",borderRadius:20,
-                          background:"var(--gray-100,#F3F4F6)",color:"var(--gray-400)",fontWeight:700}}>
-                          Sin guardar
-                        </span>
-                      </td>
-                      <td colSpan={99} style={{...td,...pegado,color:"var(--gray-400)",fontSize:"0.78rem"}}>
-                        Se completa mientras escribís. Al guardar ocupa su lugar en la lista.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colSpan={99} style={{padding:0,background:"#fff"}}>
-                        <AdminArticulos
-                          key={wizardTipo}
-                          tipoInicial={wizardTipo}
-                          onResumen={setResumen}
-                          onCancel={()=>{setShowWizard(false);setResumen(null);}}
-                          onFinish={()=>{setShowWizard(false);setResumen(null);reload();}}
-                        />
-                      </td>
-                    </tr>
-                  </>
-                )}
-                {showWizard?null:filtered.length===0?(
+                {filtered.length===0?(
                   <tr><td colSpan={99} style={{textAlign:"center",padding:"3rem"}}>
                     <div style={{fontSize:"2.5rem"}}>📦</div>
                     <div style={{fontWeight:700,color:"#374151",marginTop:"0.5rem"}}>Sin publicaciones</div>
                     <div style={{color:"var(--gray-400)",fontSize:"0.82rem",marginTop:"0.25rem"}}>
-                      Usá el menú Artículo → + Nuevo artículo para empezar
+                      Cargá el artículo en Biblioteca; acá se elige dónde se ofrece
                     </div>
                   </td></tr>
                 ):visibles.map(aOrig=>{
