@@ -107,6 +107,55 @@ interface UploadItem {
   error?: string;
 }
 
+/**
+ * Qué se puede AGREGAR en cada sección de la Biblioteca.
+ *
+ * Escrito una vez y acá, al lado de los tipos: agregar una sección es agregar
+ * una fila. Repartido en la pantalla, el día que se agregue un tipo nuevo nadie
+ * se acuerda de que también hay que darle sus botones.
+ *
+ * QUE HACE CADA UNO
+ *   Artículos  — dos altas distintas. Market o Second Hand es una decisión que
+ *                nadie puede deducir del artículo: la toma una persona.
+ *   Multimedia — abren el selector YA FILTRADO. No cambian qué se guarda -el
+ *                tipo sale del archivo- pero evitan buscar la foto entre los
+ *                doscientos archivos de la carpeta.
+ *   Documentos — igual, y además dejan la categoría puesta.
+ *
+ * "Todo" no lleva ninguno: es la mezcla de las otras, y ahí "agregar" no dice
+ * qué. Para eso está la sección.
+ */
+type AbrirArticulo = (clave: string, tipo?: "market" | "secondhand") => void;
+type CargarArchivo = (accept: string, cat: "articulo" | "documento" | "otro") => void;
+
+const ACCIONES_DE_SECCION: Record<string,
+  (abrir: AbrirArticulo, cargar: CargarArchivo) => ItemDeBarra[]> = {
+
+  articulos: abrir => [
+    { label: "Market +", destacado: true, color: "var(--brand-navy)",
+      onClick: () => abrir("nueva", "market") },
+    { label: "Second +", destacado: true, color: "var(--color-success)",
+      onClick: () => abrir("nueva", "secondhand") },
+  ],
+
+  multimedia: (_a, cargar) => [
+    { label: "Imagen +", destacado: true, color: "var(--brand-navy)",
+      onClick: () => cargar("image/*", "otro") },
+    { label: "Video +", destacado: true, color: "var(--color-success)",
+      onClick: () => cargar("video/*", "otro") },
+  ],
+
+  documentos: (_a, cargar) => [
+    { label: "PDF +", destacado: true, color: "var(--brand-navy)",
+      onClick: () => cargar("application/pdf,.pdf", "documento") },
+    { label: "Texto +", destacado: true, color: "var(--brand-navy)",
+      onClick: () => cargar("text/plain,text/html,.txt,.md,.csv", "documento") },
+    /* Sin filtro: lo que no es ninguno de los dos. Existe para que "no encaja
+       en las categorías" no signifique "no se puede subir". */
+    { label: "Otro +", onClick: () => cargar("", "otro") },
+  ],
+};
+
 export default function AdminBiblioteca({
   mode = "page",
   maxImages = 9,
@@ -169,6 +218,26 @@ export default function AdminBiblioteca({
      el del formulario estaba al fondo de todo —a varias pantallas de scroll del
      título, en la fila desplegada—. */
   const [acciones, setAcciones] = useState<AccionesDelArticulo | null>(null);
+
+  /**
+   * Abre el selector de archivos filtrado a lo que dice el botón.
+   *
+   * El filtro se pone en el nodo y no en el estado a proposito: `setState` no
+   * cambia el `accept` hasta el proximo dibujo, y el selector se abre AHORA. Con
+   * el estado, el primer clic abriria con el filtro anterior.
+   *
+   * `value = ""` para que se pueda volver a elegir el mismo archivo: sin eso el
+   * evento no salta la segunda vez y parece que el boton dejo de andar.
+   */
+  const cargarArchivo = (accept: string,
+                         cat: "articulo" | "documento" | "otro") => {
+    setUploadCat(cat);
+    const el = inputRef.current;
+    if (!el) return;
+    el.accept = accept;
+    el.value  = "";
+    el.click();
+  };
 
   const cerrarArticulo = () => {
     setArticuloAbierto(null); setResumen(null); setAcciones(null);
@@ -575,18 +644,14 @@ export default function AdminBiblioteca({
            "estoy en Artículos, y acá agrego artículos". Los de las otras
            secciones no se dibujan —hablarían de algo que no se está mirando—.
 
-           Multimedia y Documentos no declaran ninguno a propósito: la pantalla
-           de carga no pregunta si es imagen o video, lo deduce del archivo, así
-           que "Imagen +" y "Video +" serían dos botones que hacen lo mismo. Ahí
-           alcanza con Agregar. */
+           En Artículos son dos altas distintas —Market y Second Hand es una
+           decisión que nadie puede deducir del artículo—. En Multimedia y
+           Documentos abren el selector de archivos YA FILTRADO: no cambian qué
+           se guarda —eso sale del archivo— pero evitan tener que encontrar el
+           archivo entre todos los demás. */
         opciones: TIPOS_DE_BIBLIOTECA.map(t => ({
           valor: t.id, label: t.label,
-          acciones: t.id !== "articulos" ? undefined : [
-            { label: "Market +", destacado: true, color: "var(--brand-navy)",
-              onClick: () => abrirArticulo("nueva", "market") },
-            { label: "Second +", destacado: true, color: "var(--color-success)",
-              onClick: () => abrirArticulo("nueva", "secondhand") },
-          ] as ItemDeBarra[],
+          acciones: (ACCIONES_DE_SECCION[t.id] ?? [])(abrirArticulo, cargarArchivo),
         })),
         onCambio: v => { setTipo(v as TipoDeBiblioteca); setTab("biblioteca"); },
       }}
@@ -659,13 +724,67 @@ export default function AdminBiblioteca({
         <div style={{ marginTop:"0.5rem" }}><AdminExport /></div>
       )}
 
+      {/*
+        La entrada de archivos, SIEMPRE montada y no dentro de una pestaña.
+
+        Los botones de sección -"Imagen +", "PDF +"- la abren, y la barra se ve
+        en todas las pestañas. Adentro de la pestaña Biblioteca, desde Importar
+        o Exportar el botón no encontraba la entrada y no pasaba nada: un botón
+        muerto que no dice que está muerto.
+
+        Y montada de una: abrir el selector de archivos necesita el gesto del
+        usuario, así que no se puede montar y hacer clic después.
+
+        El `accept` lo pone `cargarArchivo` en el momento; el de acá es el que
+        vale para "Agregar", que no filtra nada en particular.
+      */}
+      <input ref={inputRef} type="file" multiple
+        accept="image/*,video/*,text/html,application/pdf"
+        style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
+
+      {/*
+        El progreso, fuera de la pestaña "Subir".
+
+        Los botones de sección abren el selector desde la LISTA, y ahí el
+        progreso no se veía: se elegían los archivos y no pasaba nada hasta que
+        aparecían solos, sin decir si estaban subiendo o si algo habia fallado.
+        Subir es de la Biblioteca, no de una de sus pestañas.
+      */}
+        {uploads.length > 0 && (
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+            {uploads.map((u, i) => (
+              <div key={i} style={{ background:"var(--gray-50)", borderRadius:8,
+                padding:"0.55rem 0.75rem", border:"1px solid var(--border)" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
+                  <span style={{ fontSize:"0.82rem", fontWeight:500, color:"#374151",
+                    maxWidth:"70%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {u.file.name}
+                  </span>
+                  <span style={{ fontSize:"0.75rem", color:
+                    u.status==="done" ? "#16a34a" : u.status==="failed" ? "#dc2626" : "var(--mute)" }}>
+                    {u.status==="done"?"✓ Listo":u.status==="failed"?"✗ Error":
+                     u.status==="uploading"?`${u.progress}%`:"En cola"}
+                  </span>
+                </div>
+                <div style={{ height:3, background:"var(--border)", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ height:"100%", borderRadius:2, transition:"width .3s",
+                    width:`${u.progress}%`,
+                    background: u.status==="failed"?"#ef4444":u.status==="done"?"#22c55e":ACCENT }} />
+                </div>
+                {u.error && <div style={{ fontSize:"0.72rem", color:"#dc2626", marginTop:"2px" }}>{u.error}</div>}
+              </div>
+            ))}
+            <button onClick={() => { setUploads([]); setTab("biblioteca"); }}
+              style={{ padding:"0.45rem", background:"none", border:"1.5px solid var(--border)",
+                borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"var(--mute)" }}>
+              Limpiar lista
+            </button>
+          </div>
+        )}
+
       {/* TAB BIBLIOTECA */}
       {tab === "biblioteca" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-
-          <input ref={inputRef} type="file" multiple
-            accept="image/*,video/*,text/html,application/pdf"
-            style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
 
           {/* Selección info en modal */}
           {mode === "modal" && (
@@ -824,38 +943,6 @@ export default function AdminBiblioteca({
             </div>
           </div>
 
-          {/* Lista uploads */}
-          {uploads.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-              {uploads.map((u, i) => (
-                <div key={i} style={{ background:"var(--gray-50)", borderRadius:8,
-                  padding:"0.55rem 0.75rem", border:"1px solid var(--border)" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
-                    <span style={{ fontSize:"0.82rem", fontWeight:500, color:"#374151",
-                      maxWidth:"70%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {u.file.name}
-                    </span>
-                    <span style={{ fontSize:"0.75rem", color:
-                      u.status==="done" ? "#16a34a" : u.status==="failed" ? "#dc2626" : "var(--mute)" }}>
-                      {u.status==="done"?"✓ Listo":u.status==="failed"?"✗ Error":
-                       u.status==="uploading"?`${u.progress}%`:"En cola"}
-                    </span>
-                  </div>
-                  <div style={{ height:3, background:"var(--border)", borderRadius:2, overflow:"hidden" }}>
-                    <div style={{ height:"100%", borderRadius:2, transition:"width .3s",
-                      width:`${u.progress}%`,
-                      background: u.status==="failed"?"#ef4444":u.status==="done"?"#22c55e":ACCENT }} />
-                  </div>
-                  {u.error && <div style={{ fontSize:"0.72rem", color:"#dc2626", marginTop:"2px" }}>{u.error}</div>}
-                </div>
-              ))}
-              <button onClick={() => { setUploads([]); setTab("biblioteca"); }}
-                style={{ padding:"0.45rem", background:"none", border:"1.5px solid var(--border)",
-                  borderRadius:8, cursor:"pointer", fontSize:"0.82rem", color:"var(--mute)" }}>
-                Limpiar lista
-              </button>
-            </div>
-          )}
         </div>
       )}
 
