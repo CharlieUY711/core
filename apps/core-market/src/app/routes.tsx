@@ -10,6 +10,7 @@ import PendingPage from "./public/PendingPage";
 import DashboardRedirect from "./public/DashboardRedirect";
 import PrivacidadPage from "./public/PrivacidadPage";
 import SolicitudesPage from "./public/SolicitudesPage";
+import EliminacionDeDatosPage from "./public/EliminacionDeDatosPage";
 
 import AdminLayout from "./admin/components/AdminLayout";
 import AdminDashboard from "./admin/pages/AdminDashboard";
@@ -46,6 +47,8 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
      con cuenta. Meta la exige para aprobar la app. */
   { id: "privacidad",          path: "/privacidad", Component: PrivacidadPage },
   { id: "solicitudes",         path: "/solicitudes", Component: SolicitudesPage },
+  /* Meta pide una URL propia para esto y la abre sin sesión. */
+  { id: "eliminacion-de-datos", path: "/eliminacion-de-datos", Component: EliminacionDeDatosPage },
   { id: "dashboard-redirect",  path: "/dashboard",  Component: DashboardRedirect },
   { id: "dashboard-redirect2", path: "/dashboard/*",Component: DashboardRedirect },
 
