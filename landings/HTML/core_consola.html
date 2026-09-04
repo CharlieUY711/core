@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORE — Consola del Orquestador (prototipo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* --- Identidad del SHELL (CORE) --- */
+  --c-bg:#0A0A0B; --c-surface:#141417; --c-surface-2:#1B1B20;
+  --c-accent:#FF6A1A; --c-ink:#F5F5F4; --c-muted:#A1A1A6; --c-faint:#6B6B70; --c-border:#26262B;
+  --c-display:"Space Grotesk",system-ui,sans-serif; --c-text:"Inter",system-ui,sans-serif; --c-mono:"JetBrains Mono",monospace;
+  /* --- Tokens de MÓDULO (--m-*): los inyecta el Orquestador por tenant. Fallbacks abajo. --- */
+  --m-primary:#FF6A1A; --m-primary-soft:#FFB27A; --m-bg:#0E0E11; --m-surface:#17171B;
+  --m-text:#F5F5F4; --m-muted:#A1A1A6; --m-border:#2A2A30; --m-font:"Space Grotesk",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-ink);font-family:var(--c-text);height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::selection{background:var(--c-accent);color:#1A0A00}
+:focus-visible{outline:2px solid var(--c-accent);outline-offset:2px;border-radius:4px}
+.mono{font-family:var(--c-mono)}
+
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* ---- Topbar (SHELL: --c-*) ---- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 22px;height:60px;border-bottom:1px solid var(--c-border);background:var(--c-surface);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{font-family:var(--c-display);font-weight:700;font-size:19px}.brand .logo b{color:var(--c-accent)}
+.brand .tagchip{font-family:var(--c-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-faint);border:1px solid var(--c-border);border-radius:5px;padding:4px 8px}
+.tswitch{display:flex;align-items:center;gap:14px}
+.tswitch .lbl{font-family:var(--c-mono);font-size:11px;color:var(--c-faint);letter-spacing:.08em}
+.seg{display:flex;background:var(--c-bg);border:1px solid var(--c-border);border-radius:8px;padding:3px}
+.seg button{font-family:var(--c-mono);font-size:12px;padding:7px 14px;border-radius:6px;color:var(--c-muted);transition:all .25s}
+.seg button.on{background:var(--c-accent);color:#1A0A00;font-weight:500}
+.dzero{font-family:var(--c-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-faint);display:flex;align-items:center;gap:7px}
+.dzero .d{width:7px;height:7px;border-radius:50%;background:#7ee0a8;box-shadow:0 0 8px rgba(126,224,168,.6)}
+
+.body{flex:1;display:grid;grid-template-columns:256px 1fr;min-height:0}
+
+/* ---- Sidebar (SHELL: --c-*) ---- */
+.sidebar{border-right:1px solid var(--c-border);background:var(--c-surface);padding:20px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.side-h{font-family:var(--c-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--c-faint);padding:6px 10px 10px}
+.navitem{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;color:var(--c-muted);font-size:14px;position:relative;transition:background .2s,color .2s;width:100%;text-align:left}
+.navitem .ic{width:18px;height:18px;flex-shrink:0;opacity:.8}
+.navitem:hover:not(.locked){background:var(--c-surface-2);color:var(--c-ink)}
+.navitem.active{background:rgba(255,106,26,.12);color:var(--c-ink)}
+.navitem.active::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--c-accent)}
+.navitem.locked{color:var(--c-faint);cursor:not-allowed;opacity:.55}
+.navitem .lock{margin-left:auto;width:13px;height:13px;opacity:.7}
+.side-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--c-border);font-family:var(--c-mono);font-size:10px;color:var(--c-faint);line-height:1.6}
+
+/* ---- Main ---- */
+.main{overflow-y:auto;min-height:0}
+/* Orquestador inspector bar (SHELL chrome, pero muestra lo inyectado) */
+.inspector{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--c-border);background:var(--c-bg);transition:background .3s}
+.insp{padding:14px 20px;border-right:1px solid var(--c-border);min-width:150px}
+.insp .k{font-family:var(--c-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-faint)}
+.insp .v{font-size:13px;margin-top:5px;color:var(--c-ink);display:flex;align-items:center;gap:8px}
+.insp .sw{width:13px;height:13px;border-radius:4px;border:1px solid var(--c-border)}
+.insp .mono{font-family:var(--c-mono);font-size:12px}
+.insp.pulse{animation:pulse 1.1s ease}
+@keyframes pulse{0%{background:rgba(255,106,26,.14)}100%{background:transparent}}
+
+/* ---- Módulo (usa SOLO --m-*, inyectados por el Orquestador) ---- */
+.module{padding:34px 40px 60px;background:var(--m-bg);min-height:100%;font-family:var(--m-font);transition:background .45s ease}
+.mod-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.mod-title{font-family:var(--m-font);font-weight:500;font-size:1.7rem;color:var(--m-text);letter-spacing:-.02em;transition:color .45s}
+.mod-sub{color:var(--m-muted);font-size:.92rem;margin-top:4px;transition:color .45s}
+.resolve{font-family:var(--c-mono);font-size:12px;background:var(--m-surface);border:1px solid var(--m-border);border-radius:8px;padding:9px 13px;color:var(--m-muted);transition:all .45s}
+.resolve b{color:var(--m-primary)}
+.mod-card{margin-top:26px;background:var(--m-surface);border:1px solid var(--m-border);border-radius:14px;overflow:hidden;transition:background .45s,border-color .45s}
+table{width:100%;border-collapse:collapse;font-family:var(--c-text)}
+thead th{text-align:left;font-family:var(--c-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--m-muted);padding:14px 18px;border-bottom:1px solid var(--m-border);transition:color .45s,border-color .45s}
+tbody td{padding:14px 18px;font-size:14px;color:var(--m-text);border-bottom:1px solid var(--m-border);transition:color .45s,border-color .45s}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .2s}
+tbody tr:hover td{background:rgba(127,127,127,.06)}
+.pill{display:inline-block;font-family:var(--c-mono);font-size:11px;padding:4px 10px;border-radius:20px;background:color-mix(in srgb,var(--m-primary) 16%,transparent);color:var(--m-primary);border:1px solid color-mix(in srgb,var(--m-primary) 35%,transparent)}
+.mod-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--c-mono);font-size:11px;color:var(--m-muted);margin-top:14px}
+.mod-tag .d{width:6px;height:6px;border-radius:50%;background:var(--m-primary)}
+.fade{animation:fade .45s ease}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* locked / empty states */
+.locked-state{padding:60px 40px;text-align:center;font-family:var(--c-text)}
+.locked-state .big{font-family:var(--c-display);font-size:1.4rem;color:var(--c-ink)}
+.locked-state p{color:var(--c-muted);margin-top:10px}
+
+.notebar{padding:10px 20px;font-family:var(--c-mono);font-size:11px;color:var(--c-faint);border-top:1px solid var(--c-border);background:var(--c-surface);text-align:center}
+
+@media(max-width:820px){
+  .body{grid-template-columns:1fr}
+  .sidebar{position:fixed;z-index:20;bottom:0;left:0;right:0;top:auto;flex-direction:row;overflow-x:auto;border-right:none;border-top:1px solid var(--c-border);padding:8px}
+  .side-h,.side-foot{display:none}
+  .navitem{flex-direction:column;gap:4px;font-size:11px;padding:8px 12px}
+  .navitem.active::before{display:none}
+  .inspector{overflow-x:auto;flex-wrap:nowrap}
+  .module{padding:24px 18px 90px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo">CORE<b>.</b></span><span class="tagchip">Consola del Orquestador</span></div>
+    <div class="tswitch">
+      <span class="lbl">tenant</span>
+      <div class="seg" id="seg"></div>
+      <span class="dzero"><span class="d"></span> DZero · datos mock</span>
+    </div>
+  </header>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="side-h">Módulos</div>
+      <div id="nav"></div>
+      <div class="side-foot" id="hostfoot"></div>
+    </aside>
+    <main class="main">
+      <div class="inspector" id="inspector"></div>
+      <div class="module" id="module"></div>
+    </main>
+  </div>
+  <div class="notebar">Prototipo · el shell mantiene identidad CORE (<span class="mono">--c-*</span>) · el contenido del módulo se theme-a por tenant (<span class="mono">--m-*</span>) · toda lectura pasa por <span class="mono">useTable()</span></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* =========================================================================
+   MODULE_MANIFEST — fuente única de verdad. Sin entrada aquí, el módulo no existe.
+   ========================================================================= */
+var MODULE_MANIFEST=[
+  {id:"transportistas",label:"Transportistas",isReal:true,hasSupabase:true},
+  {id:"inventario",    label:"Inventario",    isReal:true,hasSupabase:true},
+  {id:"crm",           label:"CRM",           isReal:true,hasSupabase:true},
+  {id:"finanzas",      label:"Finanzas",      isReal:true,hasSupabase:true},
+  {id:"envios",        label:"Envíos",        isReal:true,hasSupabase:true}
+];
+
+/* Vista de cada módulo. El módulo NO conoce al tenant: declara qué dato semántico
+   necesita (useTable) y cómo mostrarlo. No hay lógica de detección de tenant. */
+var VIEWS={
+  transportistas:{semantic:"transportistas",sub:"Organizaciones con rol carrier (Party Model)",cols:[["org","Organización"],["rol","Rol"],["envios","Envíos"],["estado","Estado","pill"]]},
+  crm:{semantic:"clientes",sub:"Personas y organizaciones con rol cliente",cols:[["nombre","Nombre"],["email","Email"],["rol","Rol","pill"]]},
+  inventario:{semantic:"inventario",sub:"Stock disponible por SKU",cols:[["sku","SKU"],["producto","Producto"],["cantidad","Cantidad"]]},
+  finanzas:{semantic:"movimientos",sub:"Movimientos del período",cols:[["fecha","Fecha"],["concepto","Concepto"],["monto","Monto"]]},
+  envios:{semantic:"envios",sub:"Seguimiento de envíos",cols:[["tracking","Tracking"],["destino","Destino"],["estado","Estado","pill"]]}
+};
+
+/* =========================================================================
+   cliente_config por tenant — vive en Supabase Charlie (aquí, mock).
+   Define theme (--m-*), backend (adapter), módulos habilitados, Conjuntos y permisos.
+   ========================================================================= */
+var TENANTS={
+  oddy:{
+    slug:"oddy",nombre:"ODDY",hostname:"oddy.core.com.uy",
+    theme:{"--m-primary":"#FF6A1A","--m-primary-soft":"#FFB27A","--m-bg":"#0E0E11","--m-surface":"#17171B","--m-text":"#F5F5F4","--m-muted":"#9C9CA3","--m-border":"#2A2A30","--m-font":"'Space Grotesk',sans-serif"},
+    backend:"supabase",
+    modulos:["transportistas","inventario","crm"],
+    conjuntos:{transportistas:"transportistas",clientes:"clientes",inventario:"stock"},
+    permisos:["read","write"]
+  },
+  nordika:{
+    slug:"nordika",nombre:"Nordika Logística",hostname:"app.nordika.com",
+    theme:{"--m-primary":"#2DD4BF","--m-primary-soft":"#99F6E4","--m-bg":"#0B0F10","--m-surface":"#12181A","--m-text":"#ECFEFF","--m-muted":"#8AA0A3","--m-border":"#1E2A2C","--m-font":"'Inter',sans-serif"},
+    backend:"rest",
+    modulos:["transportistas","crm","finanzas"],
+    conjuntos:{transportistas:"carriers_mx",clientes:"customers",movimientos:"ledger"},
+    permisos:["read"]
+  }
+};
+
+/* =========================================================================
+   Datos mock, indexados por el nombre REAL de la tabla del cliente.
+   DZero: viven en el adapter del cliente; jamás se llama supabase.from() en un módulo.
+   ========================================================================= */
+var DB={
+  transportistas:[{org:"TransUY SA",rol:"transportista",envios:128,estado:"Activo"},{org:"Rodados del Este",rol:"transportista",envios:74,estado:"Activo"},{org:"Claude SA",rol:"transportista · proveedor",envios:12,estado:"Pausa"}],
+  carriers_mx:[{org:"Carriers MX",rol:"carrier",envios:512,estado:"Activo"},{org:"LogiNorte",rol:"carrier",envios:301,estado:"Activo"}],
+  clientes:[{nombre:"Ana Pereyra",email:"ana@oddy.uy",rol:"cliente"},{nombre:"Comercial Sur",email:"ventas@sur.uy",rol:"cliente"}],
+  customers:[{nombre:"Global Retail",email:"ops@globalretail.com",rol:"customer"},{nombre:"NordShop",email:"hola@nordshop.com",rol:"customer"},{nombre:"Björk AB",email:"info@bjork.se",rol:"customer"}],
+  stock:[{sku:"ODD-001",producto:"Caja térmica 20L",cantidad:340},{sku:"ODD-014",producto:"Etiqueta RFID",cantidad:9800}],
+  ledger:[{fecha:"2026-06-01",concepto:"Flete internacional",monto:"US$ 4.200"},{fecha:"2026-06-08",concepto:"Servicio courier",monto:"US$ 1.150"}]
+};
+
+/* Adapter: única puerta a los datos. Un módulo nunca lo instancia ni lo conoce. */
+function makeAdapter(kind){return{kind:kind,select:function(table){return (DB[table]||[]).map(function(r){return r;});}};}
+
+/* =========================================================================
+   OrchestratorProvider — mantiene el contexto del tenant activo.
+   (En React: un Context Provider. Aquí, un contenedor de estado.)
+   ========================================================================= */
+var Orchestrator={
+  ctx:null,
+  activate:function(slug){
+    var cfg=TENANTS[slug];
+    this.ctx={cfg:cfg,adapter:makeAdapter(cfg.backend)};
+    applyThemeTokens(cfg.theme);          // inyecta identidad visual del cliente
+    return this.ctx;
+  }
+};
+function applyThemeTokens(theme){var r=document.documentElement;Object.keys(theme).forEach(function(k){r.style.setProperty(k,theme[k]);});}
+
+/* Hooks expuestos a los módulos */
+function useOrchestrator(){return{tenant:Orchestrator.ctx.cfg,permisos:Orchestrator.ctx.cfg.permisos};}
+function useTable(semantic){
+  var ctx=Orchestrator.ctx, real=ctx.cfg.conjuntos[semantic];   // Conjunto: nombre semántico → tabla real
+  if(!real) return {rows:[],resolved:null,missing:true};
+  return {rows:ctx.adapter.select(real),resolved:real};
+}
+
+/* =========================================================================
+   ConfigLoader — resuelve el tenant. En producción: por hostname. Aquí: por slug.
+   ========================================================================= */
+var ConfigLoader={
+  resolve:function(slug){return TENANTS[slug]?slug:"oddy";}
+};
+
+/* ---------------- Render del SHELL ---------------- */
+var state={tenant:null,active:null};
+var ICON={transportistas:"M3 13V6a1 1 0 011-1h9v8M13 8h4l3 3v2M5 17a2 2 0 104 0M15 17a2 2 0 104 0",inventario:"M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7",crm:"M16 21v-2a4 4 0 00-8 0v2M12 11a4 4 0 100-8 4 4 0 000 8",finanzas:"M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6",envios:"M21 16V8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5"};
+function svg(d){return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+d+'"/></svg>';}
+var lock='<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
+function renderSeg(){
+  var seg=document.getElementById("seg");seg.innerHTML="";
+  Object.keys(TENANTS).forEach(function(slug){
+    var b=document.createElement("button");b.textContent=TENANTS[slug].nombre.split(" ")[0];
+    b.className=(state.tenant===slug?"on":"");b.onclick=function(){switchTenant(slug);};
+    seg.appendChild(b);
+  });
+}
+function renderNav(){
+  var nav=document.getElementById("nav");nav.innerHTML="";
+  var cfg=Orchestrator.ctx.cfg;
+  MODULE_MANIFEST.forEach(function(m){
+    var enabled=cfg.modulos.indexOf(m.id)>=0;
+    var b=document.createElement("button");
+    b.className="navitem"+(enabled?"":" locked")+(state.active===m.id?" active":"");
+    b.innerHTML=svg(ICON[m.id]||"")+"<span>"+m.label+"</span>"+(enabled?"":lock);
+    if(enabled){b.onclick=function(){state.active=m.id;renderNav();renderModule();};}
+    else{b.setAttribute("aria-disabled","true");b.title="Módulo no contratado por este tenant";}
+    if(state.active===m.id)b.setAttribute("aria-current","page");
+    nav.appendChild(b);
+  });
+  document.getElementById("hostfoot").innerHTML="ConfigLoader → hostname<br><span style='color:var(--c-muted)'>"+cfg.hostname+"</span>";
+}
+function renderInspector(){
+  var cfg=Orchestrator.ctx.cfg;var ins=document.getElementById("inspector");
+  var conj=Object.keys(cfg.conjuntos).map(function(k){return k+" → "+cfg.conjuntos[k];}).join(" · ");
+  ins.innerHTML=
+    cell("Inyecta el Orquestador","",true)+
+    cell("Identidad","<span class='sw' style='background:"+cfg.theme["--m-primary"]+"'></span><span class='mono'>"+cfg.theme["--m-primary"]+"</span>")+
+    cell("Infraestructura","<span class='mono'>adapter: "+cfg.backend+"</span>")+
+    cell("Módulos habilitados","<span class='mono'>"+cfg.modulos.length+" / "+MODULE_MANIFEST.length+"</span>")+
+    cell("Permisos","<span class='mono'>"+cfg.permisos.join(", ")+"</span>")+
+    cell("Conjuntos","<span class='mono' style='font-size:11px'>"+conj+"</span>");
+  Array.prototype.forEach.call(ins.children,function(c){c.classList.add("pulse");});
+}
+function cell(k,v,head){return '<div class="insp'+(head?"":"")+'"><div class="k">'+k+'</div>'+(v?'<div class="v">'+v+'</div>':'<div class="v mono" style="color:var(--c-accent)">▸ por tenant</div>')+'</div>';}
+
+/* ---------------- Render del MÓDULO (consume hooks; usa --m-*) ---------------- */
+function renderModule(){
+  var host=document.getElementById("module");
+  var cfg=Orchestrator.ctx.cfg;
+  if(!state.active||cfg.modulos.indexOf(state.active)<0){
+    host.innerHTML='<div class="locked-state"><div class="big">Módulo no habilitado</div><p>Este tenant no tiene el módulo contratado. El Orquestador muestra el candado — no redirige, no rompe.</p></div>';
+    return;
+  }
+  var view=VIEWS[state.active];
+  var data=useTable(view.semantic);          // ← el módulo pide su dato semántico
+  var o=useOrchestrator();
+  var canWrite=o.permisos.indexOf("write")>=0;
+
+  var rows=data.rows.map(function(r){
+    var tds=view.cols.map(function(c){
+      var val=r[c[0]];
+      if(c[2]==="pill")val='<span class="pill">'+val+'</span>';
+      return "<td>"+val+"</td>";
+    }).join("");
+    return "<tr>"+tds+"</tr>";
+  }).join("");
+  var ths=view.cols.map(function(c){return "<th>"+c[1]+"</th>";}).join("");
+
+  host.className="module fade";
+  host.innerHTML=
+    '<div class="mod-head"><div>'+
+      '<div class="mod-title">'+labelOf(state.active)+'</div>'+
+      '<div class="mod-sub">'+view.sub+'</div>'+
+    '</div>'+
+    '<div class="resolve">useTable(\''+view.semantic+'\') <b>→</b> '+data.resolved+'</div>'+
+    '</div>'+
+    '<div class="mod-card"><table><thead><tr>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="mod-tag"><span class="d"></span> El mismo módulo, sin cambiar su código, resolvió la tabla <b>'+data.resolved+'</b> del tenant '+cfg.nombre+' · permisos: '+o.permisos.join(", ")+(canWrite?'':' (solo lectura)')+'</div>';
+  void host.offsetWidth; // reinicia animación
+}
+function labelOf(id){for(var i=0;i<MODULE_MANIFEST.length;i++)if(MODULE_MANIFEST[i].id===id)return MODULE_MANIFEST[i].label;return id;}
+
+/* ---------------- Orquestación ---------------- */
+function switchTenant(slug){
+  var s=ConfigLoader.resolve(slug);
+  state.tenant=s;
+  var ctx=Orchestrator.activate(s);         // carga config + inyecta theme
+  // si el módulo activo no existe en el nuevo tenant, tomar el primero habilitado
+  if(!state.active||ctx.cfg.modulos.indexOf(state.active)<0)state.active=ctx.cfg.modulos[0];
+  renderSeg();renderNav();renderInspector();renderModule();
+}
+
+/* boot */
+switchTenant("oddy");
+})();
+</script>
+</body>
+</html>

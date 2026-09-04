@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#152238"/><circle cx="100" cy="100" r="60" fill="none" stroke="#0E8A82" stroke-width="6"/><circle cx="100" cy="100" r="22" fill="#0E8A82"/><text x="100" y="170" font-family="sans-serif" font-size="28" fill="#F5F6F8" text-anchor="middle" font-weight="700">CORE</text></svg></template>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8;font-family:'IBM Plex Sans',sans-serif;}
+a{color:#0E8A82;text-decoration:none;}
+a:hover{color:#0B6F68;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+</style>
+<title>Capacidades — CORE</title>
+<meta name="description" content="Las capacidades que CORE integra: logística, comercial, marcas, proyectos e integración.">
+</helmet>
+
+<div style="background:#F5F6F8;color:#101423;min-width:1280px;">
+
+  <div style="position:sticky;top:0;z-index:10;background:#F5F6F8;border-bottom:1px solid #E2E5EA;display:flex;align-items:center;justify-content:space-between;padding:20px 56px;">
+    <a href="CORE Homepage.dc.html" style="display:flex;align-items:center;gap:12px;">
+      <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="none" stroke="#152238" stroke-width="1.5"></circle><circle cx="14" cy="14" r="5" fill="#152238"></circle></svg>
+      <span style="font-weight:700;font-size:20px;letter-spacing:-0.01em;color:#152238;">CORE</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:36px;">
+      <a href="CORE Capacidades.dc.html" style="color:#0E8A82;font-size:15px;font-weight:600;">Capacidades</a>
+      <a href="CORE Como Trabajamos.dc.html" style="color:#152238;font-size:15px;font-weight:500;">Cómo trabajamos</a>
+      <a href="CORE Cobertura.dc.html" style="color:#152238;font-size:15px;font-weight:500;">Cobertura</a>
+      <a href="CORE Nosotros.dc.html" style="color:#152238;font-size:15px;font-weight:500;">Nosotros</a>
+      <a href="CORE Ecosistema.dc.html" style="color:#152238;font-size:15px;font-weight:500;">Ecosistema</a>
+      <a href="CORE Contacto.dc.html" style="background:#0E8A82;color:#F5F6F8;padding:10px 20px;border-radius:2px;font-weight:600;font-size:14px;">Contactar a CORE</a>
+      <div class="mono" style="display:flex;gap:6px;font-size:12px;color:#5B6273;margin-left:8px;"><span style="color:#152238;font-weight:700;">ES</span><span>·</span><span>PT</span><span>·</span><span>EN</span></div>
+    </div>
+  </div>
+
+  <section style="padding:88px 56px 56px;background:#152238;color:#F5F6F8;">
+    <div class="mono" style="font-size:13px;letter-spacing:0.08em;color:#7fd6cf;margin-bottom:20px;">CAPACIDADES — QUÉ PUEDE INTEGRAR CORE</div>
+    <h1 style="font-size:44px;font-weight:700;margin:0 0 20px;max-width:820px;letter-spacing:-0.01em;">Un integrador, no una capacidad aislada.</h1>
+    <p style="font-size:18px;line-height:1.55;color:#c7ccd6;max-width:640px;margin:0;">Frente a un problema complejo, CORE integra las capacidades necesarias — propias, de otras empresas del grupo, de marcas y de socios estratégicos — para construir una solución específica. Estas son las capacidades que CORE puede combinar.</p>
+  </section>
+
+  <section style="padding:80px 56px 24px;background:#FFFFFF;text-align:center;">
+    <div class="mono" style="font-size:12px;color:#0E8A82;letter-spacing:0.06em;margin-bottom:10px;">CELDAS EFICIENTES</div>
+    <div style="font-size:15px;color:#5B6273;max-width:620px;margin:0 auto;line-height:1.55;">Cada hexágono es una celda eficiente — una capacidad especializada. Cada problema requiere una combinación distinta de celdas; CORE las integra para construir la solución.</div>
+  </section>
+
+  <section style="padding:24px 56px 80px;background:#FFFFFF;display:flex;justify-content:center;">
+    <div style="position:relative;width:850px;height:401px;">
+      <div style="position:absolute;left:0px;top:0px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_logistica }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">LOGÍSTICA</span><span style="font-size:13px;font-weight:500;color:#152238;">Operaciones</span></div></div>
+      <div style="position:absolute;left:135px;top:90px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_logistica }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">LOGÍSTICA</span><span style="font-size:13px;font-weight:500;color:#152238;">Distribución</span></div></div>
+      <div style="position:absolute;left:270px;top:0px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_comercial }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">COMERCIAL</span><span style="font-size:13px;font-weight:500;color:#152238;">Representación comercial</span></div></div>
+      <div style="position:absolute;left:405px;top:90px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_comercial }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">COMERCIAL</span><span style="font-size:13px;font-weight:500;color:#152238;">Comercialización</span></div></div>
+      <div style="position:absolute;left:540px;top:0px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_marcas }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#0E8A82;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#c9ece8;margin-bottom:6px;">MARCAS</span><span style="font-size:12px;font-weight:600;color:#F5F6F8;line-height:1.25;">Representación de marcas</span></div></div>
+      <div style="position:absolute;left:675px;top:90px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_comercial }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">COMERCIAL</span><span style="font-size:12px;font-weight:500;color:#152238;line-height:1.25;">Desarrollo de mercados</span></div></div>
+      <div style="position:absolute;left:0px;top:180px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_integracion }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#152238;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#7fd6cf;margin-bottom:6px;">INTEGRACIÓN</span><span style="font-size:12px;font-weight:600;color:#F5F6F8;line-height:1.25;">Capacidades del ecosistema</span></div></div>
+      <div style="position:absolute;left:135px;top:270px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_proyectos }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">PROYECTOS</span><span style="font-size:12px;font-weight:500;color:#152238;line-height:1.25;">Capacidades especializadas</span></div></div>
+      <div style="position:absolute;left:270px;top:180px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_marcas }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">MARCAS</span><span style="font-size:13px;font-weight:500;color:#152238;">Desarrollo de marcas</span></div></div>
+      <div style="position:absolute;left:405px;top:270px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_proyectos }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">PROYECTOS</span><span style="font-size:13px;font-weight:500;color:#152238;">Proyectos</span></div></div>
+      <div style="position:absolute;left:675px;top:270px;width:170px;height:170px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#E2E5EA;cursor:pointer;" style-hover="transform:scale(1.05)" onClick="{{ open_integracion }}"><div style="position:absolute;inset:2px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;"><span class="mono" style="font-size:9px;color:#0E8A82;margin-bottom:6px;">INTEGRACIÓN</span><span style="font-size:12px;font-weight:500;color:#152238;line-height:1.25;">Actores y proveedores</span></div></div>
+    </div>
+  </section>
+
+  <div class="mono" style="font-size:13px;color:#5B6273;text-align:center;padding:0 56px 64px;">Problema del cliente → celdas eficientes → integración CORE → solución</div>
+
+  <sc-if value="{{ hasSelected }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(21,34,56,0.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:24px;" onClick="{{ close }}">
+      <div style="background:#FFFFFF;border-radius:2px;max-width:480px;width:100%;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.25);" onClick="{{ stop }}">
+        <div class="mono" style="font-size:11px;color:#0E8A82;margin-bottom:12px;">CAPACIDAD</div>
+        <h3 style="font-size:24px;font-weight:700;color:#152238;margin:0 0 16px;">{{ selectedTitle }}</h3>
+        <p style="font-size:15px;color:#5B6273;line-height:1.6;margin:0 0 28px;">{{ selectedDesc }}</p>
+        <button onClick="{{ close }}" style="background:#152238;color:#F5F6F8;border:none;padding:12px 24px;border-radius:2px;font-weight:600;font-size:14px;cursor:pointer;">Cerrar</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <section style="padding:64px 56px;background:#F5F6F8;border-top:1px solid #E2E5EA;display:flex;justify-content:space-between;align-items:center;gap:40px;flex-wrap:wrap;">
+    <div style="max-width:560px;">
+      <div class="mono" style="font-size:12px;color:#0E8A82;margin-bottom:10px;">SIGUIENTE PASO</div>
+      <h2 style="font-size:24px;font-weight:700;color:#152238;margin:0;">¿Cómo convertimos estas capacidades en una solución? <a href="CORE Como Trabajamos.dc.html">Ver cómo trabajamos →</a></h2>
+    </div>
+    <a href="CORE Contacto.dc.html" style="background:#0E8A82;color:#152238;padding:14px 28px;border-radius:2px;font-weight:600;font-size:15px;white-space:nowrap;">Hablar con CORE</a>
+  </section>
+
+  <footer style="background:#152238;color:#F5F6F8;padding:56px 56px 40px;">
+    <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;border-bottom:1px solid #2a3a58;padding-bottom:40px;margin-bottom:24px;">
+      <div><div style="font-weight:700;font-size:18px;margin-bottom:12px;">CORE</div><div style="font-size:13px;color:#8b93a8;max-width:260px;line-height:1.5;">Global Supply. Regional Growth.</div></div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;"><div class="mono" style="font-size:11px;color:#5b6f8f;margin-bottom:4px;">SISTEMA</div><a href="CORE Capacidades.dc.html" style="color:#c7ccd6;">Capacidades</a><a href="CORE Como Trabajamos.dc.html" style="color:#c7ccd6;">Cómo trabajamos</a><a href="CORE Cobertura.dc.html" style="color:#c7ccd6;">Cobertura</a></div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;"><div class="mono" style="font-size:11px;color:#5b6f8f;margin-bottom:4px;">EMPRESA</div><a href="CORE Nosotros.dc.html" style="color:#c7ccd6;">Nosotros</a><a href="CORE Ecosistema.dc.html" style="color:#c7ccd6;">Ecosistema</a><a href="CORE Contacto.dc.html" style="color:#c7ccd6;">Contacto</a></div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;"><div class="mono" style="font-size:11px;color:#5b6f8f;margin-bottom:4px;">LEGAL</div><span style="color:#5b6f8f;">Privacidad (próximamente)</span><span style="color:#5b6f8f;">Términos (próximamente)</span></div>
+    </div>
+    <div class="mono" style="font-size:11px;color:#5b6f8f;">© 2026 CORE.</div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { open: null };
+  details = {
+    logistica: { title: 'Logística', desc: 'Integramos operaciones, distribución y capacidades logísticas según las necesidades de cada solución.' },
+    comercial: { title: 'Comercial', desc: 'Integramos representación, comercialización y desarrollo de mercados.' },
+    marcas: { title: 'Marcas', desc: 'Integramos capacidades para representar, introducir y desarrollar marcas en nuevos territorios.' },
+    proyectos: { title: 'Proyectos', desc: 'Integramos empresas, disciplinas y capacidades especializadas para resolver proyectos específicos.' },
+    integracion: { title: 'Integración', desc: 'Coordinamos múltiples actores, proveedores y capacidades alrededor de una solución.' }
+  };
+  renderVals() {
+    const sel = this.state.open ? this.details[this.state.open] : null;
+    const handlers = {};
+    Object.keys(this.details).forEach(k => { handlers['open_' + k] = () => this.setState({ open: k }); });
+    return { ...handlers, hasSelected: !!sel, selectedTitle: sel ? sel.title : '', selectedDesc: sel ? sel.desc : '', close: () => this.setState({ open: null }), stop: (e) => e.stopPropagation() };
+  }
+}
+</script>
+</body>
+</html>

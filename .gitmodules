@@ -4,3 +4,6 @@
 [submodule "plataforma"]
 	path = plataforma
 	url = https://github.com/CharlieUY711/charlie.core.git
+[submodule "landings/ODDY_Landing"]
+	path = landings/ODDY_Landing
+	url = https://github.com/CharlieUY711/ODDY_Web.git

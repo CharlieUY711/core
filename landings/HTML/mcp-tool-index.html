@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core MCP Tool — Inteligencia de Marketing para tu Negocio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --Charlie-color-primary:    #F26522;
+      --Charlie-color-black:      #1A1A1A;
+      --Charlie-color-white:      #FFFFFF;
+      --Charlie-color-celeste:    #29ABE2;
+      --Charlie-color-green:      #39B54A;
+      --Charlie-color-gray-dark:  #4B4B4B;
+      --Charlie-color-gray-mid:   #9B9B9B;
+      --Charlie-color-gray-light: #F0F0F0;
+      --Charlie-color-border:     #E0E0E0;
+      --Charlie-color-error:      #E53935;
+
+      --m-font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      --m-space-1:  4px;  --m-space-2:  8px;  --m-space-3:  12px;
+      --m-space-4:  16px; --m-space-6:  24px; --m-space-8:  32px;
+      --m-space-12: 48px; --m-space-16: 64px;
+      --m-radius-sm: 2px; --m-radius-md: 6px; --m-radius-lg: 12px; --m-radius-full: 9999px;
+      --m-shadow-sm: 0 1px 3px rgba(0,0,0,.10);
+      --m-shadow-md: 0 4px 12px rgba(0,0,0,.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--Charlie-color-white);
+      color: var(--Charlie-color-black);
+      font-family: var(--m-font-family);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--m-space-4) var(--m-space-12);
+      background: var(--Charlie-color-black);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .nav-logo { font-size: 16px; font-weight: 700; color: var(--Charlie-color-white); letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--Charlie-color-primary); }
+    .nav-links { display: flex; gap: var(--m-space-8); list-style: none; }
+    .nav-links a { color: var(--Charlie-color-gray-mid); text-decoration: none; font-size: 11px; font-weight: 500; transition: color .18s; }
+    .nav-links a:hover { color: var(--Charlie-color-white); }
+    .nav-cta {
+      background: var(--Charlie-color-primary); color: var(--Charlie-color-white);
+      padding: var(--m-space-2) var(--m-space-6);
+      border-radius: var(--m-radius-md);
+      font-weight: 600; font-size: 11px; text-decoration: none;
+      transition: opacity .18s;
+    }
+    .nav-cta:hover { opacity: .88; }
+    .nav-actions { display: flex; align-items: center; gap: var(--m-space-4); }
+    .nav-toggle {
+      display: none; flex-direction: column; justify-content: center; gap: 5px;
+      width: 40px; height: 40px; padding: 9px; background: transparent;
+      border: none; cursor: pointer;
+    }
+    .nav-toggle span {
+      display: block; width: 100%; height: 2px; border-radius: 2px;
+      background: var(--Charlie-color-white); transition: transform .22s, opacity .22s;
+    }
+    .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-toggle.open span:nth-child(2) { opacity: 0; }
+    .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* TICKER */
+    .ticker-wrap { overflow: hidden; background: var(--Charlie-color-primary); padding: 10px 0; }
+    .ticker-track {
+      display: flex; gap: var(--m-space-16); white-space: nowrap;
+      animation: ticker 36s linear infinite;
+    }
+    .ticker-item { font-size: 9px; font-weight: 700; color: #fff; letter-spacing: .1em; text-transform: uppercase; flex-shrink: 0; }
+    .ticker-dot { display: inline-block; width: 3px; height: 3px; background: rgba(255,255,255,.5); border-radius: 50%; vertical-align: middle; margin: 0 var(--m-space-6); }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* HERO */
+    .hero { background: var(--Charlie-color-black); padding: var(--m-space-16) var(--m-space-12) 80px; }
+    .hero-inner { max-width: 1100px; margin: 0 auto; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: var(--m-space-2);
+      font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--Charlie-color-primary); margin-bottom: var(--m-space-6);
+    }
+    .hero-eyebrow::before { content: ''; display: inline-block; width: 20px; height: 1px; background: var(--Charlie-color-primary); }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 700;
+      line-height: 1.08; letter-spacing: -.035em;
+      color: var(--Charlie-color-white); max-width: 780px; margin-bottom: var(--m-space-6);
+    }
+    .hero h1 em { font-style: italic; font-weight: 400; color: var(--Charlie-color-primary); }
+    .hero-sub { font-size: 18px; font-weight: 300; color: var(--Charlie-color-gray-mid); max-width: 520px; line-height: 1.65; margin-bottom: var(--m-space-12); }
+
+    .hero-actions { display: flex; align-items: center; gap: var(--m-space-6); flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--Charlie-color-primary); color: var(--Charlie-color-white);
+      padding: 14px var(--m-space-8); border-radius: var(--m-radius-md);
+      font-weight: 700; font-size: 15px; text-decoration: none;
+      transition: opacity .18s, transform .15s; display: inline-block;
+    }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* DEMO BUTTON — hero variant */
+    .btn-demo-hero {
+      display: inline-flex; align-items: center; gap: var(--m-space-2);
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.2);
+      color: var(--Charlie-color-white);
+      padding: 13px var(--m-space-6);
+      border-radius: var(--m-radius-md);
+      font-weight: 600; font-size: 14px; text-decoration: none;
+      transition: border-color .18s, background .18s;
+    }
+    .btn-demo-hero:hover { border-color: var(--Charlie-color-primary); background: rgba(242,101,34,.08); }
+    .btn-demo-hero .arrow { transition: transform .18s; }
+    .btn-demo-hero:hover .arrow { transform: translateX(3px); }
+
+    .hero-stats {
+      margin-top: var(--m-space-16); padding-top: var(--m-space-8);
+      border-top: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: var(--m-space-12); flex-wrap: wrap;
+    }
+    .stat-num { display: block; font-size: 2.2rem; font-weight: 700; color: var(--Charlie-color-white); letter-spacing: -.03em; line-height: 1; }
+    .stat-label { font-size: 9px; color: var(--Charlie-color-gray-mid); letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+    .stat-divider { width: 1px; height: 36px; background: rgba(255,255,255,.1); }
+
+    /* DEMO BANNER — inline section */
+    .demo-banner {
+      background: linear-gradient(135deg, rgba(242,101,34,.06) 0%, var(--Charlie-color-gray-light) 100%);
+      border-top: 1px solid rgba(242,101,34,.15);
+      border-bottom: 1px solid var(--Charlie-color-border);
+      padding: var(--m-space-8) var(--m-space-12);
+    }
+    .demo-banner-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: var(--m-space-8); flex-wrap: wrap;
+    }
+    .demo-banner-text strong { display: block; font-size: 15px; font-weight: 600; color: var(--Charlie-color-black); margin-bottom: 4px; }
+    .demo-banner-text p { font-size: 13px; color: var(--Charlie-color-gray-dark); }
+    .btn-demo-banner {
+      display: inline-flex; align-items: center; gap: var(--m-space-2);
+      background: var(--Charlie-color-black); color: var(--Charlie-color-white);
+      padding: 12px var(--m-space-6); border-radius: var(--m-radius-md);
+      font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap;
+      transition: background .18s, transform .15s;
+    }
+    .btn-demo-banner:hover { background: #2d2d2d; transform: translateY(-1px); }
+    .demo-badge {
+      display: inline-flex; align-items: center; gap: var(--m-space-2);
+      background: rgba(242,101,34,.1); border: 1px solid rgba(242,101,34,.25);
+      border-radius: var(--m-radius-full); padding: 3px 10px;
+      font-size: 9px; font-weight: 700; color: var(--Charlie-color-primary);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: var(--m-space-2);
+    }
+    .demo-badge::before { content: ''; width: 6px; height: 6px; background: var(--Charlie-color-primary); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+    /* SECTIONS */
+    section { padding: var(--m-space-16) var(--m-space-12); }
+    .section-light { background: var(--Charlie-color-gray-light); }
+    .section-white { background: var(--Charlie-color-white); }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--Charlie-color-primary); margin-bottom: var(--m-space-4); }
+    .section-title { font-size: clamp(1.8rem, 3.2vw, 2.4rem); font-weight: 700; line-height: 1.15; letter-spacing: -.028em; color: var(--Charlie-color-black); margin-bottom: var(--m-space-4); }
+    .section-title.on-dark { color: var(--Charlie-color-white); }
+    .section-sub { font-size: 15px; color: var(--Charlie-color-gray-dark); line-height: 1.65; max-width: 520px; }
+
+    /* PROBLEMA */
+    .problema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--m-space-16); align-items: start; margin-top: var(--m-space-12); }
+    .problema-list { list-style: none; display: flex; flex-direction: column; gap: var(--m-space-4); }
+    .problema-item {
+      display: flex; gap: var(--m-space-4); align-items: flex-start;
+      padding: var(--m-space-6); background: var(--Charlie-color-white);
+      border-radius: var(--m-radius-md); border: 1px solid var(--Charlie-color-border);
+      box-shadow: var(--m-shadow-sm);
+    }
+    .problema-icon { width: 32px; height: 32px; background: rgba(242,101,34,.08); border-radius: var(--m-radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; }
+    .problema-text strong { display: block; color: var(--Charlie-color-black); font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .problema-text p { color: var(--Charlie-color-gray-dark); font-size: 12px; line-height: 1.55; }
+    .callout-quote { background: var(--Charlie-color-black); border-radius: var(--m-radius-lg); padding: var(--m-space-8); }
+    .callout-quote blockquote { font-size: 18px; font-weight: 400; font-style: italic; color: var(--Charlie-color-white); line-height: 1.5; margin-bottom: var(--m-space-4); }
+    .callout-quote cite { font-size: 9px; color: var(--Charlie-color-gray-mid); font-style: normal; letter-spacing: .04em; }
+    .callout-cost { background: rgba(242,101,34,.06); border: 1px solid rgba(242,101,34,.2); border-radius: var(--m-radius-md); padding: var(--m-space-6); font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.6; margin-top: var(--m-space-4); }
+    .callout-cost strong { color: var(--Charlie-color-primary); font-weight: 600; }
+
+    /* SOLUCIÓN */
+    .solucion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--m-space-16); align-items: center; margin-top: var(--m-space-12); }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--m-space-3); }
+    .feature-card { background: var(--Charlie-color-gray-light); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-md); padding: var(--m-space-6); transition: border-color .18s; }
+    .feature-card:hover { border-color: var(--Charlie-color-primary); }
+    .feature-card .fc-icon { font-size: 1.2rem; margin-bottom: var(--m-space-3); }
+    .feature-card h4 { font-size: 13px; font-weight: 600; color: var(--Charlie-color-black); margin-bottom: var(--m-space-2); }
+    .feature-card p { font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.55; }
+
+    /* COMO FUNCIONA */
+    .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; margin-top: var(--m-space-12); background: var(--Charlie-color-border); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-lg); overflow: hidden; }
+    .step { background: var(--Charlie-color-white); padding: var(--m-space-8) var(--m-space-6); }
+    .step-num { font-size: 3rem; font-weight: 700; font-style: italic; color: rgba(242,101,34,.18); line-height: 1; margin-bottom: var(--m-space-6); letter-spacing: -.04em; }
+    .step h3 { font-size: 15px; font-weight: 600; color: var(--Charlie-color-black); margin-bottom: var(--m-space-3); }
+    .step p { font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.6; }
+    .step-tag { display: inline-block; margin-top: var(--m-space-4); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--Charlie-color-primary); background: rgba(242,101,34,.08); border: 1px solid rgba(242,101,34,.2); padding: 3px 10px; border-radius: var(--m-radius-sm); }
+
+    /* CASOS */
+    .casos-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--m-space-6); margin-top: var(--m-space-12); }
+    .caso-card { background: var(--Charlie-color-white); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-lg); padding: var(--m-space-6); display: flex; flex-direction: column; gap: var(--m-space-4); box-shadow: var(--m-shadow-sm); transition: box-shadow .18s, transform .18s; }
+    .caso-card:hover { box-shadow: var(--m-shadow-md); transform: translateY(-2px); }
+    .caso-header { display: flex; align-items: center; gap: var(--m-space-3); }
+    .caso-emoji { width: 38px; height: 38px; background: rgba(242,101,34,.08); border-radius: var(--m-radius-md); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .caso-tipo { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--Charlie-color-primary); }
+    .caso-nombre { font-size: 11px; color: var(--Charlie-color-gray-mid); }
+    .caso-card h3 { font-size: 15px; font-weight: 600; color: var(--Charlie-color-black); line-height: 1.35; }
+    .caso-card p { font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.6; }
+    .caso-result { margin-top: auto; padding-top: var(--m-space-4); border-top: 1px solid var(--Charlie-color-border); font-size: 12px; font-weight: 500; color: var(--Charlie-color-celeste); }
+
+    /* DIFERENCIA */
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: var(--m-space-6); margin-top: var(--m-space-12); }
+    .comp-col { border-radius: var(--m-radius-lg); overflow: hidden; }
+    .comp-header { padding: var(--m-space-4) var(--m-space-6); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .comp-col.before .comp-header { background: rgba(229,57,53,.06); color: var(--Charlie-color-error); border: 1px solid rgba(229,57,53,.15); border-bottom: none; }
+    .comp-col.after  .comp-header { background: rgba(57,181,74,.06); color: var(--Charlie-color-green); border: 1px solid rgba(57,181,74,.2); border-bottom: none; }
+    .comp-body { list-style: none; }
+    .comp-col.before .comp-body { border: 1px solid rgba(229,57,53,.12); border-top: none; border-radius: 0 0 var(--m-radius-lg) var(--m-radius-lg); }
+    .comp-col.after  .comp-body { border: 1px solid rgba(57,181,74,.15); border-top: none; border-radius: 0 0 var(--m-radius-lg) var(--m-radius-lg); }
+    .comp-item { display: flex; align-items: flex-start; gap: var(--m-space-3); padding: var(--m-space-4) var(--m-space-6); border-bottom: 1px solid var(--Charlie-color-border); font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.5; background: var(--Charlie-color-white); }
+    .comp-item:last-child { border-bottom: none; }
+
+    /* TESTIMONIALS */
+    .testi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--m-space-6); margin-top: var(--m-space-12); }
+    .testi-card { background: var(--Charlie-color-white); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-lg); padding: var(--m-space-6); box-shadow: var(--m-shadow-sm); }
+    .testi-stars { color: var(--Charlie-color-primary); font-size: 11px; margin-bottom: var(--m-space-4); letter-spacing: 2px; }
+    .testi-text { font-size: 12px; font-style: italic; color: var(--Charlie-color-gray-dark); line-height: 1.65; margin-bottom: var(--m-space-6); }
+    .testi-author { display: flex; align-items: center; gap: var(--m-space-3); }
+    .testi-avatar { width: 34px; height: 34px; border-radius: var(--m-radius-full); background: rgba(242,101,34,.1); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: var(--Charlie-color-primary); flex-shrink: 0; }
+    .testi-name { font-size: 13px; font-weight: 600; color: var(--Charlie-color-black); }
+    .testi-role { font-size: 10px; color: var(--Charlie-color-gray-mid); }
+
+    /* PRICING */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--m-space-6); margin-top: var(--m-space-12); align-items: start; }
+    .price-card { background: var(--Charlie-color-white); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-lg); padding: var(--m-space-8); position: relative; box-shadow: var(--m-shadow-sm); }
+    .price-card.featured { border-color: var(--Charlie-color-primary); box-shadow: 0 0 0 1px var(--Charlie-color-primary), var(--m-shadow-md); }
+    .price-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--Charlie-color-primary); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 14px; border-radius: var(--m-radius-full); white-space: nowrap; }
+    .price-plan { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--Charlie-color-gray-mid); margin-bottom: var(--m-space-3); }
+    .price-amount { display: flex; align-items: baseline; gap: 3px; margin-bottom: var(--m-space-2); }
+    .price-amount .cur { font-size: 15px; color: var(--Charlie-color-gray-dark); }
+    .price-amount .num { font-size: 2.6rem; font-weight: 700; color: var(--Charlie-color-black); line-height: 1; letter-spacing: -.04em; }
+    .price-amount .period { font-size: 12px; color: var(--Charlie-color-gray-mid); }
+    .price-desc { font-size: 12px; color: var(--Charlie-color-gray-dark); margin-bottom: var(--m-space-6); line-height: 1.5; }
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: var(--m-space-3); margin-bottom: var(--m-space-6); padding-bottom: var(--m-space-6); border-bottom: 1px solid var(--Charlie-color-border); }
+    .price-features li { display: flex; align-items: flex-start; gap: var(--m-space-2); font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.45; }
+    .price-features li::before { content: '✓'; color: var(--Charlie-color-green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .btn-plan { display: block; text-align: center; padding: 11px var(--m-space-4); border-radius: var(--m-radius-md); font-size: 13px; font-weight: 600; text-decoration: none; transition: opacity .18s, transform .15s; }
+    .btn-plan:hover { transform: translateY(-1px); }
+    .btn-plan.outline { border: 1px solid var(--Charlie-color-border); color: var(--Charlie-color-black); }
+    .btn-plan.outline:hover { border-color: var(--Charlie-color-gray-dark); }
+    .btn-plan.solid { background: var(--Charlie-color-primary); color: #fff; }
+    .btn-plan.solid:hover { opacity: .88; }
+    .pricing-note { text-align: center; font-size: 12px; color: var(--Charlie-color-gray-mid); margin-top: var(--m-space-6); }
+
+    /* FAQ */
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--m-space-4); margin-top: var(--m-space-12); }
+    .faq-item { background: var(--Charlie-color-white); border: 1px solid var(--Charlie-color-border); border-radius: var(--m-radius-md); padding: var(--m-space-6); }
+    .faq-item h4 { font-size: 13px; font-weight: 600; color: var(--Charlie-color-black); margin-bottom: var(--m-space-2); }
+    .faq-item p { font-size: 12px; color: var(--Charlie-color-gray-dark); line-height: 1.65; }
+
+    /* FINAL CTA */
+    .final-cta { background: var(--Charlie-color-black); text-align: center; padding: 96px var(--m-space-12); border-top: 3px solid var(--Charlie-color-primary); }
+    .final-cta h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 700; line-height: 1.15; letter-spacing: -.028em; color: var(--Charlie-color-white); max-width: 600px; margin: 0 auto var(--m-space-4); }
+    .final-cta p { font-size: 15px; color: var(--Charlie-color-gray-mid); margin-bottom: var(--m-space-12); }
+    .final-cta-actions { display: flex; align-items: center; justify-content: center; gap: var(--m-space-6); flex-wrap: wrap; }
+    .btn-cta-main { background: var(--Charlie-color-primary); color: #fff; padding: 14px var(--m-space-8); border-radius: var(--m-radius-md); font-weight: 700; font-size: 15px; text-decoration: none; transition: opacity .18s, transform .15s; }
+    .btn-cta-main:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-cta-demo {
+      display: inline-flex; align-items: center; gap: var(--m-space-2);
+      background: transparent; border: 1px solid rgba(255,255,255,.2);
+      color: var(--Charlie-color-white);
+      padding: 13px var(--m-space-6); border-radius: var(--m-radius-md);
+      font-weight: 600; font-size: 14px; text-decoration: none;
+      transition: border-color .18s, background .18s;
+    }
+    .btn-cta-demo:hover { border-color: var(--Charlie-color-primary); background: rgba(242,101,34,.08); }
+    .cta-guarantee { margin-top: var(--m-space-6); font-size: 12px; color: var(--Charlie-color-gray-dark); }
+
+    /* FOOTER */
+    footer { background: var(--Charlie-color-black); padding: var(--m-space-8) var(--m-space-12); border-top: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--m-space-4); }
+    .footer-logo { font-size: 14px; font-weight: 700; color: var(--Charlie-color-white); }
+    .footer-logo span { color: var(--Charlie-color-primary); }
+    .footer-tagline { font-size: 10px; font-style: italic; color: var(--Charlie-color-gray-mid); margin-top: 3px; }
+    .footer-links { display: flex; gap: var(--m-space-6); list-style: none; }
+    .footer-links a { font-size: 11px; color: var(--Charlie-color-gray-mid); text-decoration: none; transition: color .18s; }
+    .footer-links a:hover { color: var(--Charlie-color-white); }
+    .footer-copy { font-size: 9px; color: #3D3D3D; }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      nav { padding: var(--m-space-4); }
+      .nav-toggle { display: flex; }
+      .nav-links {
+        position: absolute; top: 100%; left: 0; right: 0;
+        flex-direction: column; gap: 0;
+        background: var(--Charlie-color-black);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        box-shadow: var(--m-shadow-md);
+        padding: var(--m-space-2) var(--m-space-4) var(--m-space-6);
+        display: none;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links li { width: 100%; }
+      .nav-links a {
+        display: block; width: 100%; padding: var(--m-space-4) 0;
+        font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .nav-links li:last-child a { border-bottom: none; }
+      section { padding: var(--m-space-12) var(--m-space-4); }
+      .hero { padding: var(--m-space-12) var(--m-space-4); }
+      .demo-banner { padding: var(--m-space-6) var(--m-space-4); }
+      .problema-grid, .solucion-grid, .comparison, .faq-grid { grid-template-columns: 1fr; gap: var(--m-space-6); }
+      .steps, .casos-grid, .pricing-grid, .testi-grid { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .final-cta { padding: var(--m-space-12) var(--m-space-4); }
+      footer { flex-direction: column; gap: var(--m-space-6); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ticker-track { animation: none; }
+      .demo-badge::before { animation: none; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div>
+    <div class="nav-logo">Core<span>MCP</span> Tool</div>
+  </div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#problema">El problema</a></li>
+    <li><a href="#como-funciona">Cómo funciona</a></li>
+    <li><a href="#casos">Casos de uso</a></li>
+    <li><a href="#pricing">Precios</a></li>
+    <li><a href="pitch.html">Inversores</a></li>
+  </ul>
+  <div class="nav-actions">
+    <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="nav-cta">Ver prototipo →</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- TICKER -->
+<div class="ticker-wrap" aria-hidden="true">
+  <div class="ticker-track">
+    <span class="ticker-item">Análisis de competencia</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Estrategia de contenido</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Segmentación de audiencia</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Canales de adquisición</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Propuesta de valor</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Mensajes clave por segmento</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Plan de lanzamiento</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Estrategia de precios</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Análisis de competencia</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Estrategia de contenido</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Segmentación de audiencia</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Canales de adquisición</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Propuesta de valor</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Mensajes clave por segmento</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Plan de lanzamiento</span><span class="ticker-dot"></span>
+    <span class="ticker-item">Estrategia de precios</span><span class="ticker-dot"></span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Inteligencia de marketing · Charlie Platform</div>
+    <h1>Tu negocio tiene toda<br>la información. Le falta<br><em>la estrategia.</em></h1>
+    <p class="hero-sub">MCP Tool analiza tu negocio, tu mercado y tu competencia, y genera un plan de marketing accionable — en minutos, no en semanas.</p>
+    <div class="hero-actions">
+      <a href="#pricing" class="btn-primary">Empezar gratis — sin tarjeta</a>
+      <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-demo-hero">
+        Ver prototipo en vivo <span class="arrow">→</span>
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <span class="stat-num">+200</span>
+        <span class="stat-label">Negocios activos</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div>
+        <span class="stat-num">&lt;15 min</span>
+        <span class="stat-label">Tu primer plan</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div>
+        <span class="stat-num">8 módulos</span>
+        <span class="stat-label">Por estrategia</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div>
+        <span class="stat-num">Sin agencia</span>
+        <span class="stat-label">Sin consultor</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO BANNER -->
+<div class="demo-banner">
+  <div class="demo-banner-inner">
+    <div class="demo-banner-text">
+      <div class="demo-badge">Prototipo disponible</div>
+      <strong>¿Querés ver cómo funciona antes de registrarte?</strong>
+      <p>El prototipo está deployado y corriendo. Probalo ahora sin crear cuenta.</p>
+    </div>
+    <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-demo-banner">
+      Abrir prototipo →
+    </a>
+  </div>
+</div>
+
+<!-- PROBLEMA -->
+<section class="section-light" id="problema">
+  <div class="container">
+    <p class="section-label">El problema real</p>
+    <h2 class="section-title">El marketing no falla por falta<br>de ganas. Falla por falta de dirección.</h2>
+    <div class="problema-grid">
+      <ul class="problema-list">
+        <li class="problema-item">
+          <div class="problema-icon">⏳</div>
+          <div class="problema-text">
+            <strong>Horas en estrategia, días en ejecución</strong>
+            <p>Definís un plan, lo revisás, lo cambiás, lo revisás de nuevo. Antes de publicar un contenido, ya pasaron tres semanas.</p>
+          </div>
+        </li>
+        <li class="problema-item">
+          <div class="problema-icon">🎯</div>
+          <div class="problema-text">
+            <strong>Mensajes que no conectan con nadie concreto</strong>
+            <p>Hablás "a todos" y en realidad no llegás a nadie. Sin segmentación clara, el presupuesto se diluye.</p>
+          </div>
+        </li>
+        <li class="problema-item">
+          <div class="problema-icon">📊</div>
+          <div class="problema-text">
+            <strong>Decisiones sin contexto de mercado</strong>
+            <p>Elegís canales por intuición, copiás lo que hace la competencia, y terminás igual que antes.</p>
+          </div>
+        </li>
+        <li class="problema-item">
+          <div class="problema-icon">💸</div>
+          <div class="problema-text">
+            <strong>Consultoras que cobran, pero no ejecutan</strong>
+            <p>Pagás por diagnósticos que duran 90 días, y al final tenés un PDF que nadie implementa.</p>
+          </div>
+        </li>
+      </ul>
+      <div>
+        <div class="callout-quote">
+          <blockquote>"Sabía que tenía que hacer marketing, pero no sabía por dónde empezar ni si lo que hacía tenía algún sentido para mi mercado."</blockquote>
+          <cite>— Fundador de SaaS B2B, sector educación</cite>
+        </div>
+        <div class="callout-cost">
+          Una estrategia con consultora senior puede costar entre <strong>$3.000 y $15.000 USD</strong> — y tomar de 6 a 12 semanas. La mayoría de los negocios en etapa temprana no puede esperar eso, ni pagarlo.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIÓN -->
+<section class="section-white" id="solucion">
+  <div class="container">
+    <p class="section-label">La solución</p>
+    <h2 class="section-title">Una estrategia completa generada<br>a partir de tu negocio real.</h2>
+    <div class="solucion-grid">
+      <div>
+        <p class="section-sub">MCP Tool no te da plantillas genéricas. Te hace las preguntas correctas sobre tu negocio — modelo, mercado, clientes, competencia — y construye una estrategia coherente y accionable en minutos.</p>
+        <br>
+        <p style="font-size:12px; color:var(--Charlie-color-gray-dark); line-height:1.7;">El resultado es un documento estructurado que podés usar directamente con tu equipo, freelancers o agencia. Sin ambigüedad. Sin generalidades.</p>
+        <br>
+        <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-primary" style="margin-top:var(--m-space-4);">Probarlo ahora →</a>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="fc-icon">🧭</div>
+          <h4>Diagnóstico de posicionamiento</h4>
+          <p>Identifica tu ventaja real frente a la competencia y cómo comunicarla.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">👥</div>
+          <h4>Segmentos de cliente</h4>
+          <p>Define quiénes son tus compradores más rentables y cómo llegar a ellos.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📣</div>
+          <h4>Mensajes por canal</h4>
+          <p>Genera copy y mensajes adaptados a cada etapa del embudo y audiencia.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">📋</div>
+          <h4>Plan de acción priorizado</h4>
+          <p>Acciones concretas, ordenadas por impacto y recursos necesarios.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="section-light" id="como-funciona">
+  <div class="container">
+    <p class="section-label">El proceso</p>
+    <h2 class="section-title">De información a estrategia<br>en tres pasos.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Describí tu negocio</h3>
+        <p>Respondés un cuestionario guiado sobre tu producto, modelo de negocio, clientes actuales, competidores y objetivos de crecimiento.</p>
+        <span class="step-tag">~10 minutos</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>MCP analiza el contexto</h3>
+        <p>El sistema procesa tu información, identifica patrones de mercado, brechas competitivas y oportunidades de posicionamiento para tu industria.</p>
+        <span class="step-tag">Automático</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Recibís tu estrategia completa</h3>
+        <p>Un documento estructurado con diagnóstico, segmentación, propuesta de valor, canales, mensajes clave y plan de acción por prioridad.</p>
+        <span class="step-tag">Listo para usar</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASOS -->
+<section class="section-white" id="casos">
+  <div class="container">
+    <p class="section-label">Para quién es</p>
+    <h2 class="section-title">Negocios que ya tienen algo construido<br>y necesitan crecer con dirección.</h2>
+    <div class="casos-grid">
+      <div class="caso-card">
+        <div class="caso-header">
+          <div class="caso-emoji">🛍️</div>
+          <div>
+            <div class="caso-tipo">E-commerce</div>
+            <div class="caso-nombre">Tienda DTC con tracción inicial</div>
+          </div>
+        </div>
+        <h3>Escalar ventas más allá del boca a boca</h3>
+        <p>Tenés ventas, pero son impredecibles. MCP define tus segmentos más rentables, los canales con mejor ROI y el mensaje que convierte.</p>
+        <div class="caso-result">→ Estrategia de adquisición paga + contenido orgánico</div>
+      </div>
+      <div class="caso-card">
+        <div class="caso-header">
+          <div class="caso-emoji">💼</div>
+          <div>
+            <div class="caso-tipo">SaaS / Producto digital</div>
+            <div class="caso-nombre">Startup en etapa seed o pre-seed</div>
+          </div>
+        </div>
+        <h3>Validar el mensaje antes de gastar en ads</h3>
+        <p>Antes de invertir en paid, MCP alinea tu propuesta de valor con los segmentos correctos y define cómo comunicarla por canal.</p>
+        <div class="caso-result">→ Messaging por segmento + plan de contenido</div>
+      </div>
+      <div class="caso-card">
+        <div class="caso-header">
+          <div class="caso-emoji">🏢</div>
+          <div>
+            <div class="caso-tipo">Servicio profesional</div>
+            <div class="caso-nombre">Agencia, consultora o freelancer</div>
+          </div>
+        </div>
+        <h3>Diferenciarse en un mercado saturado</h3>
+        <p>MCP identifica tu posicionamiento único, define el perfil de cliente ideal y diseña cómo comunicar tu valor sin sonar genérico.</p>
+        <div class="caso-result">→ Posicionamiento + estrategia de autoridad</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIFERENCIA -->
+<section class="section-light" id="diferenciacion">
+  <div class="container">
+    <p class="section-label">Antes y después</p>
+    <h2 class="section-title">Lo que cambia cuando tenés<br>una estrategia de verdad.</h2>
+    <div class="comparison">
+      <div class="comp-col before">
+        <div class="comp-header">✗ Sin MCP Tool</div>
+        <ul class="comp-body">
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> Publicás contenido sin saber si llega a quien compra</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> Cambiás de canal cada vez que algo no funciona</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> Tu mensaje dice lo mismo que el de tus competidores</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> Las decisiones dependen de lo que escuchaste en un podcast</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> No sabés en qué momento del proceso se cae el cliente</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-error);flex-shrink:0">✗</span> Esperás semanas para tener una estrategia mínima</li>
+        </ul>
+      </div>
+      <div class="comp-col after">
+        <div class="comp-header">✓ Con MCP Tool</div>
+        <ul class="comp-body">
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> Sabés exactamente a qué segmento le hablás y por qué</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> Elegís canales basándote en tu mercado y recursos reales</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> Tu propuesta de valor está diferenciada y articulada</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> Tenés un plan de acción priorizado para ejecutar hoy</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> Conocés el recorrido del cliente y dónde intervenir</li>
+          <li class="comp-item"><span style="color:var(--Charlie-color-green);flex-shrink:0">✓</span> La estrategia está lista en menos de una hora</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="section-white">
+  <div class="container">
+    <p class="section-label">Lo que dicen los usuarios</p>
+    <h2 class="section-title">Resultados concretos,<br>no promesas.</h2>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"Lo usé para redefinir el posicionamiento de nuestra agencia. En 20 minutos teníamos algo más claro que lo que tardamos 3 meses en construir con un consultor."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">ML</div>
+          <div>
+            <div class="testi-name">Mariana L.</div>
+            <div class="testi-role">Fundadora, Agencia de Branding</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"Estábamos a punto de gastar en ads sin tener claro el mensaje. MCP nos frenó, nos dio claridad de segmento y ahora el ROAS tiene sentido."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">CR</div>
+          <div>
+            <div class="testi-name">Carlos R.</div>
+            <div class="testi-role">Co-founder, SaaS RR.HH.</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"Vendía por referidos, sin ninguna estrategia. MCP me ayudó a entender mis segmentos y armar un plan de contenido que en dos meses generó leads orgánicos."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">JP</div>
+          <div>
+            <div class="testi-name">Jimena P.</div>
+            <div class="testi-role">Consultora Independiente, Finanzas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section-light" id="pricing">
+  <div class="container">
+    <p class="section-label">Planes</p>
+    <h2 class="section-title">Empezá sin riesgo.<br>Escalá cuando tengas resultados.</h2>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-plan">Starter</div>
+        <div class="price-amount"><span class="cur">$</span><span class="num">0</span><span class="period">/ gratis</span></div>
+        <p class="price-desc">Para explorar la herramienta y validar si se adapta a tu negocio.</p>
+        <ul class="price-features">
+          <li>1 estrategia completa</li>
+          <li>Análisis de posicionamiento básico</li>
+          <li>Segmentación de audiencia</li>
+          <li>Exportación en PDF</li>
+        </ul>
+        <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-plan outline">Empezar gratis</a>
+      </div>
+      <div class="price-card featured">
+        <div class="price-badge">Más elegido</div>
+        <div class="price-plan">Growth</div>
+        <div class="price-amount"><span class="cur">$</span><span class="num">49</span><span class="period">/ mes</span></div>
+        <p class="price-desc">Para negocios que ya validan y necesitan estrategia continua.</p>
+        <ul class="price-features">
+          <li>Estrategias ilimitadas</li>
+          <li>Análisis de competencia incluido</li>
+          <li>Mensajes por canal y segmento</li>
+          <li>Plan de contenido mensual</li>
+          <li>Exportación Word / Notion</li>
+          <li>Soporte por email</li>
+        </ul>
+        <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-plan solid">Empezar — 14 días gratis</a>
+      </div>
+      <div class="price-card">
+        <div class="price-plan">Agency</div>
+        <div class="price-amount"><span class="cur">$</span><span class="num">149</span><span class="period">/ mes</span></div>
+        <p class="price-desc">Para agencias y consultoras que gestionan múltiples clientes.</p>
+        <ul class="price-features">
+          <li>Todo lo de Growth</li>
+          <li>Hasta 15 proyectos / clientes</li>
+          <li>White label en exportaciones</li>
+          <li>Acceso multi-usuario</li>
+          <li>Soporte prioritario</li>
+        </ul>
+        <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-plan outline">Contactar ventas</a>
+      </div>
+    </div>
+    <p class="pricing-note">Sin contratos anuales forzosos. Podés cancelar cuando quieras.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section-white" id="faq">
+  <div class="container">
+    <p class="section-label">Preguntas frecuentes</p>
+    <h2 class="section-title">Lo que suelen preguntar<br>antes de empezar.</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h4>¿Necesito saber de marketing para usarlo?</h4>
+        <p>No. El cuestionario está diseñado para que cualquier fundador o dueño de negocio pueda completarlo. MCP traduce tus respuestas a lenguaje estratégico.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Qué tan personalizado es el resultado?</h4>
+        <p>La estrategia se construye a partir de la información específica de tu negocio. No es una plantilla con tu nombre. Cada elemento parte de lo que describís.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿La estrategia reemplaza a un consultor?</h4>
+        <p>Depende de la etapa. Para la mayoría de los negocios en crecimiento, MCP da el 80% de lo que daría un consultor a una fracción del costo y en mucho menos tiempo.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Puedo usar el resultado directamente con mi equipo?</h4>
+        <p>Sí. El output está diseñado para ser entregado tal cual a diseñadores, copywriters, ejecutores de ads o cualquier freelancer que implementa.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Funciona para cualquier industria?</h4>
+        <p>MCP está optimizado para productos y servicios digitales: SaaS, e-commerce, agencias y servicios profesionales. Industrias muy reguladas pueden requerir ajustes manuales.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Puedo generar más de una estrategia?</h4>
+        <p>En el plan gratuito podés generar una. En Growth y Agency, las estrategias son ilimitadas — podés iterar, probar variantes o cubrir múltiples líneas de negocio.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container">
+    <h2>Tu próximo paso no es contratar una agencia. Es saber qué decirle cuando la contrates.</h2>
+    <p>Empezá con tu primera estrategia gratis. Sin tarjeta de crédito.</p>
+    <div class="final-cta-actions">
+      <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-cta-main">Crear mi estrategia ahora</a>
+      <a href="https://tool-marketingprofundo-59aefdyb3-charlieuy711.vercel.app" target="_blank" class="btn-cta-demo">Ver prototipo en vivo →</a>
+    </div>
+    <p class="cta-guarantee">✓ Gratis para empezar &nbsp;·&nbsp; ✓ Sin contrato &nbsp;·&nbsp; ✓ Resultado en menos de 15 minutos</p>
+    <p style="margin-top:var(--m-space-6); font-size:13px; color:var(--Charlie-color-gray-mid);">
+      ¿Sos inversor o partner? <a href="pitch.html" style="color:var(--Charlie-color-primary); font-weight:600; text-decoration:none;">Ver el pitch →</a>
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">Core<span>MCP</span> Tool</div>
+    <div class="footer-tagline">by Charlie Platform &nbsp;·&nbsp; <em>El código viaja. Los datos no.</em></div>
+  </div>
+  <ul class="footer-links">
+    <li><a href="pitch.html">Inversores / Pitch</a></li>
+    <li><a href="#">Política de privacidad</a></li>
+    <li><a href="#">Términos de uso</a></li>
+    <li><a href="#">Contacto</a></li>
+  </ul>
+  <span class="footer-copy">© 2025 Core / Charlie Platform</span>
+</footer>
+
+<script>
+  (function () {
+    var toggle = document.getElementById('navToggle');
+    var menu = document.getElementById('navLinks');
+    if (!toggle || !menu) return;
+    function setOpen(open) {
+      menu.classList.toggle('open', open);
+      toggle.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    toggle.addEventListener('click', function () {
+      setOpen(!menu.classList.contains('open'));
+    });
+    menu.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () { setOpen(false); });
+    });
+  })();
+</script>
+
+</body>
+</html>

@@ -5,7 +5,7 @@
         "^build"
       ],
       "outputs": [
-        "apps/core-landing/.next/**",
+        "landings/core-landing/.next/**",
         "apps/core-market/dist/**"
       ]
     },

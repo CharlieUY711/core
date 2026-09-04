@@ -2,4 +2,5 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tools/*"
+  - "landings/*"
   - "!tools/tool-marketing"

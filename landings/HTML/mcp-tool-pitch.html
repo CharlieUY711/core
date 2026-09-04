@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Core MCP Tool — Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --c-primary:    #F26522;
+    --c-black:      #1A1A1A;
+    --c-white:      #FFFFFF;
+    --c-celeste:    #29ABE2;
+    --c-green:      #39B54A;
+    --c-gray-dark:  #4B4B4B;
+    --c-gray-mid:   #9B9B9B;
+    --c-gray-light: #F0F0F0;
+    --c-border:     #E0E0E0;
+    --c-error:      #E53935;
+    --c-warning:    #F59E0B;
+
+    --font: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-6: 24px;
+    --s-8: 32px; --s-12: 48px; --s-16: 64px;
+    --r-sm: 2px; --r-md: 6px; --r-lg: 12px; --r-full: 9999px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.10);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.12);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,.14);
+  }
+
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--c-black);
+    color: var(--c-black);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ── DECK SHELL ── */
+  .deck {
+    height: 100vh;
+    width: 100vw;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+  }
+  .slide {
+    height: 100vh;
+    width: 100vw;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    padding: var(--s-16) 6vw;
+    overflow: hidden;
+  }
+  .slide.bg-white  { background: var(--c-white); color: var(--c-black); }
+  .slide.bg-black  { background: var(--c-black); color: var(--c-white); }
+  .slide.bg-light  { background: var(--c-gray-light); color: var(--c-black); }
+  .slide-inner { max-width: 1180px; width: 100%; margin: 0 auto; }
+
+  .kicker {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--c-primary);
+    margin-bottom: var(--s-6);
+  }
+  .kicker::before { content: ''; display: inline-block; width: 20px; height: 1px; background: var(--c-primary); }
+
+  .slide-title {
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    font-weight: 700; line-height: 1.1; letter-spacing: -0.03em;
+    margin-bottom: var(--s-4);
+  }
+  .slide-title em { font-style: italic; font-weight: 400; color: var(--c-primary); }
+  .on-dark.slide-title { color: var(--c-white); }
+
+  .slide-sub {
+    font-size: 17px; font-weight: 300; line-height: 1.6;
+    color: var(--c-gray-dark); max-width: 640px;
+  }
+  .slide-sub.on-dark { color: var(--c-gray-mid); }
+
+  .pagenum {
+    position: absolute; bottom: var(--s-8); right: 6vw;
+    font-size: 11px; letter-spacing: 0.08em; color: var(--c-gray-mid);
+    font-weight: 600;
+  }
+  .bg-black .pagenum, .bg-black .brandmark { color: rgba(255,255,255,0.35); }
+  .brandmark {
+    position: absolute; bottom: var(--s-8); left: 6vw;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--c-gray-mid); font-weight: 700;
+  }
+  .brandmark span { color: var(--c-primary); }
+
+  /* progress bar */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: var(--c-primary); z-index: 50; transition: width .25s ease;
+    width: 10%;
+  }
+  .progress-track { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.08); z-index: 40; }
+
+  /* nav arrows */
+  .nav-btn {
+    position: fixed; right: var(--s-8); z-index: 60;
+    width: 44px; height: 44px; border-radius: var(--r-full);
+    background: rgba(255,255,255,0.92); border: 1px solid var(--c-border);
+    box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--c-black); font-size: 18px; transition: transform .15s, background .15s;
+  }
+  .nav-btn:hover { transform: translateY(-1px); background: var(--c-white); }
+  .nav-up { bottom: 88px; }
+  .nav-down { bottom: 32px; }
+
+  /* ── GRID / CARD PATTERNS (reused from landing) ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-16); align-items: start; margin-top: var(--s-10, 40px); }
+  .card {
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--s-6); box-shadow: var(--shadow-sm);
+  }
+  .card h4 { font-size: 15px; font-weight: 600; color: var(--c-black); margin-bottom: var(--s-2); }
+  .card p { font-size: 13.5px; color: var(--c-gray-dark); line-height: 1.55; }
+
+  .item-row { display: flex; gap: var(--s-4); align-items: flex-start; }
+  .item-icon {
+    width: 34px; height: 34px; border-radius: var(--r-sm); flex-shrink: 0;
+    background: rgba(242,101,34,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .item-icon.blue { background: rgba(41,171,226,0.10); }
+  .item-icon.green { background: rgba(57,181,74,0.10); }
+
+  .pill {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--c-primary); background: rgba(242,101,34,0.08);
+    border: 1px solid rgba(242,101,34,0.2); padding: 3px 10px; border-radius: var(--r-sm);
+  }
+
+  table.fin { width: 100%; border-collapse: collapse; margin-top: var(--s-8); font-size: 13px; }
+  table.fin th {
+    text-align: left; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--c-gray-mid); font-weight: 700; padding: var(--s-3) var(--s-4); border-bottom: 2px solid var(--c-border);
+  }
+  table.fin td { padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--c-border); color: var(--c-gray-dark); }
+  table.fin tr:last-child td { border-bottom: none; }
+  table.fin td.num { font-weight: 600; color: var(--c-black); }
+
+  .stat-num { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--c-black); }
+  .stat-num.on-dark, .on-dark .stat-num { color: var(--c-white); }
+  .stat-label { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--c-gray-mid); margin-top: var(--s-1); }
+
+  ul.bullets { list-style: none; display: flex; flex-direction: column; gap: var(--s-3); }
+  ul.bullets li { display: flex; gap: var(--s-3); align-items: flex-start; font-size: 14.5px; color: var(--c-gray-dark); line-height: 1.5; }
+  .on-dark ul.bullets li { color: var(--c-gray-mid); }
+  ul.bullets li .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-primary); margin-top: 7px; flex-shrink: 0; }
+
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; gap: var(--s-8); }
+    .slide { padding: var(--s-12) 6vw; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-track"></div>
+<div class="progress" id="progressBar"></div>
+<div class="nav-btn nav-up" id="navUp" title="Anterior">↑</div>
+<div class="nav-btn nav-down" id="navDown" title="Siguiente">↓</div>
+
+<a href="index.html" id="backHome" title="Volver al inicio"
+   style="position:fixed; top:18px; left:24px; z-index:60; display:inline-flex; align-items:center; gap:8px;
+          padding:8px 16px; border-radius:9999px; background:rgba(255,255,255,0.92);
+          border:1px solid var(--c-border); box-shadow:var(--shadow-md); color:var(--c-black);
+          font-family:var(--font); font-size:12px; font-weight:600; text-decoration:none;
+          letter-spacing:0.02em; transition:transform .15s, background .15s;">
+  ← Inicio
+</a>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 — COVER -->
+  <section class="slide bg-black" data-slide="1">
+    <div class="slide-inner">
+      <div class="kicker">Pitch Deck · Inversión & Partnerships</div>
+      <h1 class="slide-title on-dark" style="font-size:clamp(2.6rem,6vw,4.4rem); max-width:900px;">
+        Core <span style="color:var(--c-primary);">MCP</span> Tool
+      </h1>
+      <p class="slide-sub on-dark" style="font-size:20px; max-width:680px; margin-top:var(--s-4);">
+        Inteligencia de marketing basada en IA que transforma cualquier negocio en una estrategia de crecimiento estructurada, ejecutable y medible.
+      </p>
+      <div style="display:flex; gap:var(--s-12); margin-top:var(--s-16); padding-top:var(--s-8); border-top:1px solid rgba(255,255,255,0.1); flex-wrap:wrap;">
+        <div>
+          <div class="stat-num on-dark" style="font-size:1.6rem;">Marketing Intelligence</div>
+          <div class="stat-label">Categoría</div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.12);"></div>
+        <div>
+          <div class="stat-num on-dark" style="font-size:1.6rem;">SaaS B2B</div>
+          <div class="stat-label">Modelo</div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.12);"></div>
+        <div>
+          <div class="stat-num on-dark" style="font-size:1.6rem;">Pre-seed</div>
+          <div class="stat-label">Etapa</div>
+        </div>
+      </div>
+    </div>
+    <div class="pagenum">01 / 10</div>
+  </section>
+
+  <!-- SLIDE 2 — PROBLEMA -->
+  <section class="slide bg-white" data-slide="2">
+    <div class="slide-inner">
+      <div class="kicker">El problema</div>
+      <h2 class="slide-title">El marketing moderno genera <em>datos</em>, no decisiones.</h2>
+      <p class="slide-sub">Las empresas tienen más herramientas y más métricas que nunca — y siguen tomando decisiones de marketing a ciegas.</p>
+
+      <div class="grid-2" style="margin-top:var(--s-10);">
+        <ul class="bullets">
+          <li><span class="dot"></span><span><strong style="color:var(--c-black);">Fragmentación de herramientas.</strong> Analytics, ads, CRM y redes sociales viven en silos que nadie conecta de forma estratégica.</span></li>
+          <li><span class="dot"></span><span><strong style="color:var(--c-black);">Dependencia de consultores caros.</strong> Una estrategia de marketing profunda hoy requiere semanas y honorarios que solo las empresas grandes pueden pagar.</span></li>
+          <li><span class="dot"></span><span><strong style="color:var(--c-black);">Decisiones reactivas.</strong> Se actúa después de ver el resultado, no antes — el dato llega tarde para cambiar el rumbo.</span></li>
+          <li><span class="dot"></span><span><strong style="color:var(--c-black);">La IA generativa generó ruido, no criterio.</strong> Hay miles de herramientas que producen contenido; casi ninguna produce estrategia.</span></li>
+        </ul>
+        <div class="card" style="background:var(--c-black); border:none; box-shadow:none; padding:var(--s-8);">
+          <p style="font-size:17px; font-style:italic; color:var(--c-white); line-height:1.5; margin-bottom:var(--s-6);">
+            "Las pymes y empresas en crecimiento no necesitan más datos. Necesitan alguien — o algo — que les diga qué hacer con ellos."
+          </p>
+          <div style="font-size:11px; letter-spacing:0.05em; color:var(--c-gray-mid);">DIAGNÓSTICO DE MERCADO · CORE MCP</div>
+        </div>
+      </div>
+    </div>
+    <div class="brandmark">Core <span>MCP</span></div>
+    <div class="pagenum">02 / 10</div>
+  </section>
+
+  <!-- SLIDE 3 — CAMBIO DE PARADIGMA -->
+  <section class="slide bg-black" data-slide="3">
+    <div class="slide-inner">
+      <div class="kicker">Cambio de paradigma</div>
+      <h2 class="slide-title on-dark">De ejecutar tácticas a <em>razonar</em> estrategia.</h2>
+      <p class="slide-sub on-dark">El marketing está pasando por el mismo salto que el software: de herramientas que ejecutan tareas a sistemas que razonan sobre el negocio.</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1px; margin-top:var(--s-12); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.1); border-radius:var(--r-lg); overflow:hidden;">
+        <div style="background:var(--c-black); padding:var(--s-8) var(--s-6);">
+          <div class="pill" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:var(--c-gray-mid);">AYER</div>
+          <h4 style="color:var(--c-white); font-size:15px; margin-top:var(--s-4); margin-bottom:var(--s-2);">Herramientas aisladas</h4>
+          <p style="color:var(--c-gray-mid); font-size:13.5px; line-height:1.55;">Cada plataforma resuelve una tarea puntual. El criterio estratégico queda en manos de un humano que conecta todo manualmente.</p>
+        </div>
+        <div style="background:var(--c-black); padding:var(--s-8) var(--s-6);">
+          <div class="pill">HOY</div>
+          <h4 style="color:var(--c-white); font-size:15px; margin-top:var(--s-4); margin-bottom:var(--s-2);">IA generativa como copiloto</h4>
+          <p style="color:var(--c-gray-mid); font-size:13.5px; line-height:1.55;">La IA ayuda a producir contenido y resúmenes, pero sigue sin estructurar una estrategia de negocio completa.</p>
+        </div>
+        <div style="background:rgba(242,101,34,0.08); padding:var(--s-8) var(--s-6); border-left:1px solid rgba(242,101,34,0.0);">
+          <div class="pill" style="background:var(--c-primary); color:var(--c-white); border-color:var(--c-primary);">CORE MCP</div>
+          <h4 style="color:var(--c-white); font-size:15px; margin-top:var(--s-4); margin-bottom:var(--s-2);">Inteligencia estructurada</h4>
+          <p style="color:var(--c-gray-mid); font-size:13.5px; line-height:1.55;">Un sistema que razona sobre el negocio completo y entrega una estrategia de crecimiento estructurada, no fragmentos sueltos.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pagenum">03 / 10</div>
+  </section>
+
+  <!-- SLIDE 4 — SOLUCIÓN -->
+  <section class="slide bg-white" data-slide="4">
+    <div class="slide-inner">
+      <div class="kicker">La solución</div>
+      <h2 class="slide-title">Core MCP convierte tu negocio en una <em>estrategia ejecutable.</em></h2>
+      <p class="slide-sub">Un sistema de inteligencia de marketing basado en IA que analiza, estructura y entrega un plan de crecimiento accionable — sin depender de un equipo de consultoría.</p>
+
+      <div class="grid-2" style="margin-top:var(--s-10); align-items:center;">
+        <div style="display:flex; flex-direction:column; gap:var(--s-4);">
+          <div class="item-row">
+            <div class="item-icon">◆</div>
+            <div><h4>Análisis profundo del negocio</h4><p>Procesa contexto real del negocio — no plantillas genéricas — para entender su situación específica.</p></div>
+          </div>
+          <div class="item-row">
+            <div class="item-icon blue">◆</div>
+            <div><h4>Estrategia estructurada</h4><p>Entrega un plan organizado por prioridad, no una lista de ideas sueltas de marketing.</p></div>
+          </div>
+          <div class="item-row">
+            <div class="item-icon green">◆</div>
+            <div><h4>Accionable desde el día uno</h4><p>Cada recomendación viene con el "qué hacer" y el "por qué", lista para ejecutar.</p></div>
+          </div>
+        </div>
+        <div class="card" style="padding:var(--s-8);">
+          <div class="pill" style="margin-bottom:var(--s-4);">Propuesta de valor</div>
+          <p style="font-size:16px; color:var(--c-black); font-weight:500; line-height:1.5;">Lo que antes tomaba semanas de consultoría y miles de dólares, Core MCP lo entrega como un sistema continuo, accesible y consistente.</p>
+        </div>
+      </div>
+    </div>
+    <div class="brandmark">Core <span>MCP</span></div>
+    <div class="pagenum">04 / 10</div>
+  </section>
+
+  <!-- SLIDE 5 — CÓMO FUNCIONA -->
+  <section class="slide bg-light" data-slide="5">
+    <div class="slide-inner">
+      <div class="kicker">Cómo funciona</div>
+      <h2 class="slide-title">Tres pasos, un sistema continuo.</h2>
+      <p class="slide-sub">Sin exponer la mecánica técnica: así es la experiencia, de punta a punta.</p>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; margin-top:var(--s-10); background:var(--c-border); border:1px solid var(--c-border); border-radius:var(--r-lg); overflow:hidden;">
+        <div style="background:var(--c-white); padding:var(--s-8) var(--s-6);">
+          <div style="font-size:2.6rem; font-weight:700; font-style:italic; color:rgba(242,101,34,0.18); line-height:1; margin-bottom:var(--s-6);">01</div>
+          <h4 style="font-size:16px;">Entender el negocio</h4>
+          <p style="margin-top:var(--s-3);">El sistema recibe contexto del negocio: mercado, objetivos, datos disponibles y situación actual.</p>
+        </div>
+        <div style="background:var(--c-white); padding:var(--s-8) var(--s-6);">
+          <div style="font-size:2.6rem; font-weight:700; font-style:italic; color:rgba(242,101,34,0.18); line-height:1; margin-bottom:var(--s-6);">02</div>
+          <h4 style="font-size:16px;">Razonar la estrategia</h4>
+          <p style="margin-top:var(--s-3);">La IA procesa esa información y la estructura en un plan de crecimiento priorizado.</p>
+        </div>
+        <div style="background:var(--c-white); padding:var(--s-8) var(--s-6);">
+          <div style="font-size:2.6rem; font-weight:700; font-style:italic; color:rgba(242,101,34,0.18); line-height:1; margin-bottom:var(--s-6);">03</div>
+          <h4 style="font-size:16px;">Entregar y monitorear</h4>
+          <p style="margin-top:var(--s-3);">El plan se entrega accionable y el sistema sigue disponible para ajustar la estrategia con el tiempo.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pagenum">05 / 10</div>
+  </section>
+
+  <!-- SLIDE 6 — PRODUCTO (DEMO CONCEPTUAL) -->
+  <section class="slide bg-black" data-slide="6">
+    <div class="slide-inner">
+      <div class="kicker">Producto</div>
+      <h2 class="slide-title on-dark">De input desordenado a <em>plan claro.</em></h2>
+      <p class="slide-sub on-dark">Vista conceptual de lo que recibe el usuario al usar Core MCP.</p>
+
+      <div class="grid-2" style="margin-top:var(--s-10); align-items:stretch;">
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:var(--r-lg); padding:var(--s-6);">
+          <div class="pill" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:var(--c-gray-mid); margin-bottom:var(--s-4);">ENTRADA</div>
+          <p style="color:var(--c-gray-mid); font-size:13.5px; line-height:1.7;">"Tenemos una tienda de ropa online, ventas estancadas hace 3 meses, gastamos en ads pero no sabemos si funciona, y no tenemos equipo de marketing."</p>
+        </div>
+        <div style="background:rgba(242,101,34,0.08); border:1px solid rgba(242,101,34,0.25); border-radius:var(--r-lg); padding:var(--s-6);">
+          <div class="pill" style="margin-bottom:var(--s-4);">SALIDA · CORE MCP</div>
+          <ul class="bullets">
+            <li><span class="dot"></span><span style="color:var(--c-gray-mid);">Diagnóstico: el problema no es el tráfico, es la conversión en checkout.</span></li>
+            <li><span class="dot"></span><span style="color:var(--c-gray-mid);">3 prioridades concretas ordenadas por impacto esperado.</span></li>
+            <li><span class="dot"></span><span style="color:var(--c-gray-mid);">Plan de 30/60/90 días con métricas de seguimiento.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="pagenum">06 / 10</div>
+  </section>
+
+  <!-- SLIDE 7 — MERCADO -->
+  <section class="slide bg-white" data-slide="7">
+    <div class="slide-inner">
+      <div class="kicker">Mercado objetivo</div>
+      <h2 class="slide-title">Pymes y empresas en crecimiento, sin equipo de marketing senior.</h2>
+      <p class="slide-sub">El mercado entre "no puedo pagar una agencia" y "no tengo tiempo de aprender marketing solo".</p>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:var(--s-6); margin-top:var(--s-10);">
+        <div class="card">
+          <div class="pill" style="margin-bottom:var(--s-3);">Segmento primario</div>
+          <h4>Pymes en crecimiento</h4>
+          <p>Negocios con ventas y operación validadas que necesitan profesionalizar su marketing sin contratar un equipo completo.</p>
+        </div>
+        <div class="card">
+          <div class="pill" style="margin-bottom:var(--s-3);">Segmento secundario</div>
+          <h4>Consultoras y agencias</h4>
+          <p>Equipos que atienden múltiples clientes y necesitan escalar el criterio estratégico sin escalar headcount.</p>
+        </div>
+        <div class="card">
+          <div class="pill" style="margin-bottom:var(--s-3);">Expansión</div>
+          <h4>Equipos internos de marketing</h4>
+          <p>Marketers que usan Core MCP como copiloto estratégico dentro de empresas medianas y grandes.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:var(--s-10); padding-top:var(--s-6); border-top:1px solid var(--c-border); display:flex; gap:var(--s-12); flex-wrap:wrap;">
+        <div><div class="stat-num">LatAm</div><div class="stat-label">Mercado inicial</div></div>
+        <div style="width:1px; background:var(--c-border);"></div>
+        <div><div class="stat-num">B2B SaaS</div><div class="stat-label">Categoría de entrada</div></div>
+        <div style="width:1px; background:var(--c-border);"></div>
+        <div><div class="stat-num">Self-serve</div><div class="stat-label">Motion inicial</div></div>
+      </div>
+    </div>
+    <div class="brandmark">Core <span>MCP</span></div>
+    <div class="pagenum">07 / 10</div>
+  </section>
+
+  <!-- SLIDE 8 — MODELO DE NEGOCIO -->
+  <section class="slide bg-light" data-slide="8">
+    <div class="slide-inner">
+      <div class="kicker">Modelo de negocio</div>
+      <h2 class="slide-title">Suscripción SaaS, por tiers de profundidad.</h2>
+      <p class="slide-sub">Ingreso recurrente, predecible, alineado al valor que recibe cada tipo de cliente.</p>
+
+      <table class="fin">
+        <tr><th>Tier</th><th>Para quién</th><th>Qué incluye</th></tr>
+        <tr>
+          <td class="num">Starter</td>
+          <td>Negocios chicos, primer diagnóstico</td>
+          <td>Análisis inicial y plan de crecimiento base</td>
+        </tr>
+        <tr>
+          <td class="num">Pro</td>
+          <td>Pymes en crecimiento activo</td>
+          <td>Seguimiento continuo, actualización de estrategia, más profundidad de análisis</td>
+        </tr>
+        <tr>
+          <td class="num">Agency</td>
+          <td>Consultoras y agencias</td>
+          <td>Múltiples cuentas de cliente, uso recurrente, mayor volumen</td>
+        </tr>
+      </table>
+
+      <div style="margin-top:var(--s-8); display:flex; gap:var(--s-4); flex-wrap:wrap;">
+        <div class="pill" style="background:rgba(57,181,74,0.08); border-color:rgba(57,181,74,0.2); color:var(--c-green);">Ingreso recurrente mensual</div>
+        <div class="pill" style="background:rgba(41,171,226,0.08); border-color:rgba(41,171,226,0.2); color:var(--c-celeste);">Expansión por upgrade de tier</div>
+        <div class="pill">Motion self-serve, bajo CAC inicial</div>
+      </div>
+    </div>
+    <div class="pagenum">08 / 10</div>
+  </section>
+
+  <!-- SLIDE 9 — GO TO MARKET + VENTAJA COMPETITIVA -->
+  <section class="slide bg-white" data-slide="9">
+    <div class="slide-inner">
+      <div class="kicker">Go-to-market & ventaja competitiva</div>
+      <h2 class="slide-title">Entramos por el dolor más visible, defendemos con criterio acumulado.</h2>
+
+      <div class="grid-2" style="margin-top:var(--s-8);">
+        <div>
+          <h4 style="font-size:15px; color:var(--c-primary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:var(--s-4);">Go-to-market</h4>
+          <ul class="bullets">
+            <li><span class="dot"></span><span>Adquisición inicial vía contenido educativo y casos de uso concretos en pymes.</span></li>
+            <li><span class="dot"></span><span>Programa de partnerships con consultoras y agencias como canal de distribución.</span></li>
+            <li><span class="dot"></span><span>Producto self-serve con upgrade natural hacia tiers superiores.</span></li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="font-size:15px; color:var(--c-primary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:var(--s-4);">Ventaja competitiva</h4>
+          <ul class="bullets">
+            <li><span class="dot"></span><span>No competimos con herramientas de ejecución — nos sentamos un nivel arriba, en la estrategia.</span></li>
+            <li><span class="dot"></span><span>Sistema modular que mejora con cada negocio analizado, no una plantilla estática.</span></li>
+            <li><span class="dot"></span><span>Accesible para quien hoy no puede pagar consultoría tradicional.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="brandmark">Core <span>MCP</span></div>
+    <div class="pagenum">09 / 10</div>
+  </section>
+
+  <!-- SLIDE 10 — CIERRE -->
+  <section class="slide bg-black" data-slide="10">
+    <div class="slide-inner" style="text-align:left;">
+      <div class="kicker">Cierre</div>
+      <h2 class="slide-title on-dark" style="max-width:760px;">Estamos construyendo el sistema que decide, no el que solo ejecuta.</h2>
+      <p class="slide-sub on-dark" style="font-size:18px; max-width:620px;">
+        Buscamos inversión y partners estratégicos para acelerar producto, distribución y el equipo que va a llevar Core MCP al siguiente nivel.
+      </p>
+      <div style="margin-top:var(--s-12); display:flex; gap:var(--s-6); flex-wrap:wrap; align-items:center;">
+        <div style="background:var(--c-primary); color:var(--c-white); font-weight:600; font-size:15px; padding:14px 32px; border-radius:var(--r-md);">
+          Conversemos
+        </div>
+        <div style="color:var(--c-gray-mid); font-size:14px;">Core MCP Tool — Inteligencia de marketing basada en IA</div>
+      </div>
+    </div>
+    <div class="pagenum">10 / 10</div>
+  </section>
+
+</div>
+
+<script>
+  const deck = document.getElementById('deck');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progressBar = document.getElementById('progressBar');
+  const navUp = document.getElementById('navUp');
+  const navDown = document.getElementById('navDown');
+
+  function currentIndex() {
+    const scrollPos = deck.scrollTop;
+    let idx = 0;
+    slides.forEach((s, i) => { if (s.offsetTop <= scrollPos + 5) idx = i; });
+    return idx;
+  }
+
+  function updateProgress() {
+    const idx = currentIndex();
+    const pct = ((idx + 1) / slides.length) * 100;
+    progressBar.style.width = pct + '%';
+  }
+
+  function goTo(idx) {
+    idx = Math.max(0, Math.min(slides.length - 1, idx));
+    slides[idx].scrollIntoView({ behavior: 'smooth' });
+  }
+
+  deck.addEventListener('scroll', () => { window.requestAnimationFrame(updateProgress); });
+
+  navUp.addEventListener('click', () => goTo(currentIndex() - 1));
+  navDown.addEventListener('click', () => goTo(currentIndex() + 1));
+
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); goTo(currentIndex() + 1); }
+    if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); goTo(currentIndex() - 1); }
+  });
+
+  updateProgress();
+</script>
+
+</body>
+</html>
