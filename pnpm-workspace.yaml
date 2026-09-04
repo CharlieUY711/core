@@ -4,3 +4,4 @@ packages:
   - "tools/*"
   - "landings/*"
   - "!tools/tool-marketing"
+  - "!landings/ODDY_Landing"
