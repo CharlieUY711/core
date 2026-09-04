@@ -49,6 +49,11 @@ interface Tienda {
   /* Con qué se identifica. Es la ÚNICA diferencia entre una empresa y un
      particular: `rut` o `ci`. Ver docs/architecture/vendedor.md. */
   documento_clase: string | null; documento_numero: string | null;
+  /* Qué puede hacer QUIEN ENTRÓ sobre este vendedor. Viene con los datos y no
+     en otra llamada: con dos, hay un instante en que la pantalla se dibuja con
+     una sola y muestra habilitado lo que no se puede. */
+  puedo_configurar: boolean;
+  puedo_administrar_miembros: boolean;
 }
 
 const DOCUMENTO: Record<string, string> = {
@@ -94,12 +99,36 @@ export default function AdminTienda() {
   const monedaDe = (iso: string) =>
     territorios.find(t => t.iso === iso)?.moneda ?? null;
 
+  /**
+   * Un vendedor, no la lista entera.
+   *
+   * Antes se pedía `listar_tiendas()` —que exige ser la plataforma— y se
+   * buscaba el que interesaba. Con eso, el dueño de un vendedor no podía abrir
+   * SU propia página aunque la base ya lo autorizara a administrar su gente: el
+   * permiso existía y no había por dónde ejercerlo.
+   *
+   * `mio` resuelve al vendedor en el que se está trabajando. Va como palabra y
+   * no como id porque el menú es fijo: con el id adentro, el enlace quedaría
+   * viejo apenas se cambie de vendedor.
+   */
   const traer = useCallback(async () => {
     if (esNueva) return;
-    const { data, error } = await supabase.rpc("listar_tiendas");
+
+    let cual = id;
+    if (cual === "mio") {
+      const { data: mio, error: eMio } = await supabase.rpc("mi_vendedor");
+      if (eMio || !mio) {
+        setCargando(false);
+        p.avisar(eMio?.message ?? "No estás trabajando en ningún vendedor.", false);
+        return;
+      }
+      cual = mio as string;
+    }
+
+    const { data, error } = await supabase.rpc("datos_del_vendedor", { p_id: cual });
     setCargando(false);
     if (error) { p.avisar(error.message, false); return; }
-    const t = ((data ?? []) as Tienda[]).find(x => x.id === id) ?? null;
+    const t = ((data ?? []) as Tienda[])[0] ?? null;
     setTienda(t);
     if (t) setVista(t.nombre);
   }, [id, esNueva, p, setVista]);
@@ -151,8 +180,12 @@ export default function AdminTienda() {
     ...(tienda ? [
       { label: tienda.activa ? "Desactivar" : "Reactivar",
         color: tienda.activa ? "#EF4444" : "var(--brand-navy)",
-        desactivada: tienda.es_plataforma,
-        motivo: "CORE Market no se desactiva: es la plataforma",
+        /* Apagado y con el motivo, no escondido: un botón que desaparece se
+           busca donde ya no está, y quien lo busca no se entera de por qué. */
+        desactivada: tienda.es_plataforma || !tienda.puedo_configurar,
+        motivo: tienda.es_plataforma
+          ? "CORE Market no se desactiva: es la plataforma"
+          : "Esto lo hace CORE Market",
         onClick: () => {
           if (tienda.activa && !confirm(
             `¿Desactivar ${tienda.nombre}? Deja de operar, pero no se borra: ` +
@@ -246,9 +279,13 @@ export default function AdminTienda() {
 
       {/* Primero quién entra: sin nadie que pueda entrar, configurar el resto
           no sirve de nada. */}
+      {/* Los miembros SÍ los administra el dueño del vendedor —no sólo la
+          plataforma—: `puede_administrar_miembros` ya lo decía y no había
+          pantalla desde donde ejercerlo. */}
       <Bloque titulo="Miembros"
         nota="Quiénes entran y qué puede hacer cada uno. El acceso lo da esta lista.">
-        <MiembrosDeTienda storeId={tienda.id} avisar={p.avisar} />
+        <MiembrosDeTienda storeId={tienda.id} avisar={p.avisar}
+          puedeAdministrar={tienda.puedo_administrar_miembros} />
       </Bloque>
 
       <Bloque titulo="Qué tiene habilitado"
@@ -262,8 +299,10 @@ export default function AdminTienda() {
           label: v.label,
           activa: tienda.vidrieras?.includes(v.id),
           color: ACCENT,
-          desactivada: tienda.es_plataforma,
-          motivo: "CORE Market administra, no vende",
+          desactivada: tienda.es_plataforma || !tienda.puedo_configurar,
+          motivo: tienda.es_plataforma
+            ? "CORE Market administra, no vende"
+            : "Dónde se muestra lo define CORE Market",
           onClick: () => alternarVidriera(v.id),
         }))} />
       </Bloque>
@@ -279,6 +318,8 @@ export default function AdminTienda() {
               identidad, y todo lo demás funciona igual. */}
           <Campo label="Se identifica con">
             <select value={tienda.documento_clase ?? ""} style={inp}
+              disabled={!tienda.puedo_configurar}
+              title={tienda.puedo_configurar ? undefined : "El documento lo registra CORE Market"}
               onChange={e => void rpc("actualizar_documento_de_vendedor", {
                 p_id: tienda.id, p_clase: e.target.value,
                 p_numero: e.target.value ? (tienda.documento_numero ?? "") : "",
@@ -293,7 +334,7 @@ export default function AdminTienda() {
                 medio escribir chocaría con el índice único de otro. */}
             <input defaultValue={tienda.documento_numero ?? ""} style={inp}
               placeholder={tienda.documento_clase ? "" : "Elegí primero con qué se identifica"}
-              disabled={!tienda.documento_clase}
+              disabled={!tienda.documento_clase || !tienda.puedo_configurar}
               onBlur={e => {
                 if (e.target.value === (tienda.documento_numero ?? "")) return;
                 void rpc("actualizar_documento_de_vendedor", {

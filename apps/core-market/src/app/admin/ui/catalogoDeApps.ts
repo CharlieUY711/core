@@ -77,6 +77,9 @@ export const RUTAS: Record<string, string> = {
   // La misma informacion que Tiendas, mirada al reves: una persona y en que
   // tiendas esta. Es la que hace falta cuando alguien dice "no puedo entrar".
   personas:      "/admin/personas",
+  /* "mio" y no un id: la pantalla resuelve en cuál estoy trabajando. Con el id
+     en el menú, el enlace quedaría viejo apenas se cambie de vendedor. */
+  mi_vendedor:   "/admin/tiendas/mio",
   definiciones:  "/admin/definiciones",
 };
 

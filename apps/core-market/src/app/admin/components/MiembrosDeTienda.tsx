@@ -27,6 +27,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../utils/supabase/client";
 import { Tabla, Columna, Fila, useControlDeTablas, fecha } from "./Tabla";
 import { BarraDeAccionesSuelta } from "./BarraDeAcciones";
+import { ROLES, nombreDeRol, QUE_PUEDE_CADA_ROL } from "../ui/roles";
 
 interface Miembro {
   user_id: string;
@@ -36,19 +37,18 @@ interface Miembro {
   desde: string;
 }
 
-/** Los tres roles. Una sola lista: la usan la columna y el alta. */
-const ROLES = [
-  { valor: "duenio",        label: "Dueño" },
-  { valor: "administrador", label: "Administrador" },
-  { valor: "operador",      label: "Operador" },
-];
-
-const nombreDeRol = (r: string) =>
-  ROLES.find(x => x.valor === r)?.label ?? r;
-
-export function MiembrosDeTienda({ storeId, avisar }: {
+export function MiembrosDeTienda({ storeId, avisar, puedeAdministrar = true }: {
   storeId: string;
   avisar: (texto: string, ok?: boolean) => void;
+  /**
+   * Si quien mira puede tocar esto.
+   *
+   * Lo decide el servidor —`puede_administrar_miembros`: la plataforma o el
+   * dueño de ese vendedor— y viaja con los datos del vendedor. Acá sólo se
+   * apaga con el motivo: un operador que ve los botones encendidos se entera de
+   * que no puede recién cuando el servidor lo rechaza.
+   */
+  puedeAdministrar?: boolean;
 }) {
   const t = useControlDeTablas();
   const [miembros, setMiembros] = useState<Miembro[]>([]);
@@ -67,6 +67,35 @@ export function MiembrosDeTienda({ storeId, avisar }: {
   /* Cuántos dueños hay: de eso depende si se puede sacar o degradar a uno.
      El servidor lo impide igual; acá se dice antes. */
   const duenios = miembros.filter(m => m.rol === "duenio").length;
+
+  /**
+   * Sumar a alguien, tenga cuenta o no.
+   *
+   * UNA SOLA PUERTA. Quien la usa no tiene que averiguar antes si la persona ya
+   * está registrada: escribe el correo y el servidor resuelve —la agrega si
+   * existe, la invita si no—. Con dos botones habría que elegir uno antes de
+   * saber cuál corresponde, y elegir mal devuelve un error que no explica nada.
+   */
+  const sumar = async () => {
+    setOcupado(true);
+    const { data, error } = await supabase.functions.invoke("invitar-persona", {
+      body: {
+        correo: correo.trim(), store_id: storeId, rol: rolNuevo,
+        // A dónde vuelve quien acepta la invitación: al panel, no a la raíz.
+        volver_a: `${window.location.origin}/admin`,
+      },
+    });
+    setOcupado(false);
+
+    const detalle = (data as { error?: string; mensaje?: string } | null);
+    if (error || detalle?.error) {
+      avisar(detalle?.error ?? error!.message, false);
+      return;
+    }
+    avisar(detalle?.mensaje ?? "Listo.");
+    setCorreo("");
+    await traer();
+  };
 
   const llamar = async (fn: string, params: Record<string, unknown>, ok: string) => {
     setOcupado(true);
@@ -100,12 +129,14 @@ export function MiembrosDeTienda({ storeId, avisar }: {
   const nivel = t.nivel(`miembros:${storeId}`, {
     columnas, filas, anidada: true,
     nombreDe: f => String(f.correo),
-    onGuardar: async (f, valores) => {
+    /* Sin permiso no se ofrecen: `onGuardar` y `onBorrar` ausentes apagan los
+       botones de la barra, que es el mismo mecanismo de toda tabla. */
+    onGuardar: !puedeAdministrar ? undefined : async (f, valores) => {
       await llamar("cambiar_rol_miembro",
         { p_store_id: storeId, p_user_id: f.clave, p_rol: valores.rol },
         `${f.correo}: ahora es ${nombreDeRol(valores.rol).toLowerCase()}.`);
     },
-    onBorrar: async fs => {
+    onBorrar: !puedeAdministrar ? undefined : async fs => {
       /* Se frena acá con el motivo, en vez de mandar la llamada y mostrar el
          error del servidor: es la misma respuesta, pero antes. */
       if (fs.some(f => f.esUltimoDuenio)) {
@@ -123,14 +154,16 @@ export function MiembrosDeTienda({ storeId, avisar }: {
     <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
       <Tabla {...nivel} />
 
-      {/* Agregar: tiene que ser alguien que YA tenga cuenta. Dar de alta por
-          correo a quien no existe crearía un miembro que nunca va a poder
-          entrar, y nadie lo relacionaría con esto. */}
+      {/* Sumar a alguien: si ya tiene cuenta se agrega, y si no se le manda una
+          invitación. Antes había que pedirle que se registrara solo, esperar, y
+          recordar volver a agregarlo — con el agravante de que quien invitaba
+          no se enteraba de si el otro había llegado a hacerlo. */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input
           value={correo}
           onChange={e => setCorreo(e.target.value)}
-          placeholder="correo de alguien que ya tenga cuenta"
+          disabled={!puedeAdministrar}
+          placeholder="correo — si no tiene cuenta, se la invita"
           style={{ flex: "1 1 220px", minWidth: 0,
             border: "1.5px solid var(--border)", borderRadius: 8,
             padding: "0.4rem 0.65rem", fontSize: "0.82rem", outline: "none" }} />
@@ -142,23 +175,20 @@ export function MiembrosDeTienda({ storeId, avisar }: {
         </select>
 
         <BarraDeAccionesSuelta acciones={[{
-          label: ocupado ? "Agregando…" : "Agregar persona",
+          label: ocupado ? "Sumando…" : "Sumar persona",
           color: "var(--brand-madre)",
-          desactivada: ocupado || !correo.trim(),
-          motivo: "Escribí el correo",
-          onClick: () => {
-            void llamar("agregar_miembro",
-              { p_store_id: storeId, p_correo: correo.trim(), p_rol: rolNuevo },
-              `${correo.trim()} agregado como ${nombreDeRol(rolNuevo).toLowerCase()}.`)
-              .then(() => setCorreo(""));
-          },
+          desactivada: ocupado || !correo.trim() || !puedeAdministrar,
+          motivo: !puedeAdministrar
+            ? "Sólo el dueño agrega personas"
+            : "Escribí el correo",
+          onClick: () => { void sumar(); },
         }]} />
       </div>
 
       <div style={{ fontSize: "0.74rem", color: "var(--gray-400)", lineHeight: 1.5 }}>
-        <b>Dueño</b> administra quién entra. <b>Administrador</b> configura y
-        publica. <b>Operador</b> carga artículos y atiende pedidos.
-        {" "}Siempre tiene que quedar al menos un dueño.
+        Si la persona no tiene cuenta, le llega una invitación por correo y
+        entra directo a este vendedor.{" "}
+        {QUE_PUEDE_CADA_ROL}
       </div>
     </div>
   );

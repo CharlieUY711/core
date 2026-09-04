@@ -19,8 +19,9 @@
  * no hay ninguna de las cuatro acciones, y el doble clic lleva a la tienda.
  */
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabase/client";
+import { VendedoresDeLaPersona } from "../components/VendedoresDeLaPersona";
+import { nombreDeRol } from "../ui/roles";
 import { useShop } from "../components/AdminLayout";
 import { Pantalla, usePantalla } from "../components/Pantalla";
 import { Tabla, Columna, Fila, fecha } from "../components/Tabla";
@@ -33,22 +34,26 @@ interface Persona {
   nombres: string | null;
   desde: string;
   ultimo_acceso: string | null;
+  /* Comprar es de la persona, no del vendedor. Sin esto, alguien que sólo
+     compró no se distinguía de alguien que se registró y no hizo nada. */
+  compras: number;
 }
 
-const ROL = {
-  duenio: "Dueño", administrador: "Administrador", operador: "Operador",
-} as Record<string, string>;
+interface VendedorElegible { id: string; nombre: string; }
 
-/** «duenio · operador» → «Dueño · Operador». */
+/** «duenio · operador» → «Dueño · Operador». Los nombres salen de `ui/roles`. */
 const rolesLegibles = (r: string | null) =>
-  (r ?? "").split(" · ").filter(Boolean).map(x => ROL[x] ?? x).join(" · ") || "—";
+  (r ?? "").split(" · ").filter(Boolean).map(nombreDeRol).join(" · ") || "—";
 
 export default function AdminPersonas() {
-  const navegar = useNavigate();
   const p = usePantalla();
   const { setVista, setTopStats } = useShop();
 
   const [personas, setPersonas] = useState<Persona[]>([]);
+  /* Los vendedores, para poder sumar a alguien a uno. Se traen acá y se pasan
+     abajo: si los pidiera cada fila desplegada, la misma lista se traería una
+     vez por persona que se abre. */
+  const [vendedores, setVendedores] = useState<VendedorElegible[]>([]);
   const [cargando, setCargando] = useState(true);
   const [busca, setBusca] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +67,14 @@ export default function AdminPersonas() {
   }, []);
 
   useEffect(() => { void traer(); }, [traer]);
+
+  useEffect(() => {
+    supabase.rpc("listar_tiendas").then(({ data, error }) => {
+      if (error) { console.warn("[personas] vendedores:", error.message); return; }
+      setVendedores((data ?? []).map((v: { id: string; nombre: string }) =>
+        ({ id: v.id, nombre: v.nombre })));
+    });
+  }, []);
 
   /*
    * Dos contadores, y el segundo es el que importa: alguien que nunca entró
