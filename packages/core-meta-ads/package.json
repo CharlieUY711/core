@@ -1,0 +1,55 @@
+{
+  "name": "@core/core-meta",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Módulo funcional standalone de integración con Meta Ads (Marketing API). No contiene UI ni depende de ninguna app consumidora.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./auth": {
+      "import": "./dist/auth/index.js",
+      "types": "./dist/auth/index.d.ts"
+    },
+    "./credentials": {
+      "import": "./dist/credentials/index.js",
+      "types": "./dist/credentials/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/index.js",
+      "types": "./dist/client/index.d.ts"
+    },
+    "./ads": {
+      "import": "./dist/ads/index.js",
+      "types": "./dist/ads/index.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors/index.js",
+      "types": "./dist/errors/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsx": "^4"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  }
+}

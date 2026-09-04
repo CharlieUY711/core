@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    /* HttpMetaClient usa fetch/URL/URLSearchParams/AbortController, que son
+     * globals estándar (WHATWG) disponibles tanto en runtimes browser como
+     * en Node 18+. Se agrega "DOM" solo para sus tipos, sin introducir
+     * ninguna dependencia real de browser/React en el código.
+     *
+     * ES2022 (no ES2020) porque el runtime real de la copia server-side es
+     * Deno / Edge Functions, cuya lib declara `Error.cause`; con ES2020 el
+     * `override` de MetaModuleError.cause no compila acá y sin `override`
+     * no compila allá. `target` sigue en ES2020. */
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

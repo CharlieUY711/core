@@ -13,3 +13,7 @@ tools/tool-dashboard/core-dashboard-legacy/
 tools/tool-dashboard/core-dashboard2-legacy/
 .vercel
 .env*
+
+# Exports y sueltos de trabajo de core-meta-ads (copias de arbol, no codigo)
+packages/core-meta-ads/exports/
+packages/core-meta-ads/F9B Sueltos/
