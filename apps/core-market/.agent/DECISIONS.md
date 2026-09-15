@@ -1125,3 +1125,113 @@ credenciales creada, META no tocado, pagos no tocados.
 - Investigar por qué este ZIP tiene `node_modules` incompleto
   (`@supabase/supabase-js`, `react-dom` ausentes) — bloquea confiar en
   `tsc`/`vite build` como gate real hasta que se resuelva.
+
+## DEC-013 — Vidriera pública invisible: `catalog_vidriera` seguía exigiendo un listing que `crear_publicacion` ya dejó de crear (2026-09-01)
+
+### Contexto
+Hallazgo de auditoría externa (no de una sesión de agente anterior — no
+había ningún DEC ni entrada de CURRENT.md/HANDOFF.md sobre esto). Reportado:
+los productos que publica un vendedor no aparecen en la home pública
+(`/`, `/tienda`).
+
+### La causa real
+Dos funciones SQL, ambas legítimas por separado, dejaron de estar de
+acuerdo entre sí:
+
+1. `crear_publicacion` (última versión: `20260831000500_el_logo_de_la_marca_se_guarda.sql`)
+   saltea a propósito la inserción en `catalog_canal_listing` cuando el
+   canal es `'market'` o `'secondhand'` — comentario original: *"por si
+   algún caller viejo todavía los manda en p_channels"*. Esto es correcto
+   bajo DEC-012: `catalog_producto_base.tipo` ya identifica market vs.
+   secondhand, no hace falta una fila de canal para eso.
+
+2. `catalog_vidriera` (última versión antes de este DEC:
+   `20260822002600_vidriera_y_checkout_cobran_precio_de_canal.sql`, de
+   9 días antes) nunca se actualizó para dejar de exigir esa fila: hacía
+   `INNER JOIN catalog_canal_listing l ... where l.channel in ('market',
+   'secondhand') and l.status = 'active'`.
+
+Resultado: cualquier producto publicado con la versión actual de
+`crear_publicacion` queda con `producto_base.status = 'active'` y
+`variante.status = 'active'`, pero SIN fila en `catalog_canal_listing`
+para market/secondhand — así que el INNER JOIN de la vidriera nunca lo
+encuentra. Invisible en la home, sin importar el estado real del
+producto. No es un caso raro ni de RLS: pasa con el 100% de las
+publicaciones nuevas desde el 31/08.
+
+### Por qué no se detectó antes
+El hueco quedó exactamente entre dos sesiones de agente que no se
+solaparon: la del 22/08 (que dejó `catalog_vidriera` en su última forma
+conocida) y la del 31/08 (que cambió el contrato de `crear_publicacion`
+sin tocar el lector). `AGENTS.md` pide no releer todo el repo sin
+necesidad — correcto en general, pero esta clase de bug (dos funciones
+que se reparten el mismo invariante) sólo se ve auditando ambas puntas
+juntas, no seguía el rastro de `HANDOFF.md`.
+
+### Decisión
+`catalog_canal_listing` deja de ser, ni siquiera transitoriamente, una
+fuente de verdad para market/secondhand. Regla única, de ahora en más:
+
+> Visible en la vidriera (market/secondhand) ⇔
+> `producto_base.status = 'active' AND variante.status = 'active'`.
+> `catalog_canal_listing` es sólo para canales externos reales (Mercado
+> Libre, etc.): sincronización, `external_id`, `last_error`, precio propio.
+
+Implementado en `20260901000000_vidriera_no_depende_del_listing_de_plataforma.sql`:
+
+1. `catalog_vidriera` reescrita: `LEFT JOIN` a `catalog_canal_listing`
+   (nunca bloquea la visibilidad) y `tipo` sale de `producto_base.tipo`
+   directo, no del canal. Un precio de canal propio para market/secondhand
+   se sigue respetando SI existe (mismo patrón que `precio_de_canal`), pero
+   su ausencia ya no oculta nada.
+2. `crear_publicacion` recreada **sin cambiar una sola línea de lógica**
+   — sólo se reemplazó el comentario ambiguo ("por si algún caller
+   viejo...") por la regla explícita, para que un agente futuro no lo
+   lea como algo pendiente de completar y "corrija" agregando el insert
+   que precisamente causó este bug.
+3. Limpieza defensiva: `delete from catalog_canal_listing where channel
+   in ('market','secondhand')` — filas huérfanas de antes de DEC-012, si
+   las hubiera, no aportan nada bajo la regla nueva.
+4. Guardrail estructural: `CHECK (channel not in ('market','secondhand'))`
+   sobre `catalog_canal_listing`, para que este bug sea IMPOSIBLE de
+   reintroducir por un futuro refactor de `crear_publicacion`, no sólo
+   "arreglado por ahora". **Advertencia dejada en el propio SQL**: el DDL
+   de `catalog_canal_listing` no está versionado en este repo (ver hueco
+   de migraciones ya documentado en `.agent/CURRENT.md`), así que el tipo
+   de la columna `channel` se asume `text` por cómo la tratan todas las
+   funciones que la usan (ninguna la castea a un enum) — si eso fuera
+   falso contra la base real, el bloque que agrega el `CHECK` está escrito
+   para no romper la migración, sólo avisar con `RAISE NOTICE`.
+
+### Qué NO se tocó, y por qué
+- `precio_de_canal` (usada por el checkout): ya usaba `LEFT JOIN` +
+  `coalesce(l.precio, v.precio)` — mismo patrón que se generalizó acá.
+  No tenía el bug.
+- El frontend (`productosApi.ts`, `useProductos.ts`, `MarketPage.tsx`):
+  ya leían `tipo` como un campo plano de la fila devuelta por
+  `catalog_vidriera` — el fix es 100% de backend, no hace falta tocar
+  una sola línea de `src/`.
+- El resto de `crear_publicacion`/`actualizar_publicacion` (marca, fotos,
+  ficha de biblioteca, etc.): fuera de alcance, no relacionado.
+
+### Verificación
+- Lectura línea a línea de las dos funciones enfrentadas contra el join
+  real, confirmando el INNER JOIN como causa (no RLS, no un problema de
+  `status` del producto).
+- `grep` confirmado: ningún trigger en el repo inserta en
+  `catalog_canal_listing` como efecto secundario de crear/actualizar un
+  producto (se revisaron los triggers de `catalog_producto_base` y
+  `catalogo_market` de las migraciones del 29-30/08; ninguno toca esa
+  tabla).
+- No se pudo correr contra una base real (sin acceso a Supabase desde
+  este entorno) — el próximo paso recomendado es exactamente el test de
+  integración agregado en `tests/vidrieraVisibilidad.test.ts`.
+
+### Status
+**IMPLEMENTED.** Migración lista para aplicar:
+`supabase/migrations/20260901000000_vidriera_no_depende_del_listing_de_plataforma.sql`.
+Pendiente, no bloqueante: correr el test de integración contra un
+proyecto Supabase real (necesita `VITE_SUPABASE_URL` +
+`VITE_SUPABASE_ANON_KEY` con un `store_id` de prueba en el JWT) para
+confirmar de punta a punta que un producto recién publicado aparece en
+`catalog_vidriera`.

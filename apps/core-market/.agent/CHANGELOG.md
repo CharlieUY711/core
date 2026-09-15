@@ -922,3 +922,39 @@ baseline CURRENT.md records from a prior session's environment. Not
 fixed (out of scope, not caused by this session). Edge Functions
 (`supabase/functions`) are outside `tsconfig.json`'s `include`, so no
 type-check exists for them in this repo at all — reviewed by hand.
+
+## 2026-09-01 — DEC-013: fix de visibilidad en la vidriera pública
+
+**Síntoma reportado:** los productos que publica un vendedor no aparecen
+en la home (`/`, `/tienda`).
+
+**Causa:** `catalog_vidriera` (INNER JOIN contra `catalog_canal_listing`,
+exigiendo `channel in ('market','secondhand')` y `status='active'`) nunca
+se actualizó después de que `crear_publicacion` (31/08) empezara a
+saltear a propósito la creación de esa fila para esos dos canales
+(correcto según DEC-012: `tipo` ya vive en `producto_base`). Ningún
+producto publicado desde el 31/08 podía pasar ese join.
+
+**Cambios** (`supabase/migrations/20260901000000_vidriera_no_depende_del_listing_de_plataforma.sql`):
+- `catalog_vidriera` recreada: `LEFT JOIN` a `catalog_canal_listing`
+  (nunca bloquea), `tipo` sale de `producto_base.tipo` directo.
+- `crear_publicacion` recreada con la MISMA lógica, sólo se aclaró el
+  comentario que hacía parecer el salteo de market/secondhand como algo
+  pendiente de terminar.
+- Limpieza de filas huérfanas `channel in ('market','secondhand')` en
+  `catalog_canal_listing`, si las hubiera.
+- `CHECK (channel not in ('market','secondhand'))` agregado a
+  `catalog_canal_listing` como guardrail — impide que este bug se
+  reintroduzca. Aplicado defensivamente (`DO` block con manejo de error)
+  porque el DDL de esa tabla no está versionado en este repo.
+
+**No tocado:** frontend (ya leía `tipo` como campo plano de la fila),
+`precio_de_canal`/checkout (ya usaba left join, no tenía el bug).
+
+**Verificación:** revisión manual línea a línea de ambas funciones y de
+los triggers existentes sobre `catalog_producto_base`/`catalogo_market`
+(ninguno crea la fila que falta). No se pudo correr contra una base real
+desde este entorno — agregado `tests/vidrieraVisibilidad.test.ts` como
+test de integración a correr contra Supabase antes de mergear.
+
+Detalle completo: DEC-013 en `DECISIONS.md`.

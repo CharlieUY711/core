@@ -1,5 +1,23 @@
 # CORE-Market — Current State
 
+## ⚡ Update 2026-09-01 — DEC-013 (read this first, most recent)
+Bug crítico encontrado y arreglado por auditoría externa (fuera del hilo
+de sesiones de agente que venía documentando este archivo): los
+productos publicados desde el 31/08 eran invisibles en la vidriera
+pública (`/`, `/tienda`). Causa: `catalog_vidriera` (INNER JOIN,
+22/08) nunca se actualizó cuando `crear_publicacion` (31/08) dejó de
+crear la fila de `catalog_canal_listing` que ese join exigía para
+market/secondhand — cambio correcto de un lado (DEC-012), lector viejo
+del otro. Fix, con guardrail para que no se pueda reintroducir:
+`supabase/migrations/20260901000000_vidriera_no_depende_del_listing_de_plataforma.sql`.
+Detalle completo: DEC-013 en `DECISIONS.md`. Todo lo que sigue abajo en
+este archivo es el estado tal como lo dejó la sesión DEC-011 del 22/08 —
+sigue vigente salvo por este fix, que es independiente de ese hilo.
+**Pendiente, no bloqueante:** correr `tests/vidrieraVisibilidad.test.ts`
+contra un proyecto Supabase real antes de dar esto por verificado de
+punta a punta (no había acceso a la base desde el entorno donde se hizo
+este fix).
+
 ## Project
 CORE-Market
 
