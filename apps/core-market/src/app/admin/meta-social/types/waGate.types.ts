@@ -11,6 +11,8 @@ export interface WaGateOption {
 
 export interface WaGate {
   id:              string
+  name:            string     // cómo se llama esta configuración en la lista
+  phone_number_id: string | null  // teléfono de Meta que responde; null = el conectado en el Vault
   recipient:       string     // sólo dígitos, con país
   recipient_label: string | null
   prompt:          string

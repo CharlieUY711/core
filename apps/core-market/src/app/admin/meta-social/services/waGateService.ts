@@ -26,7 +26,13 @@ export function normalizarNumero(entrada: string): string {
 
 /** Mensaje de lo que impide guardar, o null si está bien. */
 export function validar(g: WaGateDraft): string | null {
+  if (!g.name.trim()) return 'Poné un nombre a la configuración.'
   if (g.recipient.length < 8) return 'El número destinatario no parece válido.'
+  // Un 0 inicial sólo se convierte a 598 cuando son 9 dígitos (09X XXX XXX):
+  // con otro largo el número quedaba mal y nunca coincidía con el de WhatsApp.
+  if (g.recipient.startsWith('0')) return 'Un número con 0 inicial tiene que ser 09X XXX XXX (9 dígitos). Revisalo.'
+  if (g.recipient.startsWith('598') && g.recipient.length !== 11)
+    return 'Un número de Uruguay tiene 8 dígitos después del 598. Revisalo.'
   if (g.options.length < 2) return 'Hacen falta al menos 2 opciones.'
   if (g.options.length > 10) return 'WhatsApp admite hasta 10 opciones.'
   if (g.options.some(o => !o.label.trim())) return 'Todas las opciones necesitan un texto.'
@@ -72,6 +78,8 @@ export const waGateService = {
 
     const fila = {
       user_id: user.id,
+      name: g.name.trim(),
+      phone_number_id: g.phone_number_id || null,
       recipient: g.recipient,
       recipient_label: g.recipient_label,
       prompt: g.prompt,
@@ -79,6 +87,18 @@ export const waGateService = {
       enabled: g.enabled,
     }
     let id = g.id
+
+    /* Sólo una activa por destinatario y teléfono. Se apagan las otras ANTES
+       de guardar esta: si no, el índice único rechaza la que queda prendida. */
+    if (g.enabled) {
+      let q = supabase.from('wa_gates').update({ enabled: false })
+        .eq('user_id', user.id).eq('recipient', g.recipient).eq('enabled', true)
+      q = g.phone_number_id ? q.eq('phone_number_id', g.phone_number_id) : q.is('phone_number_id', null)
+      if (id) q = q.neq('id', id)
+      const { error: a } = await q
+      if (a) throw new Error(a.message)
+    }
+
     if (id) {
       const { error: e } = await supabase.from('wa_gates').update(fila).eq('id', id)
       if (e) throw new Error(e.message)

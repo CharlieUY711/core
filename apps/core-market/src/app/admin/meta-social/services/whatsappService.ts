@@ -61,6 +61,34 @@ export const whatsappService = {
     }
   },
 
+  /**
+   * Los teléfonos de la cuenta de WhatsApp Business (WABA): los que están
+   * dados de alta en Meta y pueden recibir mensajes. Sirve para elegir cuál
+   * responde.
+   */
+  async getPhoneNumbers(
+    creds: WhatsAppCredentials
+  ): Promise<MetaApiResult<{ data: WhatsAppPhoneNumber[] }>> {
+    if (!creds.accessToken || !creds.wabaId) {
+      return { ok: false, error: 'Falta WHATSAPP_WABA_ID en el API Vault.' }
+    }
+    try {
+      const qs  = new URLSearchParams({
+        fields: 'id,display_phone_number,verified_name,quality_rating,code_verification_status',
+        access_token: creds.accessToken.trim(),
+        limit: '50',
+      })
+      const res = await fetch(`${WA_BASE}/${creds.wabaId}/phone_numbers?${qs}`)
+      if (!res.ok) {
+        const err = await parseError(res)
+        return { ok: false, error: err.message, code: err.code }
+      }
+      return { ok: true, data: await res.json() }
+    } catch (e: any) {
+      return { ok: false, error: e.message ?? 'Error de red' }
+    }
+  },
+
   async getTemplates(
     creds: WhatsAppCredentials
   ): Promise<MetaApiResult<{ data: WhatsAppMessageTemplate[] }>> {

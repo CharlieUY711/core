@@ -11,13 +11,16 @@
 //   5. Cualquier otro número, o un gate apagado → se ignora: este webhook no
 //      toca conversaciones que nadie configuró.
 //
-// Secretos de la función (supabase secrets set ...):
-//   WA_GATE_VERIFY_TOKEN  texto cualquiera; el mismo que se pone en Meta al
-//                         registrar el webhook.
-//   META_APP_SECRET       secreto de la app de Meta. Con él se comprueba la
-//                         firma X-Hub-Signature-256: sin esa comprobación
-//                         cualquiera podría hacerle creer a la función que un
-//                         mensaje vino de WhatsApp.
+// Las claves salen del API Vault (filas marcadas "Sólo servidor"), leídas con la
+// service role, que sólo corre en el servidor:
+//   META_APP_SECRET        (plataforma Meta) comprueba la firma
+//                          X-Hub-Signature-256: sin esa comprobación cualquiera
+//                          podría hacerle creer a la función que un mensaje vino
+//                          de WhatsApp.
+//   WA_GATE_VERIFY_TOKEN   (plataforma Meta) el mismo texto que se pone en Meta
+//                          al registrar el webhook.
+// Si alguna no está en el Vault se usa el secreto de Supabase del mismo nombre,
+// para no romper un despliegue que ya lo tenía.
 //
 // El token de WhatsApp NO está acá: se lee del API Vault del dueño del número
 // (WHATSAPP_ACCESS_TOKEN), con la service role, que sólo corre en el servidor.
@@ -32,10 +35,26 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// ── Claves del Vault ─────────────────────────────────────────────────────────
+
+/** Lee una credencial de servidor del Vault; si no está, el secreto de Supabase. */
+async function claveDeServidor(nombre: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("api_vault")
+    .select("value")
+    .eq("platform", "Meta")
+    .eq("name", nombre)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) console.error(`[whatsapp-gate] no se pudo leer ${nombre} del Vault:`, error.message);
+  return data?.value?.trim() || Deno.env.get(nombre) || null;
+}
+
 // ── Firma ────────────────────────────────────────────────────────────────────
 
 async function firmaValida(raw: string, header: string | null): Promise<boolean> {
-  const secreto = Deno.env.get("META_APP_SECRET");
+  const secreto = await claveDeServidor("META_APP_SECRET");
   if (!secreto || !header?.startsWith("sha256=")) return false;
 
   const key = await crypto.subtle.importKey(
@@ -148,24 +167,34 @@ async function procesar(phoneNumberId: string, msg: any) {
   const messageId = String(msg.id ?? "");
   if (!from || !messageId) return;
 
-  // Quién es el dueño de este número: el que lo tiene en su Vault.
-  const { data: entradas } = await supabase
-    .from("api_vault")
-    .select("user_id")
-    .eq("platform", "WhatsApp")
-    .eq("name", "WHATSAPP_PHONE_NUMBER_ID")
-    .eq("value", phoneNumberId);
-  const userIds = [...new Set((entradas ?? []).map(e => e.user_id as string))];
-  if (userIds.length === 0) return;
+  // ¿Hay un gate activo para quien escribe, en ESTE teléfono? Si no, no es
+  // asunto nuestro.
+  // 1) El que eligió este teléfono de Meta de forma explícita.
+  const campos = "id, user_id, prompt, success_text";
+  let { data: gate } = await supabase
+    .from("wa_gates").select(campos)
+    .eq("recipient", from).eq("enabled", true)
+    .eq("phone_number_id", phoneNumberId)
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
-  // ¿Hay un gate activo para quien escribe? Si no, no es asunto nuestro.
-  const { data: gate } = await supabase
-    .from("wa_gates")
-    .select("id, user_id, prompt, success_text")
-    .in("user_id", userIds)
-    .eq("recipient", from)
-    .eq("enabled", true)
-    .maybeSingle();
+  // 2) Sin teléfono elegido: vale para el WhatsApp conectado en el Vault, o
+  //    sea el dueño de ese phone number id.
+  if (!gate) {
+    const { data: entradas } = await supabase
+      .from("api_vault")
+      .select("user_id")
+      .eq("platform", "WhatsApp")
+      .eq("name", "WHATSAPP_PHONE_NUMBER_ID")
+      .eq("value", phoneNumberId);
+    const userIds = [...new Set((entradas ?? []).map(e => e.user_id as string))];
+    if (userIds.length === 0) return;
+    ({ data: gate } = await supabase
+      .from("wa_gates").select(campos)
+      .in("user_id", userIds)
+      .eq("recipient", from).eq("enabled", true)
+      .is("phone_number_id", null)
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle());
+  }
   if (!gate) return;
 
   // Idempotencia: Meta reintenta si tardamos en responder.
@@ -241,7 +270,7 @@ Deno.serve(async (req) => {
   // Verificación al registrar el webhook en Meta.
   if (req.method === "GET") {
     const u = new URL(req.url);
-    const esperado = Deno.env.get("WA_GATE_VERIFY_TOKEN");
+    const esperado = await claveDeServidor("WA_GATE_VERIFY_TOKEN");
     if (
       esperado &&
       u.searchParams.get("hub.mode") === "subscribe" &&
