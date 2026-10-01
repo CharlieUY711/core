@@ -447,6 +447,7 @@ function Topbar({ location, vista, explicacion, topStats }: {
 
   const allItems = [
     { path: "/admin", label: "Dashboard", exact: true },
+    { path: "/admin/meta/configuraciones", label: "Configuraciones y usos", exact: false },
     ...apps.filter(a => a.ruta).map(a => ({ path: a.ruta!, label: a.nombre, exact: false })),
     { path: "/admin/aplicaciones", label: "Herramientas y Apps", exact: false },
     { path: "/admin/tiendas",      label: "Vendedores",             exact: false },

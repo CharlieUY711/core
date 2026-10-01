@@ -91,6 +91,23 @@ export async function createVaultEntry(
    */
   const declarada = requerida(entry.platform, entry.name)
 
+  /*
+   * LAS DE SERVIDOR NO PASAN POR insert().select().
+   *
+   * `.select()` agrega RETURNING, y para devolver la fila Postgres exige que
+   * la política de LECTURA la deje ver. Las de servidor están excluidas de la
+   * lectura a propósito, así que el alta entera se rechazaba con 42501 aunque
+   * el INSERT en sí estuviera permitido. Por eso la guía de Meta decía
+   * "Se guardaron 0 de 2".
+   *
+   * Se guardan por una función del servidor que crea o reemplaza y NO devuelve
+   * el valor. La política de lectura queda como está.
+   */
+  if (declarada?.soloServidor) {
+    const r = await guardarCredencialDeServidor(entry.platform, entry.name, entry.type, entry.value)
+    return r.ok ? { ok: true } : { ok: false, error: r.error }
+  }
+
   const { data, error } = await supabase
     .from(TABLE)
     .insert({
@@ -103,6 +120,54 @@ export async function createVaultEntry(
 
   if (error) return handleError(error)
   return { ok: true, data: data as ApiVaultEntry }
+}
+
+// ─── Credenciales de servidor ─────────────────────────────────────────────────
+// El navegador no puede leerlas, así que tampoco las edita ni las borra con las
+// políticas de la tabla. Se hace por dos funciones del servidor que sólo
+// escriben o borran: ninguna devuelve el valor.
+
+/** Avisa a la pantalla del Vault que tiene que volver a pedir la lista de servidor. */
+export const EVENTO_SERVIDOR = 'vault:servidor-cambio'
+
+function avisarCambioDeServidor() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENTO_SERVIDOR))
+}
+
+function errorDeServidor(error: unknown): string {
+  const e = error as { code?: string; message?: string } | null
+  // PGRST202: la función no existe. Es lo que pasa si falta correr el SQL.
+  if (e?.code === 'PGRST202') {
+    return 'Falta crear las funciones del Vault en Supabase (archivo 20261001_vault_servidor.sql).'
+  }
+  return handleError(error).error ?? 'Error desconocido'
+}
+
+export async function guardarCredencialDeServidor(
+  platform: string, name: string, type: string, value: string
+): Promise<ApiVaultResult> {
+  const { data: sesion } = await supabase.auth.getSession()
+  if (!sesion?.session?.user?.id) {
+    return { ok: false, error: 'No hay sesión activa. Volvé a iniciar sesión para guardar credenciales.' }
+  }
+  const { error } = await supabase.rpc('guardar_credencial_servidor', {
+    p_plataforma: platform, p_nombre: name, p_tipo: type, p_valor: value,
+  })
+  if (error) return { ok: false, error: errorDeServidor(error) }
+  avisarCambioDeServidor()
+  return { ok: true }
+}
+
+/** Devuelve cuántas filas borró: 0 quiere decir que no era de este usuario. */
+export async function borrarCredencialDeServidor(
+  platform: string, name: string
+): Promise<ApiVaultResult<number>> {
+  const { data, error } = await supabase.rpc('borrar_credencial_servidor', {
+    p_plataforma: platform, p_nombre: name,
+  })
+  if (error) return { ok: false, error: errorDeServidor(error) }
+  avisarCambioDeServidor()
+  return { ok: true, data: Number(data ?? 0) }
 }
 
 export async function updateVaultEntry(

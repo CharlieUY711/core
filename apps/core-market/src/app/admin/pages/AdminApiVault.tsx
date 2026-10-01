@@ -20,7 +20,7 @@ import {
   VAULT_PLATFORM_CATEGORIES,
   VAULT_PLATFORMS_FRECUENTES,
 } from '../services/apiVaultTypes'
-import { isExpired, isExpiringSoon } from '../services/apiVaultService'
+import { isExpired, isExpiringSoon, guardarCredencialDeServidor, borrarCredencialDeServidor, EVENTO_SERVIDOR } from '../services/apiVaultService'
 
 // ── Paleta CORE Market (tokens oficiales brand.css + theme.css) ──────────────
 /**
@@ -109,7 +109,7 @@ export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
   const [deServidor, setDeServidor] = useState<
     { plataforma: string; nombre: string; cargada: string; largo: number }[]>([])
 
-  useEffect(() => {
+  const cargarServidor = () => {
     supabase.rpc('credenciales_de_servidor').then(({ data, error }: {
       data: { plataforma: string; nombre: string; cargada: string; largo: number }[] | null
       error: unknown
@@ -117,7 +117,17 @@ export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
       // Una tienda no las ve y no es un error: son de la plataforma.
       if (!error) setDeServidor(data ?? [])
     })
+  }
+  useEffect(() => {
+    cargarServidor()
+    // Guardar o borrar una de servidor (desde acá o desde la guía) refresca la lista.
+    window.addEventListener(EVENTO_SERVIDOR, cargarServidor)
+    return () => window.removeEventListener(EVENTO_SERVIDOR, cargarServidor)
   }, [])
+  /* La de servidor que se está reemplazando. El valor actual no existe en el
+     navegador: el formulario sólo escribe, no muestra. */
+  const [editandoServidor, setEditandoServidor] = useState<
+    { plataforma: string; nombre: string; largo: number } | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing,  setEditing]  = useState<ApiVaultEntry | null>(null)
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
@@ -236,18 +246,45 @@ export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
                 vence: "—",
                 creado: c.cargada,
                 servidor: true,
+                largo: c.largo,
               })),
           ],
           nombreDe: f => String(f.nombre),
           onAgregar: () => { setEditing(null); setShowForm(true) },
-          /* Sobre una de servidor no se puede: el navegador no tiene su valor
-             para editarla, y borrarla desde acá dejaría al sistema sin
-             conectar sin que nadie lo relacione. Se cambian donde se cargan. */
-          onEditar:  f => { if (!f.servidor) openEdit(f.entry as ApiVaultEntry) },
+          /* Las de servidor se REEMPLAZAN y se BORRAN, pero nunca se leen: el
+             formulario sólo escribe un valor nuevo y el borrado va por una
+             función del servidor. El valor no llega al navegador. */
+          onEditar:  f => {
+            if (f.servidor) {
+              setEditandoServidor({ plataforma: String(f.plataforma), nombre: String(f.nombre), largo: Number(f.largo ?? 0) })
+              return
+            }
+            openEdit(f.entry as ApiVaultEntry)
+          },
           onBorrar: async (fs) => {
-            for (const f of fs) if (!f.servidor) await remove(f.clave)
+            const fallos: string[] = []
+            for (const f of fs) {
+              if (f.servidor) {
+                const r = await borrarCredencialDeServidor(String(f.plataforma), String(f.nombre))
+                if (!r.ok) fallos.push(`${f.nombre}: ${r.error}`)
+                else if (!r.data) fallos.push(`${f.nombre}: no se borró nada (es de otro usuario)`)
+              } else {
+                await remove(f.clave)
+              }
+            }
+            if (fallos.length) pantalla.avisar(fallos.join(' · '), false)
           },
           detalle: f => {
+            /* Una de servidor no tiene `entry` ni valor: se dice qué se sabe. */
+            if (f.servidor) {
+              return (
+                <div style={{ fontSize:'0.8rem', color:C.textMuted, maxWidth:720 }}>
+                  Cargada el {fecha(f.creado)}, de {String(f.largo ?? '?')} caracteres.
+                  El valor no se muestra: esta credencial la usa sólo el servidor.
+                  Para cambiarla, seleccionala y tocá Editar.
+                </div>
+              )
+            }
             const e = f.entry as ApiVaultEntry
             const revelada = revealed.has(f.clave)
             return (
@@ -359,6 +396,12 @@ export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
           }} />
       )}
 
+      {editandoServidor && (
+        <ServidorForm fila={editandoServidor}
+          onClose={() => setEditandoServidor(null)}
+          onAviso={pantalla.avisar} />
+      )}
+
       {/* El elegidor: qué credencial. Sale de la misma lista de guías, así que
           no puede ofrecer una para la que no hay pasos. */}
       {guiando === '' && (
@@ -404,6 +447,74 @@ export default function AdminApiVault({ tenantId, appId }: ApiVaultPageProps) {
           avisar={pantalla.avisar} />
       )}
     </Pantalla>
+  )
+}
+
+// ── Reemplazar una credencial de servidor ─────────────────────────────────────
+
+/**
+ * Sólo escribe. No recibe el valor actual porque el navegador no lo tiene: un
+ * campo vacío y un valor nuevo. El largo guardado ayuda a comprobar que se
+ * está pegando lo correcto (el identificador de Meta mide 16, la clave 32).
+ */
+function ServidorForm({ fila, onClose, onAviso }: {
+  fila: { plataforma: string; nombre: string; largo: number }
+  onClose: () => void
+  onAviso: (texto: string, ok?: boolean) => void
+}) {
+  const [valor, setValor] = useState('')
+  const [ver, setVer] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const def = requerida(fila.plataforma, fila.nombre)
+  const problema = valor.trim() ? def?.revisar?.(valor) ?? null : null
+
+  async function guardar() {
+    setGuardando(true)
+    const r = await guardarCredencialDeServidor(fila.plataforma, fila.nombre, def?.tipo ?? 'api_key', valor)
+    setGuardando(false)
+    if (r.ok) { onAviso(`${fila.nombre}: valor reemplazado.`); onClose() }
+    else onAviso(r.error ?? 'No se pudo guardar.', false)
+  }
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:9998,
+        display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
+      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:460, padding:'1.25rem' }}>
+        <div style={{ fontWeight:800, fontSize:'1rem', color:'#111' }}>{fila.nombre}</div>
+        <div style={{ fontSize:'0.78rem', color:'var(--mute)', margin:'4px 0 12px' }}>
+          {def?.para ? `${def.para} ` : ''}Hoy hay un valor de {fila.largo} caracteres. Por seguridad
+          no se muestra; pegá el nuevo para reemplazarlo.
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <input autoFocus type={ver ? 'text' : 'password'} value={valor}
+            onChange={e => setValor(e.target.value)} placeholder="Valor nuevo"
+            autoComplete="off" spellCheck={false}
+            style={{ flex:1, padding:'0.5rem 0.6rem', border:'1px solid var(--border)',
+              borderRadius:8, fontSize:13 }} />
+          <button type="button" onClick={() => setVer(v => !v)}
+            style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:8,
+              padding:'0 0.7rem', cursor:'pointer', fontSize:12 }}>
+            {ver ? 'Ocultar' : 'Ver'}
+          </button>
+        </div>
+        <div style={{ fontSize:'0.74rem', marginTop:6, color: problema ? '#b91c1c' : 'var(--mute)' }}>
+          {problema ?? `Largo escrito: ${valor.trim().length}`}
+        </div>
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
+          <button type="button" onClick={onClose}
+            style={{ border:'1px solid var(--border)', background:'#fff', borderRadius:8,
+              padding:'0.5rem 1rem', cursor:'pointer' }}>Cancelar</button>
+          <button type="button" onClick={guardar}
+            disabled={guardando || !valor.trim() || !!problema}
+            style={{ border:'none', background:'var(--brand-navy)', color:'#fff', borderRadius:8,
+              padding:'0.5rem 1rem', cursor:'pointer',
+              opacity: guardando || !valor.trim() || problema ? 0.5 : 1 }}>
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

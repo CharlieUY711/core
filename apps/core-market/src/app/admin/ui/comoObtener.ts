@@ -108,12 +108,6 @@ export const GUIAS: GuiaDeCredencial[] = [
   {
     plataforma: "Meta",
     para: "La app de Meta con la que se conectan Instagram, Facebook y WhatsApp.",
-    enElServidor: {
-      texto:
-        "Esta no va en el Vault: es del servidor y vale para todas las tiendas. " +
-        "Se carga una sola vez, desde la terminal.",
-      comando: 'npx supabase secrets set META_APP_SECRETS="<identificador>:<clave>"',
-    },
     pasos: [
       {
         titulo: "Creá la app en Meta",

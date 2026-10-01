@@ -31,6 +31,8 @@ import AdminDefiniciones from "./admin/pages/AdminDefiniciones";
 import AdminEditor from "./admin/editor/EditorPage";
 import AdminApiVault from "./admin/pages/AdminApiVault";
 import AdminMetaSocial from "./admin/pages/AdminMetaSocial";
+import AdminMetaConfig from "./admin/pages/AdminMetaConfig";
+import AdminDesarrollo from "./admin/pages/AdminDesarrollo";
 
 // 👉 NUEVA PÁGINA
 // 👉 EDITOR PRO
@@ -70,6 +72,8 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
       { id: "admin-personas",       path: "personas",      Component: AdminPersonas },
       { id: "admin-definiciones",   path: "definiciones",  Component: AdminDefiniciones },
       { id: "admin-aplicaciones",   path: "aplicaciones",  Component: AdminAplicaciones },
+      { id: "admin-desarrollo",    path: "desarrollo",    Component: AdminDesarrollo },
+      { id: "admin-desarrollo-proyecto", path: "desarrollo/:proyectoId", Component: AdminDesarrollo },
       { id: "admin-export",         path: "export",        Component: AdminExport },
       { id: "admin-import",         path: "import",        Component: AdminImport },
 
@@ -88,6 +92,7 @@ export const TODAS_LAS_RUTAS: (RouteObject & { id: string })[] = [
       { id: "admin-ml",             path: "ml",            Component: AdminML },
       { id: "admin-api-vault",      path: "api-vault",     Component: AdminApiVault },
       { id: "admin-meta",           path: "meta",          Component: AdminMetaSocial },
+      { id: "admin-meta-config",    path: "meta/configuraciones", Component: AdminMetaConfig },
     ] as RouteObject[],
   },
 ];

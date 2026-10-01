@@ -287,6 +287,11 @@ export default function AdminMetaSocial() {
       onClick: () => { void desconectar(); },
     },
     {
+      label: "Configuraciones y usos",
+      title: "Experimental: opciones por WhatsApp para un número destinatario",
+      onClick: () => navegar("/admin/meta/configuraciones"),
+    },
+    {
       label: "Credenciales",
       title: "Abrir el API Vault, por si preferís cargarlas a mano",
       onClick: () => navegar("/admin/api-vault"),

@@ -47,8 +47,10 @@ export const useApiVault = create<VaultState>((set, get) => ({
 
   add: async (entry) => {
     const result = await createVaultEntry(entry)
-    if (result.ok && result.data) {
-      set((s) => ({ entries: [result.data!, ...s.entries] }))
+    if (result.ok) {
+      // Las de servidor no devuelven fila (no se pueden leer): no hay nada que
+      // agregar a la lista, que las pide aparte.
+      if (result.data) set((s) => ({ entries: [result.data!, ...s.entries] }))
       return true
     }
     set({ error: result.error })

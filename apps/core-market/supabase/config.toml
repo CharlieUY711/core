@@ -47,3 +47,10 @@ entrypoint = "./functions/ml-oauth/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/meta-oauth/index.ts"
+
+# whatsapp-gate: lo llama Meta, que no tiene sesion nuestra, asi que no puede
+# pedir JWT. La funcion valida por su cuenta la firma X-Hub-Signature-256.
+[functions.whatsapp-gate]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/whatsapp-gate/index.ts"
