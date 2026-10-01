@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MVD Rent</title>
+<style>
+  :root{
+    --navy:#16324F; --navy-dark:#0D2038; --gold:#D9A566; --paper:#F4F1EC; --ink:#16324F; --muted:#5b6a78;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  a{color:inherit;}
+  .lang-section{display:none;}
+  .lang-section.active{display:block;}
+
+  /* Top bar */
+  .topbar{
+    position:sticky; top:0; top:env(safe-area-inset-top,0px);
+    background:var(--navy); color:#fff; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; box-shadow:0 2px 10px rgba(0,0,0,.12);
+  }
+  .brand{font-weight:800; letter-spacing:.02em;}
+  .langs{display:flex; gap:6px;}
+  .langs button{
+    background:transparent; border:1px solid rgba(255,255,255,.35); color:#fff;
+    padding:6px 12px; border-radius:20px; font-size:.8rem; cursor:pointer;
+  }
+  .langs button.active{background:var(--gold); border-color:var(--gold); color:var(--navy-dark); font-weight:700;}
+
+  /* Hero */
+  .hero{
+    background: radial-gradient(120% 160% at 100% 0%, #1d4468 0%, var(--navy) 45%, var(--navy-dark) 100%);
+    color:#fff; padding:56px 20px 64px; text-align:center;
+  }
+  .hero .kicker{font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; opacity:.8; margin-bottom:14px;}
+  .hero h1{font-size:1.9rem; line-height:1.2; margin:0 0 16px; max-width:640px; margin-left:auto; margin-right:auto;}
+  .hero p{font-size:1.05rem; opacity:.92; max-width:520px; margin:0 auto 28px;}
+  .btn{
+    display:inline-block; background:var(--gold); color:var(--navy-dark); font-weight:700;
+    padding:14px 28px; border-radius:30px; text-decoration:none; border:none; cursor:pointer; font-size:1rem;
+  }
+
+  main{max-width:760px; margin:0 auto; padding:0 20px;}
+  section{padding:48px 0; border-bottom:1px solid #e2ddd0;}
+  section:last-of-type{border-bottom:none;}
+  h2{font-size:1.4rem; margin:0 0 24px; text-align:center;}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px;}
+  .cards .card{
+    background:#fff; border-radius:14px; padding:22px; box-shadow:0 4px 14px rgba(13,32,56,.06);
+    border-top:3px solid var(--gold);
+  }
+  .cards .card h3{margin:0 0 8px; font-size:1.02rem;}
+  .cards .card p{margin:0; color:var(--muted); font-size:.92rem; line-height:1.4;}
+  .cards .card .note{display:block; margin-top:8px; font-size:.72rem; color:#8a95a0;}
+
+  .steps{list-style:none; counter-reset:step; padding:0; margin:0; display:grid; gap:16px;}
+  .steps li{counter-increment:step; display:flex; gap:14px; align-items:flex-start;}
+  .steps li::before{
+    content:counter(step); flex:0 0 auto; width:32px; height:32px; border-radius:50%;
+    background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem;
+  }
+  .steps li span{padding-top:4px; font-size:.95rem;}
+
+  .abroad{background:#fff; border-radius:14px; padding:28px; text-align:center; box-shadow:0 4px 14px rgba(13,32,56,.06);}
+  .abroad p{color:var(--muted); max-width:520px; margin:0 auto; line-height:1.5;}
+
+  .disclaimer{background:#fbf3e3; border:1px solid #eddcb0; color:#7a5f24; font-size:.85rem; padding:12px 16px; border-radius:10px; margin-bottom:22px; text-align:center;}
+  .base-figures{background:#fff; border-radius:14px; padding:20px 24px; box-shadow:0 4px 14px rgba(13,32,56,.06); margin-bottom:22px;}
+  .base-figures div{display:flex; justify-content:space-between; gap:12px; padding:7px 0; font-size:.92rem; border-bottom:1px dashed #e2ddd0;}
+  .base-figures div:last-child{border-bottom:none; font-weight:700;}
+  .base-figures span:last-child{font-weight:700; text-align:right;}
+  .compare-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .compare-col{background:#fff; border-radius:14px; padding:22px; box-shadow:0 4px 14px rgba(13,32,56,.06); text-align:center;}
+  .compare-col.highlight{border:2px solid var(--gold); background:#fffaf0;}
+  .compare-col h4{margin:0 0 4px; font-size:.85rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);}
+  .compare-col .pct{font-size:1.3rem; font-weight:800; color:var(--navy); margin:6px 0;}
+  .compare-col .val{font-size:1.5rem; font-weight:800; margin:8px 0 4px;}
+  .compare-col small{color:var(--muted); font-size:.78rem;}
+  .diff-line{text-align:center; margin-top:18px; font-weight:700; color:#2a5c38; font-size:1.02rem;}
+
+  form{display:grid; gap:14px; max-width:480px; margin:0 auto;}
+  form label{font-size:.85rem; font-weight:600; display:block; margin-bottom:5px;}
+  form input, form textarea{
+    width:100%; padding:11px 13px; border:1px solid #d6d0c2; border-radius:8px; font-size:.95rem;
+    font-family:inherit; background:#fff; color:var(--ink);
+  }
+  form textarea{resize:vertical; min-height:70px;}
+  form .btn{width:100%; margin-top:6px;}
+  .form-sub{text-align:center; color:var(--muted); margin:-12px 0 18px; font-size:.92rem;}
+  .confirm{display:none; text-align:center; background:#eaf3ec; border:1px solid #bcdcc4; color:#2a5c38; padding:16px; border-radius:10px; font-size:.95rem;}
+  .confirm.show{display:block;}
+  .confirm.error{background:#faeaea; border-color:#e0bcbc; color:#7a2a2a;}
+
+  footer{text-align:center; padding:36px 20px 48px; color:var(--muted); font-size:.9rem;}
+  footer .domain{font-weight:700; color:var(--navy);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">MVD Rent</div>
+  <div class="langs">
+    <button data-lang="es" class="active" onclick="setLang('es')">ES</button>
+    <button data-lang="pt" onclick="setLang('pt')">PT</button>
+    <button data-lang="en" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<!-- ================= ESPAÑOL ================= -->
+<div class="lang-section active" id="sec-es">
+  <div class="hero">
+    <div class="kicker">MVD Rent · Propietarios · Montevideo</div>
+    <h1>Administramos y gestionamos tu propiedad. Mejoramos su rentabilidad.</h1>
+    <p>Un equipo local a cargo de tu propiedad en Montevideo, vivas donde vivas.</p>
+    <button class="btn" onclick="scrollForm('es')">Postulá tu propiedad</button>
+  </div>
+  <main>
+    <section>
+      <h2>Qué ofrecemos</h2>
+      <div class="cards">
+        <div class="card"><h3>Gestión integral</h3><p>Administramos tu propiedad y nos ocupamos de las gestiones acordadas.</p></div>
+        <div class="card"><h3>Seguimiento en tiempo real</h3><p>Consultá los pagos, las obligaciones y sus comprobantes desde la web.</p></div>
+        <div class="card"><h3>Rentabilidad mejorada</h3><p>Hasta un 6% neto anual estimado.<span class="note">*Estimado, no garantizado. Varía según cada propiedad.</span></p></div>
+      </div>
+    </section>
+    <section>
+      <h2>Pensado para vivir donde vivas</h2>
+      <div class="abroad"><p>Seas residente en Uruguay o vivas en el exterior, contás con un equipo local en Montevideo y acceso online a la información de tu propiedad, sin necesidad de estar presente.</p></div>
+    </section>
+    <section>
+      <h2>Cómo funciona</h2>
+      <ol class="steps">
+        <li><span>Contanos sobre tu propiedad</span></li>
+        <li><span>Coordinamos la gestión acordada</span></li>
+        <li><span>Integrás un pequeño porcentaje para mejoras operativas, que se suma al valor del bien para el cálculo de la renta</span></li>
+        <li><span>Seguí todo en línea, cuando quieras</span></li>
+      </ol>
+    </section>
+    <section>
+      <h2>Un ejemplo práctico</h2>
+      <div class="disclaimer">Simulación ilustrativa basada en los valores y porcentajes de este ejemplo. No es una evaluación de mercado ni una garantía para tu propiedad.</div>
+      <div class="base-figures">
+        <div><span>Valor de mercado de la propiedad</span><span>USD 150.000</span></div>
+        <div><span>Aporte inicial para mejoras</span><span>USD 4.500 + IVA</span></div>
+        <div><span>Base para calcular la renta MVD Rent</span><span>USD 154.500</span></div>
+      </div>
+      <div class="compare-grid">
+        <div class="compare-col">
+          <h4>Modelo tradicional</h4>
+          <div class="pct">4% neto anual</div>
+          <div class="val">USD 6.000</div>
+          <small>netos al año, sobre USD 150.000</small>
+        </div>
+        <div class="compare-col highlight">
+          <h4>Modelo MVD Rent</h4>
+          <div class="pct">6% neto anual</div>
+          <div class="val">USD 9.270</div>
+          <small>netos al año, sobre USD 154.500</small>
+        </div>
+      </div>
+      <div class="diff-line">+ USD 3.270 netos más al año (diferencia ilustrativa)</div>
+    </section>
+    <section id="form-es">
+      <h2>Postulá tu propiedad</h2>
+      <p class="form-sub">Contanos lo básico y nos ponemos en contacto.</p>
+      <form id="applyform-es" onsubmit="return submitForm(event,'es')">
+        <div><label>Nombre y apellido</label><input name="name" required></div>
+        <div><label>Correo electrónico</label><input type="email" name="email" required></div>
+        <div><label>Teléfono</label><input type="tel" name="phone"></div>
+        <div><label>Ciudad o país de residencia</label><input name="residence"></div>
+        <div><label>Dirección o zona de la propiedad en Montevideo</label><input name="property_address" required></div>
+        <div><label>Renta mensual esperada (estimada)</label><input name="expected_rent"></div>
+        <div><label>Comentario adicional (opcional)</label><textarea name="comments"></textarea></div>
+        <button class="btn" type="submit">Enviar postulación</button>
+      </form>
+      <div class="confirm" id="confirm-es">¡Gracias! Nos pondremos en contacto a la brevedad.</div>
+      <div class="confirm error" id="error-es">Hubo un problema al enviar. Probá de nuevo en un momento.</div>
+    </section>
+  </main>
+  <footer>Conocé los detalles y postulá tu propiedad en <span class="domain">mvdrent.core.com.uy</span></footer>
+</div>
+
+<!-- ================= PORTUGUÊS ================= -->
+<div class="lang-section" id="sec-pt">
+  <div class="hero">
+    <div class="kicker">MVD Rent · Proprietários · Montevidéu</div>
+    <h1>Administramos e gerenciamos seu imóvel. Melhoramos sua rentabilidade.</h1>
+    <p>Uma equipe local cuidando do seu imóvel em Montevidéu, onde quer que você esteja.</p>
+    <button class="btn" onclick="scrollForm('pt')">Inscreva seu imóvel</button>
+  </div>
+  <main>
+    <section>
+      <h2>O que oferecemos</h2>
+      <div class="cards">
+        <div class="card"><h3>Gestão integral</h3><p>Administramos seu imóvel e cuidamos das gestões combinadas.</p></div>
+        <div class="card"><h3>Acompanhamento em tempo real</h3><p>Consulte pagamentos, obrigações e comprovantes pela web.</p></div>
+        <div class="card"><h3>Rentabilidade melhorada</h3><p>Até 6% líquido ao ano, estimado.<span class="note">*Estimado, não garantido. Varia conforme cada imóvel.</span></p></div>
+      </div>
+    </section>
+    <section>
+      <h2>Pensado para quem vive onde for</h2>
+      <div class="abroad"><p>Morando no Uruguai ou no exterior, você conta com uma equipe local em Montevidéu e acesso online às informações do seu imóvel, sem precisar estar presente.</p></div>
+    </section>
+    <section>
+      <h2>Como funciona</h2>
+      <ol class="steps">
+        <li><span>Conte sobre seu imóvel</span></li>
+        <li><span>Combinamos a gestão acordada</span></li>
+        <li><span>Você integra um pequeno percentual para melhorias operacionais, que se soma ao valor do imóvel para o cálculo da renda</span></li>
+        <li><span>Acompanhe tudo online, quando quiser</span></li>
+      </ol>
+    </section>
+    <section>
+      <h2>Um exemplo prático</h2>
+      <div class="disclaimer">Simulação ilustrativa baseada nos valores e percentuais deste exemplo. Não é uma avaliação de mercado nem uma garantia para o seu imóvel.</div>
+      <div class="base-figures">
+        <div><span>Valor de mercado do imóvel</span><span>USD 150.000</span></div>
+        <div><span>Aporte inicial para melhorias</span><span>USD 4.500 + impostos</span></div>
+        <div><span>Base para cálculo da renda MVD Rent</span><span>USD 154.500</span></div>
+      </div>
+      <div class="compare-grid">
+        <div class="compare-col">
+          <h4>Modelo tradicional</h4>
+          <div class="pct">4% líquido ao ano</div>
+          <div class="val">USD 6.000</div>
+          <small>líquidos ao ano, sobre USD 150.000</small>
+        </div>
+        <div class="compare-col highlight">
+          <h4>Modelo MVD Rent</h4>
+          <div class="pct">6% líquido ao ano</div>
+          <div class="val">USD 9.270</div>
+          <small>líquidos ao ano, sobre USD 154.500</small>
+        </div>
+      </div>
+      <div class="diff-line">+ USD 3.270 líquidos a mais por ano (diferença ilustrativa)</div>
+    </section>
+    <section id="form-pt">
+      <h2>Inscreva seu imóvel</h2>
+      <p class="form-sub">Conte o básico e entraremos em contato.</p>
+      <form id="applyform-pt" onsubmit="return submitForm(event,'pt')">
+        <div><label>Nome completo</label><input name="name" required></div>
+        <div><label>E-mail</label><input type="email" name="email" required></div>
+        <div><label>Telefone</label><input type="tel" name="phone"></div>
+        <div><label>Cidade ou país de residência</label><input name="residence"></div>
+        <div><label>Endereço ou região do imóvel em Montevidéu</label><input name="property_address" required></div>
+        <div><label>Renda mensal esperada (estimativa)</label><input name="expected_rent"></div>
+        <div><label>Comentário adicional (opcional)</label><textarea name="comments"></textarea></div>
+        <button class="btn" type="submit">Enviar inscrição</button>
+      </form>
+      <div class="confirm" id="confirm-pt">Obrigado! Entraremos em contato em breve.</div>
+      <div class="confirm error" id="error-pt">Ocorreu um problema ao enviar. Tente novamente em instantes.</div>
+    </section>
+  </main>
+  <footer>Conheça os detalhes e inscreva seu imóvel em <span class="domain">mvdrent.core.com.uy</span></footer>
+</div>
+
+<!-- ================= ENGLISH ================= -->
+<div class="lang-section" id="sec-en">
+  <div class="hero">
+    <div class="kicker">MVD Rent · Property Owners · Montevideo</div>
+    <h1>We manage your property. We improve its returns.</h1>
+    <p>A local team looking after your property in Montevideo, wherever you live.</p>
+    <button class="btn" onclick="scrollForm('en')">Submit your property</button>
+  </div>
+  <main>
+    <section>
+      <h2>What we offer</h2>
+      <div class="cards">
+        <div class="card"><h3>Full-service management</h3><p>We manage your property and handle the agreed-upon tasks.</p></div>
+        <div class="card"><h3>Real-time tracking</h3><p>Check payments, obligations, and receipts online.</p></div>
+        <div class="card"><h3>Improved returns</h3><p>Up to 6% net annual return, estimated.<span class="note">*Estimated, not guaranteed. Varies by property.</span></p></div>
+      </div>
+    </section>
+    <section>
+      <h2>Built for owners anywhere</h2>
+      <div class="abroad"><p>Whether you live in Uruguay or abroad, you have a local team in Montevideo and online access to your property's information, with no need to be there in person.</p></div>
+    </section>
+    <section>
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><span>Tell us about your property</span></li>
+        <li><span>We coordinate the agreed management</span></li>
+        <li><span>You contribute a small percentage toward operational improvements, which is added to the property's value for the rent calculation</span></li>
+        <li><span>Track everything online, anytime</span></li>
+      </ol>
+    </section>
+    <section>
+      <h2>A practical example</h2>
+      <div class="disclaimer">Illustrative simulation based on the values and percentages in this example. It is not a market appraisal or a guarantee for any property.</div>
+      <div class="base-figures">
+        <div><span>Property market value</span><span>USD 150,000</span></div>
+        <div><span>Initial contribution for improvements</span><span>USD 4,500 + VAT</span></div>
+        <div><span>Base for calculating MVD Rent's return</span><span>USD 154,500</span></div>
+      </div>
+      <div class="compare-grid">
+        <div class="compare-col">
+          <h4>Traditional model</h4>
+          <div class="pct">4% net annual</div>
+          <div class="val">USD 6,000</div>
+          <small>net per year, on USD 150,000</small>
+        </div>
+        <div class="compare-col highlight">
+          <h4>MVD Rent model</h4>
+          <div class="pct">6% net annual</div>
+          <div class="val">USD 9,270</div>
+          <small>net per year, on USD 154,500</small>
+        </div>
+      </div>
+      <div class="diff-line">+ USD 3,270 net more per year (illustrative difference)</div>
+    </section>
+    <section id="form-en">
+      <h2>Submit your property</h2>
+      <p class="form-sub">Share the basics and we'll get in touch.</p>
+      <form id="applyform-en" onsubmit="return submitForm(event,'en')">
+        <div><label>Full name</label><input name="name" required></div>
+        <div><label>Email</label><input type="email" name="email" required></div>
+        <div><label>Phone</label><input type="tel" name="phone"></div>
+        <div><label>City or country of residence</label><input name="residence"></div>
+        <div><label>Property address or area in Montevideo</label><input name="property_address" required></div>
+        <div><label>Expected monthly rent (estimate)</label><input name="expected_rent"></div>
+        <div><label>Additional comments (optional)</label><textarea name="comments"></textarea></div>
+        <button class="btn" type="submit">Submit application</button>
+      </form>
+      <div class="confirm" id="confirm-en">Thank you! We'll be in touch soon.</div>
+      <div class="confirm error" id="error-en">Something went wrong sending this. Please try again shortly.</div>
+    </section>
+  </main>
+  <footer>Learn more and submit your property at <span class="domain">mvdrent.core.com.uy</span></footer>
+</div>
+
+<script>
+  function setLang(lang){
+    document.querySelectorAll('.lang-section').forEach(s=>s.classList.remove('active'));
+    document.getElementById('sec-'+lang).classList.add('active');
+    document.querySelectorAll('.langs button').forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
+    document.documentElement.lang = lang;
+  }
+  function scrollForm(lang){
+    document.getElementById('form-'+lang).scrollIntoView({behavior:'smooth'});
+  }
+  const SUBJECT = {es:'Nueva postulación MVD Rent (ES)', pt:'Nova inscrição MVD Rent (PT)', en:'New MVD Rent submission (EN)'};
+  function submitForm(e, lang){
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const data = new FormData(form);
+    data.append('_subject', SUBJECT[lang]);
+    data.append('_captcha', 'false');
+    document.getElementById('error-'+lang).classList.remove('show');
+    btn.disabled = true;
+    fetch('https://formsubmit.co/ajax/cvaralla@gmail.com', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: data
+    }).then(res => {
+      if(!res.ok) throw new Error('bad response');
+      document.getElementById('confirm-'+lang).classList.add('show');
+      form.reset();
+    }).catch(() => {
+      document.getElementById('error-'+lang).classList.add('show');
+    }).finally(() => { btn.disabled = false; });
+    return false;
+  }
+</script>
+</body>
+</html>

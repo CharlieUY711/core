@@ -12,7 +12,10 @@ export interface WaGateOption {
 export interface WaGate {
   id:              string
   name:            string     // cómo se llama esta configuración en la lista
-  phone_number_id: string | null  // teléfono de Meta que responde; null = el conectado en el Vault
+  provider:        'meta' | 'twilio'
+  phone_number_id: string | null  // (Meta) teléfono que responde; null = el conectado en el Vault
+  twilio_from:     string | null  // (Twilio) número remitente, sólo dígitos: 14155238886
+  menu_return_seconds: number     // (Twilio) a los cuántos segundos vuelve el menú tras una URL; 0 = nunca
   recipient:       string     // sólo dígitos, con país
   recipient_label: string | null
   prompt:          string

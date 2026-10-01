@@ -33,7 +33,8 @@ const opcionVacia = (n: number): WaGateOption => ({
 });
 
 const gateVacio = (n = 1): WaGateDraft => ({
-  name: `Configuración ${n}`, phone_number_id: null,
+  name: `Configuración ${n}`, provider: "meta", phone_number_id: null,
+  twilio_from: null, menu_return_seconds: 8,
   recipient: "", recipient_label: "",
   prompt: "Elegí una opción para continuar:",
   success_text: "¡Listo! Ya podés seguir escribiendo.",
@@ -68,6 +69,11 @@ export default function AdminMetaConfig() {
   const [tokenNuevo, setTokenNuevo] = useState<string | null>(null);
   const [generando, setGenerando] = useState(false);
   const [gates, setGates] = useState<WaGate[]>([]);
+  /* Credenciales de Twilio: sólo se sabe si están y su largo; el valor no vuelve nunca. */
+  const [twilioCargado, setTwilioCargado] = useState<{ sid: number | null; token: number | null }>({ sid: null, token: null });
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [guardandoTwilio, setGuardandoTwilio] = useState(false);
   /* Los teléfonos de la cuenta de Meta (WABA): son los que pueden responder. */
   const [telefonos, setTelefonos] = useState<WhatsAppPhoneNumber[]>([]);
   const [errorTelefonos, setErrorTelefonos] = useState<string | null>(null);
@@ -117,6 +123,11 @@ export default function AdminMetaConfig() {
     if (error) return;
     const fila = (data ?? []).find((c: { nombre: string }) => c.nombre === "WA_GATE_VERIFY_TOKEN");
     setTokenCargado(fila ? Number(fila.largo) : null);
+    const de = (n: string) => {
+      const f = (data ?? []).find((c: { plataforma: string; nombre: string }) => c.plataforma === "Twilio" && c.nombre === n);
+      return f ? Number(f.largo) : null;
+    };
+    setTwilioCargado({ sid: de("TWILIO_ACCOUNT_SID"), token: de("TWILIO_AUTH_TOKEN") });
   };
   useEffect(() => { void leerToken(); }, []);
 
@@ -137,6 +148,27 @@ export default function AdminMetaConfig() {
   };
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-gate`;
+  const webhookTwilio = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-gate`;
+
+  const guardarTwilio = async () => {
+    if (!twilioSid.trim() && !twilioToken.trim()) return;
+    setGuardandoTwilio(true);
+    try {
+      if (twilioSid.trim()) {
+        const r = await guardarCredencialDeServidor("Twilio", "TWILIO_ACCOUNT_SID", "secret", twilioSid.trim());
+        if (!r.ok) throw new Error(r.error ?? "No se pudo guardar el Account SID.");
+      }
+      if (twilioToken.trim()) {
+        const r = await guardarCredencialDeServidor("Twilio", "TWILIO_AUTH_TOKEN", "secret", twilioToken.trim());
+        if (!r.ok) throw new Error(r.error ?? "No se pudo guardar el Auth Token.");
+      }
+      setTwilioSid(""); setTwilioToken("");
+      await leerToken();
+      p.avisar("Credenciales de Twilio guardadas en el Vault.");
+    } catch (e: any) {
+      p.avisar(e.message ?? "No se pudo guardar.", false);
+    } finally { setGuardandoTwilio(false); }
+  };
   const numeroConectado = wa.phoneNumber?.display_phone_number;
   const problema = useMemo(() => validar(edit), [edit]);
 
@@ -311,6 +343,38 @@ export default function AdminMetaConfig() {
         )}
       </div>
 
+      {/* ── Twilio ─────────────────────────────────────────────────────── */}
+      <div style={S.card}>
+        <h3 style={S.h3}>Twilio</h3>
+        <p style={S.sub}>
+          Las credenciales van al Vault como "Sólo servidor": no vuelven al navegador ni pasan por variables de Supabase.
+        </p>
+        <label style={S.label}>URL del webhook (Twilio → Messaging → Sandbox o Sender → "When a message comes in", método POST)</label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <input style={S.input} readOnly value={webhookTwilio} onFocus={e => e.target.select()} />
+          <button style={S.btn} onClick={() => { void copiar(webhookTwilio); }}>Copiar</button>
+        </div>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <div>
+            <label style={S.label}>Account SID</label>
+            <input style={S.input} autoComplete="off" value={twilioSid} onChange={e => setTwilioSid(e.target.value)}
+              placeholder={twilioCargado.sid !== null ? `Cargado (${twilioCargado.sid} caracteres)` : "AC…"} />
+          </div>
+          <div>
+            <label style={S.label}>Auth Token</label>
+            <input style={S.input} type="password" autoComplete="new-password" value={twilioToken}
+              onChange={e => setTwilioToken(e.target.value)}
+              placeholder={twilioCargado.token !== null ? `Cargado (${twilioCargado.token} caracteres)` : "Pegalo acá"} />
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <button style={S.btn} disabled={guardandoTwilio || (!twilioSid.trim() && !twilioToken.trim())}
+            onClick={() => { void guardarTwilio(); }}>
+            {guardandoTwilio ? "Guardando…" : twilioCargado.sid !== null || twilioCargado.token !== null ? "Reemplazar" : "Agregar"}
+          </button>
+        </div>
+      </div>
+
       {/* ── Configuraciones guardadas ──────────────────────────────────── */}
       {!cargando && gates.length > 0 && (
         <div style={S.card}>
@@ -325,7 +389,7 @@ export default function AdminMetaConfig() {
                 style={{ ...S.btn, textAlign: "left", ...(edit.id === g.id ? { borderColor: "var(--brand-madre)", borderWidth: 2 } : {}) }}>
                 <div style={{ fontWeight: 700 }}>{g.name || `+${g.recipient}`}</div>
                 <div style={{ fontSize: 11, color: "var(--mute)", fontWeight: 500 }}>
-                  +{g.recipient} · <span style={{ color: g.enabled ? "#15803D" : "var(--mute)" }}>
+                  {g.provider === "twilio" ? "Twilio · " : ""}+{g.recipient} · <span style={{ color: g.enabled ? "#15803D" : "var(--mute)" }}>
                     {g.enabled ? "● activa" : "apagada"}</span>
                 </div>
               </button>
@@ -344,6 +408,26 @@ export default function AdminMetaConfig() {
             onChange={e => cambiar({ name: e.target.value })} />
         </div>
         <div style={{ marginBottom: 12 }}>
+          <label style={S.label}>Proveedor</label>
+          <select style={S.input} value={edit.provider}
+            onChange={e => cambiar({ provider: e.target.value as "meta" | "twilio" })}>
+            <option value="meta">Meta (WhatsApp Cloud API)</option>
+            <option value="twilio">Twilio</option>
+          </select>
+        </div>
+        {edit.provider === "twilio" && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={S.label}>Número de Twilio que responde (sandbox: +1 415 523 8886)</label>
+            <input style={S.input} placeholder="+1 415 523 8886"
+              defaultValue={edit.twilio_from ? `+${edit.twilio_from}` : ""}
+              key={`tw-${edit.id ?? "nuevo"}`}
+              onChange={e => cambiar({ twilio_from: normalizarNumero(e.target.value) || null })} />
+            <p style={{ ...S.sub, margin: "4px 0 0" }}>
+              {edit.twilio_from ? `Se guarda como +${edit.twilio_from}` : "Sin número"}
+            </p>
+          </div>
+        )}
+        {edit.provider === "meta" && <div style={{ marginBottom: 12 }}>
           <label style={S.label}>Teléfono que responde (los dados de alta en Meta)</label>
           <select style={S.input} value={edit.phone_number_id ?? ""}
             onChange={e => cambiar({ phone_number_id: e.target.value || null })}>
@@ -367,7 +451,7 @@ export default function AdminMetaConfig() {
               Sin lista de Meta. Conectá WhatsApp en Meta para que aparezcan los teléfonos de la cuenta.
             </p>
           )}
-        </div>
+        </div>}
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <div>
             <label style={S.label}>Número (acepta 09X XXX XXX o con código de país)</label>
@@ -405,6 +489,16 @@ export default function AdminMetaConfig() {
             <textarea style={{ ...S.input, minHeight: 60 }} value={edit.success_text}
               onChange={e => cambiar({ success_text: e.target.value })} />
           </div>
+          {edit.provider === "twilio" && (
+            <div>
+              <label style={S.label}>Segundos para volver al menú (0 = no vuelve)</label>
+              <input style={S.input} type="number" min={0} max={300} value={edit.menu_return_seconds}
+                onChange={e => cambiar({ menu_return_seconds: Math.max(0, Math.min(300, Math.round(Number(e.target.value) || 0))) })} />
+              <p style={{ ...S.sub, margin: "4px 0 0" }}>
+                Tras mandar la URL de una opción, el menú se reenvía a los segundos indicados.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

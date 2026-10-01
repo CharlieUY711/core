@@ -173,7 +173,7 @@ async function procesar(phoneNumberId: string, msg: any) {
   const campos = "id, user_id, prompt, success_text";
   let { data: gate } = await supabase
     .from("wa_gates").select(campos)
-    .eq("recipient", from).eq("enabled", true)
+    .eq("recipient", from).eq("enabled", true).eq("provider", "meta")
     .eq("phone_number_id", phoneNumberId)
     .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
@@ -191,7 +191,7 @@ async function procesar(phoneNumberId: string, msg: any) {
     ({ data: gate } = await supabase
       .from("wa_gates").select(campos)
       .in("user_id", userIds)
-      .eq("recipient", from).eq("enabled", true)
+      .eq("recipient", from).eq("enabled", true).eq("provider", "meta")
       .is("phone_number_id", null)
       .order("updated_at", { ascending: false }).limit(1).maybeSingle());
   }

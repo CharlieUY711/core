@@ -27,6 +27,11 @@ export function normalizarNumero(entrada: string): string {
 /** Mensaje de lo que impide guardar, o null si está bien. */
 export function validar(g: WaGateDraft): string | null {
   if (!g.name.trim()) return 'Poné un nombre a la configuración.'
+  if (g.provider === 'twilio') {
+    if (!g.twilio_from || !/^\d{8,15}$/.test(g.twilio_from)) return 'Poné el número de Twilio que responde (con código de país).'
+    if (!Number.isInteger(g.menu_return_seconds) || g.menu_return_seconds < 0 || g.menu_return_seconds > 300)
+      return 'Los segundos para volver al menú van de 0 a 300.'
+  }
   if (g.recipient.length < 8) return 'El número destinatario no parece válido.'
   // Un 0 inicial sólo se convierte a 598 cuando son 9 dígitos (09X XXX XXX):
   // con otro largo el número quedaba mal y nunca coincidía con el de WhatsApp.
@@ -79,7 +84,10 @@ export const waGateService = {
     const fila = {
       user_id: user.id,
       name: g.name.trim(),
-      phone_number_id: g.phone_number_id || null,
+      provider: g.provider,
+      phone_number_id: g.provider === 'meta' ? (g.phone_number_id || null) : null,
+      twilio_from: g.provider === 'twilio' ? g.twilio_from : null,
+      menu_return_seconds: g.menu_return_seconds,
       recipient: g.recipient,
       recipient_label: g.recipient_label,
       prompt: g.prompt,
@@ -93,7 +101,9 @@ export const waGateService = {
     if (g.enabled) {
       let q = supabase.from('wa_gates').update({ enabled: false })
         .eq('user_id', user.id).eq('recipient', g.recipient).eq('enabled', true)
-      q = g.phone_number_id ? q.eq('phone_number_id', g.phone_number_id) : q.is('phone_number_id', null)
+        .eq('provider', g.provider)
+      if (g.provider === 'twilio') q = q.eq('twilio_from', g.twilio_from!)
+      else q = g.phone_number_id ? q.eq('phone_number_id', g.phone_number_id) : q.is('phone_number_id', null)
       if (id) q = q.neq('id', id)
       const { error: a } = await q
       if (a) throw new Error(a.message)
