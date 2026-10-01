@@ -20,6 +20,8 @@ import { ItemDeBarra } from "../components/BarraDeAcciones";
 import { useMetaVault } from "../meta-social/hooks/useMetaVault";
 import { useWhatsApp } from "../meta-social/hooks/useWhatsApp";
 import { whatsappService } from "../meta-social/services/whatsappService";
+import { supabase } from "../../../utils/supabase/client";
+import { guardarCredencialDeServidor } from "../services/apiVaultService";
 import type { WhatsAppPhoneNumber } from "../meta-social/types/whatsapp.types";
 import {
   waGateService, normalizarNumero, urlPredefinida, validar,
@@ -60,6 +62,11 @@ export default function AdminMetaConfig() {
   const vault = useMetaVault();
   const wa = useWhatsApp(vault.whatsappCredentials);
 
+  /* Token de verificación del webhook: se genera acá, se guarda en el Vault
+     (sólo servidor) y se muestra UNA vez para pegarlo en Meta. */
+  const [tokenCargado, setTokenCargado] = useState<number | null>(null); // largo, o null si no hay
+  const [tokenNuevo, setTokenNuevo] = useState<string | null>(null);
+  const [generando, setGenerando] = useState(false);
   const [gates, setGates] = useState<WaGate[]>([]);
   /* Los teléfonos de la cuenta de Meta (WABA): son los que pueden responder. */
   const [telefonos, setTelefonos] = useState<WhatsAppPhoneNumber[]>([]);
@@ -87,7 +94,14 @@ export default function AdminMetaConfig() {
 
   const creds = vault.whatsappCredentials;
   useEffect(() => {
-    if (!creds.accessToken || !creds.wabaId) { setTelefonos([]); return; }
+    if (!creds.accessToken || !creds.wabaId) {
+      setTelefonos([]);
+      // Se dice QUÉ falta: "conectá WhatsApp" a secas no deja saber qué cargar.
+      setErrorTelefonos(!creds.accessToken
+        ? "Falta WHATSAPP_ACCESS_TOKEN en el API Vault."
+        : "Falta WHATSAPP_WABA_ID en el API Vault (plataforma WhatsApp).");
+      return;
+    }
     let vivo = true;
     void whatsappService.getPhoneNumbers(creds).then(r => {
       if (!vivo) return;
@@ -97,6 +111,30 @@ export default function AdminMetaConfig() {
     return () => { vivo = false; };
     // eslint-disable-next-line
   }, [creds.accessToken, creds.wabaId]);
+
+  const leerToken = async () => {
+    const { data, error } = await supabase.rpc("credenciales_de_servidor");
+    if (error) return;
+    const fila = (data ?? []).find((c: { nombre: string }) => c.nombre === "WA_GATE_VERIFY_TOKEN");
+    setTokenCargado(fila ? Number(fila.largo) : null);
+  };
+  useEffect(() => { void leerToken(); }, []);
+
+  const generarToken = async () => {
+    if (tokenCargado !== null && !confirm(
+      "Ya hay un token cargado. Si generás otro, tenés que pegarlo de nuevo en Meta o el webhook deja de verificar. ¿Seguir?",
+    )) return;
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");   // 48 caracteres
+    setGenerando(true);
+    const r = await guardarCredencialDeServidor("Meta", "WA_GATE_VERIFY_TOKEN", "secret", token);
+    setGenerando(false);
+    if (!r.ok) { p.avisar(r.error ?? "No se pudo guardar el token.", false); return; }
+    setTokenNuevo(token);
+    await leerToken();
+    p.avisar("Token generado y guardado en el Vault. Copialo ahora y pegalo en Meta.");
+  };
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-gate`;
   const numeroConectado = wa.phoneNumber?.display_phone_number;
@@ -247,9 +285,30 @@ export default function AdminMetaConfig() {
           <input style={S.input} readOnly value={webhookUrl} onFocus={e => e.target.select()} />
           <button style={S.btn} onClick={() => { void copiar(webhookUrl); }}>Copiar</button>
         </div>
-        <p style={{ ...S.sub, margin: "6px 0 0" }}>
-          Suscribite al campo <b>messages</b>. El token de verificación es el valor de <code>WA_GATE_VERIFY_TOKEN</code>.
+        <p style={{ ...S.sub, margin: "6px 0 12px" }}>
+          Suscribite al campo <b>messages</b>.
         </p>
+
+        <label style={S.label}>Token de verificación (se pega en Meta junto a la URL)</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input style={S.input} readOnly
+            value={tokenNuevo ?? ""}
+            placeholder={tokenCargado !== null
+              ? `Cargado en el Vault (${tokenCargado} caracteres). Por seguridad no se muestra.`
+              : "Todavía no hay token. Generalo con el botón."}
+            onFocus={e => e.target.select()} />
+          {tokenNuevo && <button style={S.btn} onClick={() => { void copiar(tokenNuevo); }}>Copiar</button>}
+          <button style={{ ...S.btn, whiteSpace: "nowrap" }} disabled={generando}
+            onClick={() => { void generarToken(); }}>
+            {generando ? "Generando…" : tokenCargado !== null ? "Generar uno nuevo" : "Generar y guardar"}
+          </button>
+        </div>
+        {tokenNuevo && (
+          <p style={{ ...S.sub, margin: "6px 0 0", color: "#B45309" }}>
+            Copialo ahora: queda guardado en el Vault y no se vuelve a mostrar. Si lo perdés, generás otro y lo
+            volvés a pegar en Meta.
+          </p>
+        )}
       </div>
 
       {/* ── Configuraciones guardadas ──────────────────────────────────── */}
